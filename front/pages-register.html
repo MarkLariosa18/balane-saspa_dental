@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>Account Creation</title>
+  <meta content="Account creation for dental clinic" name="description">
+  <meta content="dental, patient, registration, account" name="keywords">
+
+  <!-- Favicons -->
+  <link href="assets/img/favicon.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
+
+  <!-- Template Main CSS File -->
+  <link href="assets/css/style.css" rel="stylesheet">
+
+  <!-- Additional responsive styles -->
+  <style>
+    @media (max-width: 768px) {
+      .card {
+        margin: 0 10px;
+      }
+      
+      .col-lg-6.col-md-8 {
+        padding: 0;
+      }
+    }
+    
+    .login-link {
+      margin-top: 15px;
+      text-align: center;
+    }
+    
+    .login-link a {
+      display: inline-flex;
+      align-items: center;
+      color: #4154f1;
+      text-decoration: none;
+    }
+    
+    .login-link a:hover {
+      text-decoration: underline;
+    }
+    
+    .login-link i {
+      margin-right: 5px;
+    }
+
+    .is-invalid {
+      border: 2px solid #dc3545 !important;
+      background-color: #f8d7da;
+    }
+    
+    .field-error {
+      color: #dc3545;
+      font-size: 0.85em;
+      margin-top: 0.25rem;
+    }
+
+    .section-divider {
+      background-color: #f8f9fa;
+      border-radius: 5px;
+      padding: 10px 15px;
+      margin-bottom: 15px;
+    }
+
+    .form-text {
+      font-size: 0.8em;
+      color: #6c757d;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <div class="container">
+      <section class="section register min-vh-100 d-flex flex-column align-items-center justify-content-center py-4">
+        <div class="container">
+          <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-8 d-flex flex-column align-items-center justify-content-center">
+              <div class="d-flex justify-content-center py-4">
+                <a href="index.html" class="logo d-flex align-items-center w-auto">
+                  <img src="assets/img/logo.png" alt="">
+                  <span class="d-none d-lg-block">Balane-Saspa Dental Clinic</span>
+                </a>
+              </div><!-- End Logo -->
+
+              <div class="card mb-3">
+                <div class="card-body">
+                  <div class="pt-4 pb-2">
+                    <h5 class="card-title text-center pb-0 fs-4">Create Your Account</h5>
+                    <p class="text-center small">Step 1 of 2: Set up your login credentials</p>
+                  </div>
+
+                  <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+
+                  <form id="accountForm" class="row g-3 needs-validation" novalidate>
+                    <!-- Account Information Section -->
+                    <div class="col-12 section-divider">
+                      <h5>Account Information</h5>
+                    </div>
+
+                    <div class="col-12">
+                      <label for="username" class="form-label">Username *</label>
+                      <input type="text" class="form-control" id="username" required>
+                      <div id="usernameError" class="field-error" style="display: none;"></div>
+                    </div>
+
+                    <div class="col-12">
+                      <label for="password" class="form-label">Password *</label>
+                      <input type="password" class="form-control" id="password" required>
+                      <div id="passwordError" class="field-error" style="display: none;"></div>
+                      <small class="form-text">Must be at least 8 characters, including uppercase, lowercase, numbers, and special characters.</small>
+                    </div>
+
+                    <div class="col-12">
+                      <label for="confirmPassword" class="form-label">Confirm Password *</label>
+                      <input type="password" class="form-control" id="confirmPassword" required>
+                      <div id="confirmPasswordError" class="field-error" style="display: none;"></div>
+                    </div>
+
+                    <div class="col-12 mt-4">
+                      <button class="btn btn-primary w-100" type="submit">Continue to Registration</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Back to Login Link -->
+              <div class="login-link">
+                <a href="pages-login.html">
+                  <i class="bi bi-arrow-left-circle"></i> Already have an account
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <!-- Vendor JS Files -->
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Template Main JS File -->
+  <script src="assets/js/main.js"></script>
+
+  <!-- Form Handling Script -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const form = document.getElementById("accountForm");
+      const errorMessage = document.getElementById("errorMessage");
+
+      if (!form) {
+        console.error("Form not found!");
+        return;
+      }
+      
+      // Field-specific error display function
+      function showFieldError(fieldId, message) {
+        const errorElement = document.getElementById(`${fieldId}Error`);
+        if (errorElement) {
+          errorElement.textContent = message;
+          errorElement.style.display = "block";
+        }
+        document.getElementById(fieldId).classList.add("is-invalid");
+      }
+      
+      // Clear field error
+      function clearFieldError(fieldId) {
+        const errorElement = document.getElementById(`${fieldId}Error`);
+        if (errorElement) {
+          errorElement.textContent = "";
+          errorElement.style.display = "none";
+        }
+        document.getElementById(fieldId).classList.remove("is-invalid");
+      }
+      
+      // Initialize all field error elements
+      const inputFields = form.querySelectorAll("input");
+      inputFields.forEach(field => {
+        field.addEventListener("input", function() {
+          clearFieldError(field.id);
+          errorMessage.style.display = "none";
+        });
+      });
+
+      form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+
+        // Clear previous error messages
+        errorMessage.style.display = "none";
+        
+        // Clear previous highlights
+        const inputs = form.querySelectorAll("input");
+        inputs.forEach(input => input.classList.remove("is-invalid"));
+        
+        // Clear all field errors
+        const fieldErrors = document.querySelectorAll(".field-error");
+        fieldErrors.forEach(element => {
+          element.textContent = "";
+          element.style.display = "none";
+        });
+
+        // Get input values
+        const username = document.getElementById("username").value.trim();
+        const password = document.getElementById("password").value.trim();
+        const confirmPassword = document.getElementById("confirmPassword").value.trim();
+
+        let hasError = false;
+
+        // Validate required fields
+        if (!username) {
+          showFieldError("username", "Username is required");
+          hasError = true;
+        }
+        
+        if (!password) {
+          showFieldError("password", "Password is required");
+          hasError = true;
+        }
+        
+        if (!confirmPassword) {
+          showFieldError("confirmPassword", "Please confirm your password");
+          hasError = true;
+        }
+
+        // Password validation with requirements
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
+        if (password && !passwordRegex.test(password)) {
+          showFieldError("password", "Password must be at least 8 characters and include uppercase, lowercase, numbers, and special characters");
+          hasError = true;
+        }
+
+        if (password && confirmPassword && password !== confirmPassword) {
+          showFieldError("confirmPassword", "Passwords do not match");
+          hasError = true;
+        }
+
+        if (hasError) {
+          errorMessage.textContent = "Please correct the errors and try again.";
+          errorMessage.style.display = "block";
+          return;
+        }
+
+        // Check if username exists
+        try {
+  console.log('Checking username:', username);
+  const response = await fetch(`http://localhost:3000/patients/check-username?username=${encodeURIComponent(username)}`);
+  if (!response.ok) {
+    const text = await response.text();
+    console.error('Raw server response:', text);
+    try {
+      const errorData = JSON.parse(text);
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    } catch (jsonError) {
+      throw new Error(`Server returned invalid response: ${text.substring(0, 50)}...`);
+    }
+  }
+  const result = await response.json();
+  console.log('Username check result:', result);
+  if (result.exists) {
+    showFieldError("username", "Username already exists.");
+    errorMessage.textContent = "Username already exists.";
+    errorMessage.style.display = "block";
+    return;
+  }
+  const accountData = { username, password };
+  sessionStorage.setItem('accountData', JSON.stringify(accountData));
+  window.location.href = "pages-register2.html";
+} catch (error) {
+  console.error("Error checking username:", error.message);
+  errorMessage.textContent = error.message || "Failed to verify username.";
+  errorMessage.style.display = "block";
+}
+      });
+    });
+  </script>
+</body>
+</html>
