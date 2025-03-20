@@ -362,8 +362,7 @@
       }) : [];
 
       if (bookedTimes.length === 0) {
-        console.warn('No booked times found. Using sample data for testing.');
-        bookedTimes.push('2023-11-07 11:00', '2023-11-07 14:00'); // Sample data
+        console.warn('No booked times found.');
       }
 
       console.log('Final Booked Times:', bookedTimes);
@@ -375,9 +374,21 @@
         inline: true,
         disable: [
           function(date) {
+            const now = new Date();
             const day = date.getDay();
-            if (day === 0) return true; // Disable Sundays
             const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+            // Disable Sundays
+            if (day === 0) return true;
+
+            // Disable today if after 3 PM
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            if (dateStr === todayStr && now.getHours() >= 15) { // 15 = 3 PM
+              console.log(`Disabling today (${dateStr}) because it's past 3 PM`);
+              return true;
+            }
+
+            // Disable fully booked dates
             const bookedForDate = availableHours.every(hour => {
               const timeStr = `${dateStr} ${hour.toString().padStart(2, '0')}:00`;
               return bookedTimes.includes(timeStr);
@@ -416,13 +427,19 @@
           });
         },
         onDayCreate: (dObj, dStr, fp, dayElem) => {
+          const now = new Date();
           const day = dayElem.dateObj.getDay();
           const dateStr = `${dayElem.dateObj.getFullYear()}-${String(dayElem.dateObj.getMonth() + 1).padStart(2, '0')}-${String(dayElem.dateObj.getDate()).padStart(2, '0')}`;
+          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
           const isFullyBooked = availableHours.every(hour => {
             const timeStr = `${dateStr} ${hour.toString().padStart(2, '0')}:00`;
             return bookedTimes.includes(timeStr);
           });
-          if (day === 0 || isFullyBooked) {
+
+          const isTodayPast3PM = dateStr === todayStr && now.getHours() >= 15;
+
+          if (day === 0 || isFullyBooked || isTodayPast3PM) {
             dayElem.classList.add('disabled');
           }
         },
@@ -516,7 +533,6 @@
       const restrictionMessage = document.getElementById('appointment-restriction-message');
       const form = document.getElementById('appointment-form');
 
-      // Check for active appointments (pending or confirmed and not yet passed)
       const activeAppointment = appointments.find(app => {
         const appDate = new Date(app.appointment_date);
         return (app.status.toLowerCase() === 'pending' || 
@@ -530,7 +546,6 @@
         return false;
       }
 
-      // Check for cooldown periods
       const latestAppointment = appointments.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
       if (latestAppointment) {
         const updatedAt = new Date(latestAppointment.updated_at);
@@ -538,7 +553,7 @@
         let cooldownReason = '';
 
         if (latestAppointment.status.toLowerCase() === 'cancelled') {
-          cooldownDays = 3; // 3-day cooldown for cancelled appointments
+          cooldownDays = 3;
           cooldownReason = 'cancelled';
         }
 
@@ -555,7 +570,6 @@
           }
         }
 
-        // If the latest appointment is confirmed and has passed, allow booking
         if (latestAppointment.status.toLowerCase() === 'confirmed') {
           const appDate = new Date(latestAppointment.appointment_date);
           if (appDate < now) {
@@ -566,7 +580,6 @@
         }
       }
 
-      // If no appointments or all conditions are met, allow booking
       restrictionMessage.style.display = 'none';
       form.style.display = 'block';
       return true;
