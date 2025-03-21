@@ -24,93 +24,7 @@
 
   <link href="assets/css/main.css" rel="stylesheet">
 
-  <style>
-    #loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(255, 255, 255, 0.8);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-      display: none;
-    }
-    #loading-spinner {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #3498db;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    .flatpickr-input {
-      width: 100%;
-      padding: 0.375rem 0.75rem;
-      font-size: 1rem;
-      line-height: 1.5;
-      border: 1px solid #ced4da;
-      border-radius: 0.25rem;
-      background-color: #fff;
-    }
-    .flatpickr-day.disabled, .time-slot.disabled {
-      background-color: #e9ecef !important;
-      color: #6c757d !important;
-      cursor: not-allowed !important;
-    }
-    .picker-container {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-    }
-    .flatpickr-calendar {
-      margin: 0;
-    }
-    .time-picker {
-      width: 100px;
-      padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background-color: #fff;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    .time-picker-header {
-      text-align: center;
-      font-weight: bold;
-      margin-bottom: 10px;
-      color: #333;
-    }
-    .time-picker-slots {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .time-slot {
-      padding: 5px;
-      text-align: center;
-      border-radius: 4px;
-      cursor: pointer;
-      background-color: #fff;
-      transition: background-color 0.2s;
-    }
-    .time-slot.selected {
-      background-color: #007bff;
-      color: #fff;
-    }
-    .time-slot:hover:not(.disabled) {
-      background-color: #f8f9fa;
-    }
-    #appointment-restriction-message {
-      margin-bottom: 15px;
-      display: none;
-    }
-  </style>
+  
 </head>
 <body>
   <div id="loading-overlay">
@@ -122,7 +36,7 @@
       <div class="container">
         <div class="row">
           <div class="col-6 d-flex align-items-center justify-content-center justify-content-md-start">
-            <i class="bi bi-clock me-1"></i> Mon - Sat, 11AM to 4PM
+            <i class="bi bi-clock me-1"></i> Mon - Sat, 9AM to 4PM
           </div>
           <div class="col-6 d-flex align-items-center justify-content-center justify-content-md-end">
             <i class="bi bi-phone me-1"></i> +63 920 797 6690
@@ -145,7 +59,11 @@
             <li><a href="index.html#doctors">Doctors</a></li>
             <li><a href="index.html#contact">Contact</a></li>
             <li><a href="profile.html">Profile</a></li>
-            <li><a href="make-appointment.html" class="active">Appointment</a></li>
+            <li id="appointment-link">
+              <a class="cta-btn" href="make-appointment.html">
+                Appointment
+              </a>
+            </li> 
           </ul>
           <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
         </nav>
@@ -190,10 +108,11 @@
                 </div>
 
                 <div class="col-md-12 text-center">
+
                   <div class="loading">Loading</div>
                   <div class="error-message"></div>
                   <div class="sent-message">Your appointment request has been submitted. Awaiting admin confirmation.</div>
-                  <button type="submit">Book Appointment</button>
+                  <button class="ctn-btn" type="submit">Book Appointment</button>
                 </div>
               </div>
             </form>
@@ -215,7 +134,7 @@
             <p>Camarines Norte, Philippines</p>
             <p class="mt-3"><strong>Phone:</strong> <span>+63 920 797 6690</span></p>
             <p><strong>Email:</strong> <span>dmdannsaspa@yahoo.com</span></p>
-            <p><strong>Monday - Saturday, 11AM to 4PM</strong></p>
+            <p><strong>Monday - Saturday, 9AM to 4PM</strong></p>
           </div>
         </div>
       </div>
@@ -244,446 +163,448 @@
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
-  <script>
-    AOS.init();
+ <script> AOS.init();
 
-    // Utility functions
-    const showLoading = () => document.getElementById('loading-overlay').style.display = 'flex';
-    const hideLoading = () => document.getElementById('loading-overlay').style.display = 'none';
-
-    const tryAutoLogin = async () => {
-      try {
-        const response = await fetch('/auth/auto-login', {
-          method: 'POST',
-          credentials: 'include',
-        });
-        if (!response.ok) {
-          throw new Error(`Auto-login failed: ${response.statusText}`);
-        }
-        const data = await response.json();
-        if (data.success) {
-          console.log('Auto-login successful');
-          return true;
-        }
-        return false;
-      } catch (err) {
-        console.error('Auto-login error:', err);
-        return false;
-      }
-    };
-
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/check-auth', { credentials: 'include' });
-        if (!response.ok) {
-          throw new Error(`Failed to check auth: ${response.statusText}`);
-        }
-        return await response.json();
-      } catch (err) {
-        console.error('Error checking auth:', err);
-        throw err;
-      }
-    };
-
-    const fetchServices = async () => {
-      try {
-        const response = await fetch('/api/services', { credentials: 'include' });
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error('Unauthorized: Please log in again.');
-          }
-          throw new Error(`Failed to fetch services: ${response.statusText}`);
-        }
-        return await response.json();
-      } catch (err) {
-        console.error('Error fetching services:', err);
-        throw err;
-      }
-    };
-
-    const fetchUserAppointments = async () => {
-      try {
-        const response = await fetch('/api/appointments', { credentials: 'include' });
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error('Unauthorized: Please log in again.');
-          }
-          throw new Error(`Failed to fetch user appointments: ${response.statusText}`);
-        }
-        const data = await response.json();
-        console.log('Raw User Appointments:', data);
-        return Array.isArray(data.appointments) ? data.appointments : [];
-      } catch (err) {
-        console.error('Error fetching user appointments:', err);
-        throw err;
-      }
-    };
-
-    const populateServices = (services) => {
-      const serviceSelect = document.getElementById('service');
-      const serviceDescription = document.getElementById('service-description');
-      const serviceDescriptionText = document.getElementById('service-description-text');
-
-      if (!services || services.length === 0) {
-        serviceSelect.innerHTML = '<option value="">No services available</option>';
-        return;
-      }
-
-      const serviceDescriptions = {};
-      services.forEach(service => {
-        const option = document.createElement('option');
-        option.value = service.id;
-        option.textContent = service.name;
-        serviceSelect.appendChild(option);
-        serviceDescriptions[service.id] = service.description;
+  // Utility functions
+  const showLoading = () => document.getElementById('loading-overlay').style.display = 'flex';
+  const hideLoading = () => document.getElementById('loading-overlay').style.display = 'none';
+  
+  const tryAutoLogin = async () => {
+    try {
+      const response = await fetch('/auth/auto-login', {
+        method: 'POST',
+        credentials: 'include',
       });
-
-      serviceSelect.addEventListener('change', function() {
-        const selectedServiceId = this.value;
-        if (selectedServiceId && serviceDescriptions[selectedServiceId]) {
-          serviceDescriptionText.innerHTML = serviceDescriptions[selectedServiceId].replace(/\n/g, '<br>');
-          serviceDescription.style.display = 'block';
-        } else {
-          serviceDescription.style.display = 'none';
-        }
-      });
-    };
-
-    const initializeDatePicker = (bookedAppointments) => {
-      const bookedTimes = Array.isArray(bookedAppointments) ? bookedAppointments.map(appointment => {
-        const date = new Date(appointment.appointment_date);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hour = String(date.getHours()).padStart(2, '0');
-        const normalized = `${year}-${month}-${day} ${hour}:00`;
-        console.log('Normalized Booked Time:', normalized);
-        return normalized;
-      }) : [];
-
-      if (bookedTimes.length === 0) {
-        console.warn('No booked times found.');
+      if (!response.ok) {
+        throw new Error(`Auto-login failed: ${response.statusText}`);
       }
-
-      console.log('Final Booked Times:', bookedTimes);
-
-      const availableHours = [11, 12, 13, 14, 15, 16]; // 11 AM to 4 PM
-      const fp = flatpickr('#appointment-date', {
-        dateFormat: "Y-m-d h K", // e.g., "2023-11-07 11 AM"
-        minDate: "today",
-        inline: true,
-        disable: [
-          function(date) {
-            const now = new Date();
-            const day = date.getDay();
-            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-
-            // Disable Sundays
-            if (day === 0) return true;
-
-            // Disable today if after 3 PM
-            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            if (dateStr === todayStr && now.getHours() >= 15) { // 15 = 3 PM
-              console.log(`Disabling today (${dateStr}) because it's past 3 PM`);
-              return true;
-            }
-
-            // Disable fully booked dates
-            const bookedForDate = availableHours.every(hour => {
-              const timeStr = `${dateStr} ${hour.toString().padStart(2, '0')}:00`;
-              return bookedTimes.includes(timeStr);
-            });
-            return bookedForDate;
-          }
-        ],
-        onReady: (selectedDates, dateStr, instance) => {
-          const calendarContainer = instance.calendarContainer;
-          calendarContainer.classList.add('flatpickr-calendar');
-          const pickerContainer = document.createElement('div');
-          pickerContainer.className = 'picker-container';
-          calendarContainer.parentNode.insertBefore(pickerContainer, calendarContainer);
-          pickerContainer.appendChild(calendarContainer);
-
-          const timePicker = document.createElement('div');
-          timePicker.className = 'time-picker';
-          timePicker.innerHTML = '<div class="time-picker-header">Time</div><div class="time-picker-slots"></div>';
-          pickerContainer.appendChild(timePicker);
-
-          const timeSlotsContainer = timePicker.querySelector('.time-picker-slots');
-          const times = [
-            { hour: 11, label: '11 AM' },
-            { hour: 12, label: '12 PM' },
-            { hour: 13, label: '1 PM' },
-            { hour: 14, label: '2 PM' },
-            { hour: 15, label: '3 PM' },
-            { hour: 16, label: '4 PM' }
-          ];
-          times.forEach(time => {
-            const slot = document.createElement('div');
-            slot.className = 'time-slot';
-            slot.textContent = time.label;
-            slot.dataset.hour = time.hour;
-            timeSlotsContainer.appendChild(slot);
-          });
-        },
-        onDayCreate: (dObj, dStr, fp, dayElem) => {
+      const data = await response.json();
+      if (data.success) {
+        console.log('Auto-login successful');
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Auto-login error:', err);
+      return false;
+    }
+  };
+  
+  const checkAuth = async () => {
+    try {
+      const response = await fetch('/check-auth', { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error(`Failed to check auth: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (err) {
+      console.error('Error checking auth:', err);
+      throw err;
+    }
+  };
+  
+  const fetchServices = async () => {
+    try {
+      const response = await fetch('/api/services', { credentials: 'include' });
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Unauthorized: Please log in again.');
+        }
+        throw new Error(`Failed to fetch services: ${response.statusText}`);
+      }
+      return await response.json();
+    } catch (err) {
+      console.error('Error fetching services:', err);
+      throw err;
+    }
+  };
+  
+  const fetchUserAppointments = async () => {
+    try {
+      const response = await fetch('/api/appointments', { credentials: 'include' });
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Unauthorized: Please log in again.');
+        }
+        throw new Error(`Failed to fetch user appointments: ${response.statusText}`);
+      }
+      const data = await response.json();
+      console.log('Raw User Appointments:', data);
+      return Array.isArray(data.appointments) ? data.appointments : [];
+    } catch (err) {
+      console.error('Error fetching user appointments:', err);
+      throw err;
+    }
+  };
+  
+  const populateServices = (services) => {
+    const serviceSelect = document.getElementById('service');
+    const serviceDescription = document.getElementById('service-description');
+    const serviceDescriptionText = document.getElementById('service-description-text');
+  
+    if (!services || services.length === 0) {
+      serviceSelect.innerHTML = '<option value="">No services available</option>';
+      return;
+    }
+  
+    const serviceDescriptions = {};
+    services.forEach(service => {
+      const option = document.createElement('option');
+      option.value = service.id;
+      option.textContent = service.name;
+      serviceSelect.appendChild(option);
+      serviceDescriptions[service.id] = service.description;
+    });
+  
+    serviceSelect.addEventListener('change', function() {
+      const selectedServiceId = this.value;
+      if (selectedServiceId && serviceDescriptions[selectedServiceId]) {
+        serviceDescriptionText.innerHTML = serviceDescriptions[selectedServiceId].replace(/\n/g, '<br>');
+        serviceDescription.style.display = 'block';
+      } else {
+        serviceDescription.style.display = 'none';
+      }
+    });
+  };
+  
+  const initializeDatePicker = (bookedAppointments) => {
+    const bookedTimes = Array.isArray(bookedAppointments) ? bookedAppointments.map(appointment => {
+      const date = new Date(appointment.appointment_date);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hour = String(date.getHours()).padStart(2, '0');
+      const normalized = `${year}-${month}-${day} ${hour}:00`;
+      console.log('Normalized Booked Time:', normalized);
+      return normalized;
+    }) : [];
+  
+    if (bookedTimes.length === 0) {
+      console.warn('No booked times found.');
+    }
+  
+    console.log('Final Booked Times:', bookedTimes);
+  
+    const availableHours = [9, 10, 11, 12, 13, 14, 15, 16]; // 9 AM to 4 PM
+    const fp = flatpickr('#appointment-date', {
+      dateFormat: "Y-m-d h K", // e.g., "2023-11-07 11 AM"
+      minDate: "today",
+      inline: true,
+      disable: [
+        function(date) {
           const now = new Date();
-          const day = dayElem.dateObj.getDay();
-          const dateStr = `${dayElem.dateObj.getFullYear()}-${String(dayElem.dateObj.getMonth() + 1).padStart(2, '0')}-${String(dayElem.dateObj.getDate()).padStart(2, '0')}`;
+          const day = date.getDay();
+          const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  
+          // Disable Sundays
+          if (day === 0) return true;
+  
+          // Disable today if after 3 PM
           const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-          const isFullyBooked = availableHours.every(hour => {
+          if (dateStr === todayStr && now.getHours() >= 15) { // 15 = 3 PM
+            console.log(`Disabling today (${dateStr}) because it's past 3 PM`);
+            return true;
+          }
+  
+          // Disable fully booked dates
+          const bookedForDate = availableHours.every(hour => {
             const timeStr = `${dateStr} ${hour.toString().padStart(2, '0')}:00`;
             return bookedTimes.includes(timeStr);
           });
-
-          const isTodayPast3PM = dateStr === todayStr && now.getHours() >= 15;
-
-          if (day === 0 || isFullyBooked || isTodayPast3PM) {
-            dayElem.classList.add('disabled');
-          }
-        },
-        onChange: (selectedDates, dateStr, instance) => {
-          const selectedDate = selectedDates[0];
-          if (!selectedDate) return;
-
-          const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
-          console.log('Selected Date:', dateStrPart);
-
-          const timePicker = instance.calendarContainer.parentNode.querySelector('.time-picker');
-          const timeSlots = timePicker.querySelectorAll('.time-slot');
-
-          timeSlots.forEach(slot => {
-            const hour = parseInt(slot.dataset.hour);
-            const timeStr = `${dateStrPart} ${hour.toString().padStart(2, '0')}:00`;
-            const isBooked = bookedTimes.includes(timeStr);
-
-            console.log(`Checking ${timeStr} in ${JSON.stringify(bookedTimes)}: ${isBooked ? 'Booked' : 'Available'}`);
-
-            slot.classList.remove('selected', 'disabled');
-            slot.style.pointerEvents = 'auto';
-
-            if (isBooked) {
-              slot.classList.add('disabled');
-              console.log(`Graying out ${slot.textContent}`);
-            } else {
-              slot.onclick = () => {
-                timeSlots.forEach(s => s.classList.remove('selected'));
-                slot.classList.add('selected');
-                selectedDate.setHours(hour, 0, 0, 0);
-                instance.setDate(selectedDate);
-                console.log(`Selected ${slot.textContent}`);
-              };
-            }
-          });
-
-          const firstAvailable = Array.from(timeSlots).find(slot => !slot.classList.contains('disabled'));
-          if (firstAvailable && !timePicker.querySelector('.selected')) {
-            firstAvailable.click();
-          } else if (!firstAvailable) {
-            instance.clear();
-            alert('No available times for this date.');
-          }
+          return bookedForDate;
         }
-      });
-    };
-
-    const validateAppointmentDate = (date, bookedAppointments) => {
-      const [datePart, hourPart, period] = date.split(' ');
-      let hour = parseInt(hourPart);
-      if (period === 'PM' && hour !== 12) hour += 12;
-      if (period === 'AM' && hour === 12) hour = 0;
-      const isoDate = `${datePart} ${hour.toString().padStart(2, '0')}:00`;
-
-      const selectedDate = new Date(`${datePart}T${hour.toString().padStart(2, '0')}:00`);
-      const selectedStr = `${datePart} ${hour.toString().padStart(2, '0')}:00`;
-      const now = new Date();
-      const day = selectedDate.getDay();
-      const hour24 = selectedDate.getHours();
-      const bookedTimes = Array.isArray(bookedAppointments) ? bookedAppointments.map(appointment => {
-        const d = new Date(appointment.appointment_date);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:00`;
-      }) : [];
-
-      if (selectedDate <= now) {
-        return 'Please select a future date and time.';
-      }
-      if (day === 0) {
-        return 'Appointments are not available on Sundays.';
-      }
-      if (hour24 < 11 || hour24 > 16) {
-        return 'Appointments are only available between 11 AM and 4 PM.';
-      }
-      if (bookedTimes.includes(selectedStr)) {
-        return 'This time slot is already booked.';
-      }
-      return null;
-    };
-
-    const convertToISO = (dateStr) => {
-      const [datePart, hourPart, period] = dateStr.split(' ');
-      let hour = parseInt(hourPart);
-      if (period === 'PM' && hour !== 12) hour += 12;
-      if (period === 'AM' && hour === 12) hour = 0;
-      return `${datePart}T${hour.toString().padStart(2, '0')}:00:00Z`;
-    };
-
-    const checkAppointmentRestrictions = async (appointments) => {
-      const now = new Date();
-      const restrictionMessage = document.getElementById('appointment-restriction-message');
-      const form = document.getElementById('appointment-form');
-
-      const activeAppointment = appointments.find(app => {
-        const appDate = new Date(app.appointment_date);
-        return (app.status.toLowerCase() === 'pending' || 
-                (app.status.toLowerCase() === 'confirmed' && appDate >= now));
-      });
-
-      if (activeAppointment) {
-        restrictionMessage.textContent = 'You cannot book a new appointment while you have an active appointment. Please wait until your appointment is completed or cancelled.';
-        restrictionMessage.style.display = 'block';
-        form.style.display = 'none';
-        return false;
-      }
-
-      const latestAppointment = appointments.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
-      if (latestAppointment) {
-        const updatedAt = new Date(latestAppointment.updated_at);
-        let cooldownDays = 0;
-        let cooldownReason = '';
-
-        if (latestAppointment.status.toLowerCase() === 'cancelled') {
-          cooldownDays = 3;
-          cooldownReason = 'cancelled';
+      ],
+      onReady: (selectedDates, dateStr, instance) => {
+        const calendarContainer = instance.calendarContainer;
+        calendarContainer.classList.add('flatpickr-calendar');
+        const pickerContainer = document.createElement('div');
+        pickerContainer.className = 'picker-container';
+        calendarContainer.parentNode.insertBefore(pickerContainer, calendarContainer);
+        pickerContainer.appendChild(calendarContainer);
+  
+        const timePicker = document.createElement('div');
+        timePicker.className = 'time-picker';
+        timePicker.innerHTML = '<div class="time-picker-header">Time</div><div class="time-picker-slots"></div>';
+        pickerContainer.appendChild(timePicker);
+  
+        const timeSlotsContainer = timePicker.querySelector('.time-picker-slots');
+        const times = [
+          { hour: 9, label: '9 AM' },
+          { hour: 10, label: '10 AM' },
+          { hour: 11, label: '11 AM' },
+          { hour: 12, label: '12 PM' },
+          { hour: 13, label: '1 PM' },
+          { hour: 14, label: '2 PM' },
+          { hour: 15, label: '3 PM' },
+          { hour: 16, label: '4 PM' }
+        ];
+        times.forEach(time => {
+          const slot = document.createElement('div');
+          slot.className = 'time-slot';
+          slot.textContent = time.label;
+          slot.dataset.hour = time.hour;
+          timeSlotsContainer.appendChild(slot);
+        });
+      },
+      onDayCreate: (dObj, dStr, fp, dayElem) => {
+        const now = new Date();
+        const day = dayElem.dateObj.getDay();
+        const dateStr = `${dayElem.dateObj.getFullYear()}-${String(dayElem.dateObj.getMonth() + 1).padStart(2, '0')}-${String(dayElem.dateObj.getDate()).padStart(2, '0')}`;
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  
+        const isFullyBooked = availableHours.every(hour => {
+          const timeStr = `${dateStr} ${hour.toString().padStart(2, '0')}:00`;
+          return bookedTimes.includes(timeStr);
+        });
+  
+        const isTodayPast3PM = dateStr === todayStr && now.getHours() >= 15;
+  
+        if (day === 0 || isFullyBooked || isTodayPast3PM) {
+          dayElem.classList.add('disabled');
         }
-
-        if (cooldownDays > 0) {
-          const cooldownEnd = new Date(updatedAt);
-          cooldownEnd.setDate(updatedAt.getDate() + cooldownDays);
-          const daysRemaining = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60 * 24));
-
-          if (now < cooldownEnd) {
-            restrictionMessage.textContent = `You are under a ${cooldownDays}-day cooldown period because your last appointment was ${cooldownReason}. You can book a new appointment after ${cooldownEnd.toLocaleDateString()}. (${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining)`;
-            restrictionMessage.style.display = 'block';
-            form.style.display = 'none';
-            return false;
-          }
-        }
-
-        if (latestAppointment.status.toLowerCase() === 'confirmed') {
-          const appDate = new Date(latestAppointment.appointment_date);
-          if (appDate < now) {
-            restrictionMessage.style.display = 'none';
-            form.style.display = 'block';
-            return true;
-          }
-        }
-      }
-
-      restrictionMessage.style.display = 'none';
-      form.style.display = 'block';
-      return true;
-    };
-
-    document.addEventListener('DOMContentLoaded', async function() {
-      showLoading();
-      try {
-        let authData = await checkAuth();
-
-        if (!authData.isLoggedIn) {
-          const autoLoginSuccess = await tryAutoLogin();
-          if (autoLoginSuccess) {
-            authData = await checkAuth();
-          }
-        }
-
-        if (!authData.isLoggedIn) {
-          alert('Please log in to make an appointment.');
-          window.location.replace('pages-login.html');
-          return;
-        }
-
-        const services = await fetchServices();
-        populateServices(services);
-
-        const userAppointments = await fetchUserAppointments();
-        const canBook = await checkAppointmentRestrictions(userAppointments);
-        if (!canBook) return;
-
-        initializeDatePicker(userAppointments);
-
-        document.getElementById('appointment-form').addEventListener('submit', async function(e) {
-          e.preventDefault();
-          showLoading();
-
-          const serviceId = document.getElementById('service').value;
-          const appointmentDate = document.getElementById('appointment-date').value;
-          const notes = document.getElementById('notes').value;
-
-          if (!serviceId || !appointmentDate) {
-            hideLoading();
-            alert('Please fill in all required fields.');
-            return;
-          }
-
-          const dateValidationError = validateAppointmentDate(appointmentDate, userAppointments);
-          if (dateValidationError) {
-            hideLoading();
-            alert(dateValidationError);
-            return;
-          }
-
-          const isoAppointmentDate = convertToISO(appointmentDate);
-
-          try {
-            const response = await fetch('/api/appointments', {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                user_id: authData.userId,
-                appointment_date: isoAppointmentDate,
-                service_id: serviceId,
-                notes: notes,
-              }),
-            });
-
-            if (response.status === 401) {
-              alert('Session expired. Please log in again.');
-              window.location.replace('pages-login.html');
-              return;
-            }
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.message || 'Failed to book appointment');
-            }
-
-            const result = await response.json();
-            alert(result.message);
-
-            const authCheck = await checkAuth();
-            if (authCheck.isLoggedIn) {
-              window.location.href = 'profile.html';
-            } else {
-              alert('Session expired after booking. Please log in again.');
-              window.location.replace('pages-login.html');
-            }
-          } catch (err) {
-            console.error('Error booking appointment:', err);
-            alert('Failed to book appointment: ' + err.message);
-          } finally {
-            hideLoading();
+      },
+      onChange: (selectedDates, dateStr, instance) => {
+        const selectedDate = selectedDates[0];
+        if (!selectedDate) return;
+  
+        const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+        console.log('Selected Date:', dateStrPart);
+  
+        const timePicker = instance.calendarContainer.parentNode.querySelector('.time-picker');
+        const timeSlots = timePicker.querySelectorAll('.time-slot');
+  
+        timeSlots.forEach(slot => {
+          const hour = parseInt(slot.dataset.hour);
+          const timeStr = `${dateStrPart} ${hour.toString().padStart(2, '0')}:00`;
+          const isBooked = bookedTimes.includes(timeStr);
+  
+          console.log(`Checking ${timeStr} in ${JSON.stringify(bookedTimes)}: ${isBooked ? 'Booked' : 'Available'}`);
+  
+          slot.classList.remove('selected', 'disabled');
+          slot.style.pointerEvents = 'auto';
+  
+          if (isBooked) {
+            slot.classList.add('disabled');
+            console.log(`Graying out ${slot.textContent}`);
+          } else {
+            slot.onclick = () => {
+              timeSlots.forEach(s => s.classList.remove('selected'));
+              slot.classList.add('selected');
+              selectedDate.setHours(hour, 0, 0, 0);
+              instance.setDate(selectedDate);
+              console.log(`Selected ${slot.textContent}`);
+            };
           }
         });
-      } catch (err) {
-        console.error('Error initializing page:', err);
-        alert(err.message || 'An error occurred while loading the page. Please try again later.');
-      } finally {
-        hideLoading();
+  
+        const firstAvailable = Array.from(timeSlots).find(slot => !slot.classList.contains('disabled'));
+        if (firstAvailable && !timePicker.querySelector('.selected')) {
+          firstAvailable.click();
+        } else if (!firstAvailable) {
+          instance.clear();
+          alert('No available times for this date.');
+        }
       }
     });
-  </script>
+  };
+  
+  const validateAppointmentDate = (date, bookedAppointments) => {
+    const [datePart, hourPart, period] = date.split(' ');
+    let hour = parseInt(hourPart);
+    if (period === 'PM' && hour !== 12) hour += 12;
+    if (period === 'AM' && hour === 12) hour = 0;
+    const isoDate = `${datePart} ${hour.toString().padStart(2, '0')}:00`;
+  
+    const selectedDate = new Date(`${datePart}T${hour.toString().padStart(2, '0')}:00`);
+    const selectedStr = `${datePart} ${hour.toString().padStart(2, '0')}:00`;
+    const now = new Date();
+    const day = selectedDate.getDay();
+    const hour24 = selectedDate.getHours();
+    const bookedTimes = Array.isArray(bookedAppointments) ? bookedAppointments.map(appointment => {
+      const d = new Date(appointment.appointment_date);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:00`;
+    }) : [];
+  
+    if (selectedDate <= now) {
+      return 'Please select a future date and time.';
+    }
+    if (day === 0) {
+      return 'Appointments are not available on Sundays.';
+    }
+    if (hour24 < 9 || hour24 > 16) {
+      return 'Appointments are only available between 9 AM and 4 PM.';
+    }
+    if (bookedTimes.includes(selectedStr)) {
+      return 'This time slot is already booked.';
+    }
+    return null;
+  };
+  
+  const convertToISO = (dateStr) => {
+    const [datePart, hourPart, period] = dateStr.split(' ');
+    let hour = parseInt(hourPart);
+    if (period === 'PM' && hour !== 12) hour += 12;
+    if (period === 'AM' && hour === 12) hour = 0;
+    return `${datePart}T${hour.toString().padStart(2, '0')}:00:00Z`;
+  };
+  
+  const checkAppointmentRestrictions = async (appointments) => {
+    const now = new Date();
+    const restrictionMessage = document.getElementById('appointment-restriction-message');
+    const form = document.getElementById('appointment-form');
+  
+    const activeAppointment = appointments.find(app => {
+      const appDate = new Date(app.appointment_date);
+      return (app.status.toLowerCase() === 'pending' || 
+              (app.status.toLowerCase() === 'confirmed' && appDate >= now));
+    });
+  
+    if (activeAppointment) {
+      restrictionMessage.textContent = 'You cannot book a new appointment while you have an active appointment. Please wait until your appointment is completed or cancelled.';
+      restrictionMessage.style.display = 'block';
+      form.style.display = 'none';
+      return false;
+    }
+  
+    const latestAppointment = appointments.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
+    if (latestAppointment) {
+      const updatedAt = new Date(latestAppointment.updated_at);
+      let cooldownDays = 0;
+      let cooldownReason = '';
+  
+      if (latestAppointment.status.toLowerCase() === 'cancelled') {
+        cooldownDays = 3;
+        cooldownReason = 'cancelled';
+      }
+  
+      if (cooldownDays > 0) {
+        const cooldownEnd = new Date(updatedAt);
+        cooldownEnd.setDate(updatedAt.getDate() + cooldownDays);
+        const daysRemaining = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60 * 24));
+  
+        if (now < cooldownEnd) {
+          restrictionMessage.textContent = `You are under a ${cooldownDays}-day cooldown period because your last appointment was ${cooldownReason}. You can book a new appointment after ${cooldownEnd.toLocaleDateString()}. (${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining)`;
+          restrictionMessage.style.display = 'block';
+          form.style.display = 'none';
+          return false;
+        }
+      }
+  
+      if (latestAppointment.status.toLowerCase() === 'confirmed') {
+        const appDate = new Date(latestAppointment.appointment_date);
+        if (appDate < now) {
+          restrictionMessage.style.display = 'none';
+          form.style.display = 'block';
+          return true;
+        }
+      }
+    }
+  
+    restrictionMessage.style.display = 'none';
+    form.style.display = 'block';
+    return true;
+  };
+  
+  document.addEventListener('DOMContentLoaded', async function() {
+    showLoading();
+    try {
+      let authData = await checkAuth();
+  
+      if (!authData.isLoggedIn) {
+        const autoLoginSuccess = await tryAutoLogin();
+        if (autoLoginSuccess) {
+          authData = await checkAuth();
+        }
+      }
+  
+      if (!authData.isLoggedIn) {
+        alert('Please log in to make an appointment.');
+        window.location.replace('pages-login.html');
+        return;
+      }
+  
+      const services = await fetchServices();
+      populateServices(services);
+  
+      const userAppointments = await fetchUserAppointments();
+      const canBook = await checkAppointmentRestrictions(userAppointments);
+      if (!canBook) return;
+  
+      initializeDatePicker(userAppointments);
+  
+      document.getElementById('appointment-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        showLoading();
+  
+        const serviceId = document.getElementById('service').value;
+        const appointmentDate = document.getElementById('appointment-date').value;
+        const notes = document.getElementById('notes').value;
+  
+        if (!serviceId || !appointmentDate) {
+          hideLoading();
+          alert('Please fill in all required fields.');
+          return;
+        }
+  
+        const dateValidationError = validateAppointmentDate(appointmentDate, userAppointments);
+        if (dateValidationError) {
+          hideLoading();
+          alert(dateValidationError);
+          return;
+        }
+  
+        const isoAppointmentDate = convertToISO(appointmentDate);
+  
+        try {
+          const response = await fetch('/api/appointments', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: authData.userId,
+              appointment_date: isoAppointmentDate,
+              service_id: serviceId,
+              notes: notes,
+            }),
+          });
+  
+          if (response.status === 401) {
+            alert('Session expired. Please log in again.');
+            window.location.replace('pages-login.html');
+            return;
+          }
+  
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to book appointment');
+          }
+  
+          const result = await response.json();
+          alert(result.message);
+  
+          const authCheck = await checkAuth();
+          if (authCheck.isLoggedIn) {
+            window.location.href = 'profile.html';
+          } else {
+            alert('Session expired after booking. Please log in again.');
+            window.location.replace('pages-login.html');
+          }
+        } catch (err) {
+          console.error('Error booking appointment:', err);
+          alert('Failed to book appointment: ' + err.message);
+        } finally {
+          hideLoading();
+        }
+      });
+    } catch (err) {
+      console.error('Error initializing page:', err);
+      alert(err.message || 'An error occurred while loading the page. Please try again later.');
+    } finally {
+      hideLoading();
+    }
+  });
+
+</script>
 
   <script src="assets/js/main.js"></script>
 </body>
