@@ -981,3 +981,43 @@
   .timeline-item.new {
     animation: fadeInUp 0.5s ease-out forwards;
   }
+
+
+
+  .appointment-status {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    color: #fff;
+  }
+  .status-pending { background-color: #ffc107; }
+  .status-confirmed { background-color: #28a745; }
+  .status-cancelled { background-color: #dc3545; }
+  .status-completed { background-color: #6c757d; }
+  .timeline-item { margin-bottom: 20px; position: relative; padding-left: 30px; }
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #ddd;
+  }
+  .timeline-item .timeline-dot {
+    position: absolute;
+    left: 5px;
+    width: 12px;
+    height: 12px;
+    background: #007bff;
+    border-radius: 50%;
+  }
+
+  .ctn-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    width: 150px;
+    height: 40px;
+  }

@@ -23,36 +23,7 @@
 
   <link href="assets/css/profile.css" rel="stylesheet">
 
-  <style>
-    .appointment-status {
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.85em;
-      color: #fff;
-    }
-    .status-pending { background-color: #ffc107; }
-    .status-confirmed { background-color: #28a745; }
-    .status-cancelled { background-color: #dc3545; }
-    .status-completed { background-color: #6c757d; }
-    .timeline-item { margin-bottom: 20px; position: relative; padding-left: 30px; }
-    .timeline-item::before {
-      content: '';
-      position: absolute;
-      left: 10px;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: #ddd;
-    }
-    .timeline-item .timeline-dot {
-      position: absolute;
-      left: 5px;
-      width: 12px;
-      height: 12px;
-      background: #007bff;
-      border-radius: 50%;
-    }
-  </style>
+ 
 </head>
 
 <body>
@@ -61,7 +32,7 @@
       <div class="container">
         <div class="row">
           <div class="col-6 d-flex align-items-center justify-content-center justify-content-md-start">
-            <i class="bi bi-clock me-1"></i> Mon - Sat, 11AM to 4PM
+            <i class="bi bi-clock me-1"></i> Mon - Sat, 9AM to 4PM
           </div>
           <div class="col-6 d-flex align-items-center justify-content-center justify-content-md-end">
             <i class="bi bi-phone me-1"></i> +63 920 797 6690
@@ -85,7 +56,11 @@
             <li><a href="index.html#contact">Contact</a></li>
             <li><a href="pages-login.html" id="account-link">Account</a></li>
             <li id="profile-link" style="display: none;"><a href="profile.html">Profile</a></li>
-            <li><a href="make-appointment.html">Appointment</a></li>
+            <li id="appointment-link">
+              <a class="cta-btn" href="make-appointment.html">
+                Appointment
+              </a>
+            </li> 
           </ul>
           <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
         </nav>
@@ -455,7 +430,7 @@
             <p>Camarines Norte, Philippines</p>
             <p class="mt-3"><strong>Phone:</strong> <span>+63 920 797 6690</span></p>
             <p><strong>Email:</strong> <span>dmdannsaspa@yahoo.com</span></p>
-            <p><strong>Monday - Saturday, 11AM to 4PM</strong></p>
+            <p><strong>Monday - Saturday, 9AM to 4PM</strong></p>
           </div>
         </div>
       </div>
@@ -535,7 +510,7 @@
 
         document.getElementById('fullName').value = profileData.full_name || '';
         document.getElementById('dob').value = profileData.dob || '';
-        document.getElementById('gender').value = profileData.gender || 'other';
+        document.getElementById('gender').value = profileData.gender || '';
         document.getElementById('Address').value = profileData.address || '';
         document.getElementById('religion').value = profileData.religion || '';
         document.getElementById('nationality').value = profileData.nationality || '';
