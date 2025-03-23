@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Admin Dashboard</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+
+  <link href="/admin/assets/img/icon.png" rel="icon">
+  <link href="/admin/assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+  <link href="/admin/assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/admin/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="/admin/assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="/admin/assets/vendor/remixicon/remixicon.css" rel="stylesheet">
+  <link href="/admin/assets/vendor/simple-datatables/style.css" rel="stylesheet">
+  <link href="/admin/assets/css/style.css" rel="stylesheet">
+  <link href="/admin/assets/css/calendar.css" rel="stylesheet">
+
+  <style>
+    .calendar-container {
+      margin: 20px 0;
+      padding: 15px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .month-year {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+    .nav-buttons button {
+      margin-left: 5px;
+      padding: 5px 15px;
+      border: none;
+      background: #007bff;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .nav-buttons .today {
+      background: #007bff;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1px;
+      background: #ddd;
+    }
+    .calendar-day-label {
+      text-align: center;
+      font-weight: bold;
+      padding: 10px;
+      background: #f8f9fa;
+      border: 1px solid #ddd;
+    }
+    .calendar-day {
+      background: #fff;
+      border: 1px solid #ddd;
+      min-height: 100px;
+      padding: 5px;
+      position: relative;
+      cursor: pointer;
+    }
+    .calendar-day:hover {
+      background: #f0f0f0;
+    }
+    .day-number {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .appointments-list {
+      margin-top: 20px;
+      font-size: 0.8rem;
+    }
+    .appointment {
+      background: #e6f3ff;
+      border-radius: 3px;
+      padding: 2px 5px;
+      margin: 2px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .calendar-day.has-appointments .appointment {
+      background: #d4edda;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 90%;
+    }
+    .modal-header {
+      margin-bottom: 15px;
+    }
+    .appointment-item {
+      padding: 10px 0;
+    }
+    .button-group {
+      text-align: right;
+    }
+    .cancel-btn {
+      padding: 5px 15px;
+      background: #dc3545;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .action-btn {
+      margin-left: 5px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header id="header" class="header fixed-top d-flex align-items-center">
+    <div class="d-flex align-items-center justify-content-between">
+      <a href="/index.html" class="logo d-flex align-items-center">
+        <img src="/admin/assets/img/icon.png" alt="">
+        <span class="d-none d-lg-block">Admin</span>
+      </a>
+      <i class="bi bi-list toggle-sidebar-btn"></i>
+    </div>
+    <div class="search-bar">
+      <form class="search-form d-flex align-items-center" onsubmit="return false;">
+        <input type="text" id="searchInput" name="query" placeholder="Search" title="Enter search keyword">
+        <button type="button" title="Search" id="searchButton"><i class="bi bi-search"></i></button>
+      </form>
+    </div>
+    <nav class="header-nav ms-auto">
+      <ul class="d-flex align-items-center">
+        <li class="nav-item d-block d-lg-none">
+          <a class="nav-link nav-icon search-bar-toggle " href="#">
+            <i class="bi bi-search"></i>
+          </a>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown" id="notificationDropdown">
+            <i class="bi bi-bell"></i>
+            <span class="badge bg-primary badge-number" id="notificationCount">0</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications" id="notificationsList">
+            <li class="dropdown-header">
+              <span id="notificationHeaderCount">0</span> new notifications
+              <a href="#"><span class="badge rounded-pill bg-primary p-2 ms-2">View all</span></a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li class="dropdown-footer">
+              <a href="#">Show all notifications</a>
+            </li>
+          </ul>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link nav-icon" href="#" data-bs-toggle="dropdown" id="messagesDropdown">
+            <i class="bi bi-chat-left-text"></i>
+            <span class="badge bg-success badge-number" id="messagesCount">0</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow messages" id="messagesList">
+            <li class="dropdown-header">
+              <span id="messagesHeaderCount">0</span> new messages
+              <a href="#"><span class="badge rounded-pill bg-primary p-2 ms-2">View all</span></a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li class="dropdown-footer">
+              <a href="#">Show all messages</a>
+            </li>
+          </ul>
+        </li>
+        <li class="nav-item dropdown pe-3">
+          <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
+            <img src="/admin/assets/img/profile-img.jpg" alt="Profile" class="rounded-circle">
+            <span class="d-none d-md-block dropdown-toggle ps-2">K. Anderson</span>
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
+            <li class="dropdown-header">
+              <h6>Kevin Anderson</h6>
+              <span>Web Designer</span>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item d-flex align-items-center" href="/profile.html"><i class="bi bi-person"></i><span>My Profile</span></a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item d-flex align-items-center" href="/profile.html"><i class="bi bi-gear"></i><span>Account Settings</span></a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item d-flex align-items-center" href="/logout" id="logoutBtn"><i class="bi bi-box-arrow-right"></i><span>Sign Out</span></a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <aside id="sidebar" class="sidebar">
+    <ul class="sidebar-nav" id="sidebar-nav">
+      <li class="nav-item">
+        <a class="nav-link collapsed" href="/admin/index.html">
+          <i class="bi bi-grid"></i>
+          <span>Dashboard</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link collapsed" href="/admin/appointment.html">
+          <i class="bi bi-grid"></i>
+          <span>Appointment</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link collapsed" href="/admin/patients.html">
+          <i class="bi bi-person"></i>
+          <span>Patients</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link collapsed" href="/admin/notification.html">
+          <i class="bi bi-grid"></i>
+          <span>Notification</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link collapsed" href="/admin/setting.html">
+          <i class="bi bi-grid"></i>
+          <span>Settings</span>
+        </a>
+      </li>
+    </ul>
+  </aside>
+
+  <main id="main" class="main">
+    <div class="pagetitle">
+      <h2>Dashboard</h2>
+    </div>
+
+    <section class="section dashboard">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="row">
+            <div class="col-xxl-4 col-xl-6">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">Appointment <span>| Today</span></h5>
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-people"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6 id="todayCount">0</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xxl-4 col-xl-6">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">Appointment <span>| Tomorrow</span></h5>
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-people"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6 id="tomorrowCount">0</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xxl-4 col-xl-6">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">Appointment <span>| Overall</span></h5>
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-people"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6 id="overallCount">0</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="calendar-container">
+                <div class="calendar-header">
+                  <div class="month-year" id="monthYear"></div>
+                  <div class="nav-buttons">
+                    <button id="prevBtn">Previous</button>
+                    <button id="todayBtn" class="today">Today</button>
+                    <button id="nextBtn">Next</button>
+                  </div>
+                </div>
+                <div class="calendar-grid" id="calendarGrid"></div>
+              </div>
+
+              <div class="modal" id="appointmentModal">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h3 id="modalTitle">Appointments For Review</h3>
+                  </div>
+                  <div id="appointmentsList" class="appointments-list"></div>
+                  <div class="button-group mt-20">
+                    <button type="button" class="cancel-btn" id="closeBtn">Close</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="card recent-sales overflow-auto">
+                <div class="card-body">
+                  <h5 class="card-title">Recent Appointments <span>| Overall</span></h5>
+                  <table class="table table-borderless datatable" id="recentAppointmentsTable">
+                    <thead>
+                      <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Patient</th>
+                        <th scope="col">Procedure</th>
+                        <th scope="col">Notes</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recentAppointmentsBody">
+                      <!-- Dynamic data will be inserted here -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer" class="footer">
+    <div class="copyright">
+      © Copyright <strong><span>Balane-Saspa Dental Clinic</span></strong>. All Rights Reserved
+    </div>
+    <div class="credits">
+      Designed by <a href="https://bootstrapmade.com/">BootstrapMade | Code Clipse</a>
+    </div>
+  </footer>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <script src="/admin/assets/js/main.js"></script>
+  <script src="/admin/assets/js/calendar.js"></script>
+  <script src="/admin/assets/js/load-header.js"></script>
+  <script src="/admin/assets/js/search.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const authResponse = await fetch('/check-auth', { credentials: 'include' });
+        const authData = await authResponse.json();
+        if (!authData.isLoggedIn || authData.role !== 'admin') {
+          window.location.href = '/pages-login.html';
+          return;
+        }
+
+        const response = await fetch('/api/appointments/all', { credentials: 'include' });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        console.log('Raw API response:', data);
+        if (!data.success) throw new Error(data.message);
+        const appointments = data.appointments;
+
+        updateCalendar(appointments);
+        updateAppointmentCards(appointments);
+        updateRecentAppointments(appointments);
+      } catch (error) {
+        console.error('Error loading dashboard:', error);
+        alert('Failed to load dashboard: ' + error.message);
+      }
+    });
+
+    function updateCalendar(appointments) {
+      console.log('Appointments passed to calendar:', appointments);
+      const calendarGrid = document.getElementById('calendarGrid');
+      const monthYear = document.getElementById('monthYear');
+      let currentDate = new Date();
+      currentDate.setDate(1);
+
+      function renderCalendar() {
+        calendarGrid.innerHTML = '';
+        const month = currentDate.getMonth();
+        const year = currentDate.getFullYear();
+        monthYear.textContent = `${currentDate.toLocaleString('default', { month: 'long' })} ${year}`;
+
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        days.forEach(day => {
+          const div = document.createElement('div');
+          div.className = 'calendar-day-label';
+          div.textContent = day;
+          calendarGrid.appendChild(div);
+        });
+
+        const firstDay = new Date(year, month, 1).getDay();
+        for (let i = 0; i < firstDay; i++) {
+          const emptyDiv = document.createElement('div');
+          emptyDiv.className = 'calendar-day';
+          calendarGrid.appendChild(emptyDiv);
+        }
+
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(year, month, day);
+          const dayDiv = document.createElement('div');
+          dayDiv.className = 'calendar-day';
+          const dayNumber = document.createElement('span');
+          dayNumber.className = 'day-number';
+          dayNumber.textContent = day;
+          dayDiv.appendChild(dayNumber);
+
+          const dayAppointments = appointments.filter(app => {
+            const appDate = new Date(app.appointment_date);
+            return appDate.getDate() === day && appDate.getMonth() === month && appDate.getFullYear() === year;
+          });
+
+          if (dayAppointments.length > 0) {
+            dayDiv.classList.add('has-appointments');
+            const appointmentsList = document.createElement('div');
+            appointmentsList.className = 'appointments-list';
+            dayAppointments.forEach(app => {
+              const time = new Date(app.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const appDiv = document.createElement('div');
+              appDiv.className = 'appointment';
+              const patientData = app.patients || {};
+              console.log('Patient data for calendar:', patientData);
+              const patientName = patientData.first_name || patientData.middle_name || patientData.last_name 
+                ? `${patientData.first_name || ''} ${patientData.middle_name || ''} ${patientData.last_name || ''}`.trim() || 'No Name'
+                : 'Unknown';
+              appDiv.textContent = `${time} - ${patientName}`;
+              appointmentsList.appendChild(appDiv);
+            });
+            dayDiv.appendChild(appointmentsList);
+            dayDiv.addEventListener('click', () => showAppointmentsModal(dayAppointments, date));
+          }
+
+          calendarGrid.appendChild(dayDiv);
+        }
+      }
+
+      document.getElementById('prevBtn').addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() - 1);
+        renderCalendar();
+      });
+      document.getElementById('nextBtn').addEventListener('click', () => {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+        renderCalendar();
+      });
+      document.getElementById('todayBtn').addEventListener('click', () => {
+        currentDate = new Date();
+        currentDate.setDate(1);
+        renderCalendar();
+      });
+
+      renderCalendar();
+    }
+
+    async function confirmAppointment(appointmentId) {
+      try {
+        const response = await fetch(`/api/appointments/${appointmentId}/confirm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+        if (response.ok) {
+          alert('Appointment confirmed!');
+          window.location.reload();
+        } else {
+          const errorData = await response.json();
+          alert(`Failed to confirm appointment: ${errorData.message || 'Please try again.'}`);
+        }
+      } catch (err) {
+        console.error('Error confirming appointment:', err);
+        alert('An error occurred while confirming the appointment.');
+      }
+    }
+
+    function showAppointmentsModal(appointments, date) {
+      console.log('Appointments for modal:', appointments);
+      const modal = document.getElementById('appointmentModal');
+      const title = document.getElementById('modalTitle');
+      const list = document.getElementById('appointmentsList');
+
+      title.textContent = `Appointments on ${date.toLocaleDateString()}`;
+      list.innerHTML = '';
+      appointments.forEach(app => {
+        const time = new Date(app.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const patientData = app.patients || {};
+        console.log('Patient data for modal:', patientData);
+        const patientName = patientData.first_name || patientData.middle_name || patientData.last_name 
+          ? `${patientData.first_name || ''} ${patientData.middle_name || ''} ${patientData.last_name || ''}`.trim() || 'No Name'
+          : 'Unknown';
+        const div = document.createElement('div');
+        div.className = 'appointment-item';
+        div.innerHTML = `
+          <p><strong>Time:</strong> ${time}</p>
+          <p><strong>Patient:</strong> ${patientName}</p>
+          <p><strong>Procedure:</strong> ${app.services?.name || 'N/A'}</p>
+          <p><strong>Notes:</strong> ${app.notes || 'N/A'}</p>
+          <p><strong>Status:</strong> ${app.status || 'N/A'}</p>
+          ${
+            app.status.toLowerCase() === 'pending'
+              ? `<div>
+                  <button class="action-btn btn-success" onclick="confirmAppointment('${app.id}')">Confirm</button>
+                </div>`
+              : ''
+          }
+          <hr>
+        `;
+        list.appendChild(div);
+      });
+
+      modal.style.display = 'block';
+      document.getElementById('closeBtn').addEventListener('click', () => {
+        modal.style.display = 'none';
+      }, { once: true });
+    }
+
+    function updateAppointmentCards(appointments) {
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+
+      const todayCount = appointments.filter(app => {
+        const appDate = new Date(app.appointment_date);
+        return appDate.toDateString() === today.toDateString() && app.status !== 'cancelled';
+      }).length;
+
+      const tomorrowCount = appointments.filter(app => {
+        const appDate = new Date(app.appointment_date);
+        return appDate.toDateString() === tomorrow.toDateString() && app.status !== 'cancelled';
+      }).length;
+
+      const overallCount = appointments.filter(app => app.status !== 'cancelled').length;
+
+      document.getElementById('todayCount').textContent = todayCount;
+      document.getElementById('tomorrowCount').textContent = tomorrowCount;
+      document.getElementById('overallCount').textContent = overallCount;
+    }
+
+    function updateRecentAppointments(appointments) {
+      const tbody = document.getElementById('recentAppointmentsBody');
+      tbody.innerHTML = '';
+
+      const sortedAppointments = [...appointments].sort((a, b) => 
+        new Date(b.appointment_date) - new Date(a.appointment_date)
+      );
+
+      sortedAppointments.slice(0, 5).forEach((app, index) => {
+        const patientData = app.patients || {};
+        console.log('Patient data for recent appointments:', patientData);
+        const patientName = patientData.first_name || patientData.middle_name || patientData.last_name 
+          ? `${patientData.first_name || ''} ${patientData.middle_name || ''} ${patientData.last_name || ''}`.trim() || 'No Name'
+          : 'Unknown';
+        const statusClass = {
+          'confirmed': 'bg-success',
+          'pending': 'bg-warning',
+          'cancelled': 'bg-danger',
+          'rejected': 'bg-danger'
+        }[app.status] || 'bg-secondary';
+
+        const idString = String(app.id || app._id || index + 1);
+        const shortId = idString.length > 4 ? idString.slice(0, 4) : idString.padEnd(4, '0');
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <th scope="row"><a href="#">#${shortId}</a></th>
+          <td>${patientName}</td>
+          <td><a href="#" class="text-primary">${app.services?.name || 'N/A'}</a></td>
+          <td>${app.notes || 'N/A'}</td>
+          <td><span class="badge ${statusClass}">${app.status}</span></td>
+          <td>-</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      if (sortedAppointments.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="6" class="text-center">No recent appointments</td>';
+        tbody.appendChild(row);
+      }
+    }
+  </script>
+</body>
+</html>
