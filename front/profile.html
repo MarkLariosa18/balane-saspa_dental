@@ -8,24 +8,30 @@
   <meta name="description" content="">
   <meta name="keywords" content="">
 
+  <!-- Favicons -->
   <link href="assets/img/icon.png" rel="icon">
   <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
 
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
 
+  <!-- Vendor CSS Files -->
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="assets/vendor/aos/aos.css" rel="stylesheet">
   <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
   <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
   <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+  
+  <!-- Custom CSS -->
   <link href="assets/css/profile.css" rel="stylesheet">
 
-  <!-- Inline CSS for Timeline (move to profile.css if preferred) -->
+  <!-- Flatpickr CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+  <!-- Inline CSS for Timeline and Time Picker -->
   <style>
     .timeline {
       position: relative;
@@ -74,11 +80,48 @@
     .status-completed {
       background-color: #6c757d;
     }
-  </style>
 
+    /* Time Picker Styles */
+    .time-picker {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+
+    .time-picker-header {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .time-picker-slots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .time-slot {
+      padding: 5px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      background-color: #fff;
+    }
+
+    .time-slot.selected {
+      background-color: #007bff;
+      color: #fff;
+    }
+
+    .time-slot.disabled {
+      background-color: #e9ecef; /* Grey background for booked slots */
+      color: #6c757d;
+      pointer-events: none; /* Disable clicking */
+    }
+  </style>
 </head>
 
 <body>
+  <!-- Header -->
   <header id="header" class="header sticky-top">
     <div class="topbar d-flex align-items-center">
       <div class="container">
@@ -120,6 +163,7 @@
     </div>
   </header>
 
+  <!-- Main Content -->
   <main id="main" class="main">
     <div class="pagetitle container mt-3">
       <nav>
@@ -134,11 +178,11 @@
     <section class="section profile">
       <div class="container">
         <div class="row">
+          <!-- Profile Card -->
           <div class="col-xl-4" style="padding-bottom: 50px;">
             <div class="card">
               <div class="card-body profile-card pt-4 d-flex flex-column align-items-center">
-                <div class="profile-pic-container mb-3"
-                  style="background-color: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <div class="profile-pic-container mb-3" style="background-color: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                   <i class="bi bi-person-circle" style="font-size: 100px; color: #6c757d;"></i>
                 </div>
                 <h2 id="profile-name">Loading...</h2>
@@ -165,17 +209,16 @@
             </div>
           </div>
 
+          <!-- Profile Tabs -->
           <div class="col-xl-8" style="padding-bottom: 50px;">
             <div class="card">
               <div class="card-body pt-3">
                 <ul class="nav nav-tabs nav-tabs-bordered">
                   <li class="nav-item">
-                    <button class="nav-link active" data-bs-toggle="tab"
-                      data-bs-target="#profile-overview">Overview</button>
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#profile-overview">Overview</button>
                   </li>
                   <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="tab"
-                      data-bs-target="#profile-appointments">Appointments</button>
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-appointments">Appointments</button>
                   </li>
                   <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-history">History Log</button>
@@ -187,12 +230,12 @@
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-settings">Settings</button>
                   </li>
                   <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="tab"
-                      data-bs-target="#profile-change-password">Password</button>
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-change-password">Password</button>
                   </li>
                 </ul>
 
                 <div class="tab-content pt-3">
+                  <!-- Profile Overview -->
                   <div class="tab-pane fade show active profile-overview" id="profile-overview">
                     <h5 class="card-title">Personal Information</h5>
                     <div class="row">
@@ -233,9 +276,9 @@
                     </div>
                   </div>
 
+                  <!-- Upcoming Appointments -->
                   <div class="tab-pane fade profile-appointments pt-3" id="profile-appointments">
                     <h5 class="card-title">Upcoming Appointments</h5>
-
                     <div class="table-responsive" style="overflow-x: auto; white-space: nowrap;">
                       <table class="table table-hover">
                         <thead class="table-light">
@@ -247,9 +290,8 @@
                             <th>Actions</th>
                           </tr>
                         </thead>
-                        <tbody>
                         <tbody id="appointments-table">
-                          <!-- Appointments will be populated via JavaScript -->
+                          <!-- Appointments populated via JavaScript -->
                         </tbody>
                       </table>
                     </div>
@@ -261,16 +303,16 @@
                     </button>
                   </div>
 
+                  <!-- History Log -->
                   <div class="tab-pane fade" id="profile-history">
                     <h5 class="card-title">Dental History Log</h5>
                     <div class="history-log">
                       <div class="input-group mb-3">
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control" id="history-search"
-                          placeholder="Search by service, date, or notes">
+                        <input type="text" class="form-control" id="history-search" placeholder="Search by service, date, or notes">
                       </div>
                       <div class="timeline" id="history-timeline">
-                        <!-- History will be populated via JavaScript -->
+                        <!-- History populated via JavaScript -->
                       </div>
                       <div id="no-history" class="alert alert-info mt-3" style="display: none;">
                         No past appointments found.
@@ -283,6 +325,7 @@
                     </div>
                   </div>
 
+                  <!-- Edit Profile -->
                   <div class="tab-pane fade profile-edit pt-3" id="profile-edit">
                     <form id="profile-edit-form">
                       <div class="row mb-3">
@@ -315,22 +358,19 @@
                       <div class="row mb-3">
                         <label for="religion" class="col-md-4 col-lg-3 col-form-label">Religion</label>
                         <div class="col-md-8 col-lg-9">
-                          <input name="religion" type="text" class="form-control" id="religion"
-                            placeholder="If not applicable, Type N/A">
+                          <input name="religion" type="text" class="form-control" id="religion" placeholder="If not applicable, Type N/A">
                         </div>
                       </div>
                       <div class="row mb-3">
                         <label for="nationality" class="col-md-4 col-lg-3 col-form-label">Nationality</label>
                         <div class="col-md-8 col-lg-9">
-                          <input name="nationality" type="text" class="form-control" id="nationality"
-                            placeholder="If not applicable, Type N/A">
+                          <input name="nationality" type="text" class="form-control" id="nationality" placeholder="If not applicable, Type N/A">
                         </div>
                       </div>
                       <div class="row mb-3">
                         <label for="homeNumber" class="col-md-4 col-lg-3 col-form-label">Home Number</label>
                         <div class="col-md-8 col-lg-9">
-                          <input name="homeNumber" type="text" class="form-control" id="homeNumber"
-                            placeholder="If not applicable, Type N/A">
+                          <input name="homeNumber" type="text" class="form-control" id="homeNumber" placeholder="If not applicable, Type N/A">
                         </div>
                       </div>
                       <div class="row mb-3">
@@ -351,35 +391,32 @@
                     </form>
                   </div>
 
+                  <!-- Settings -->
                   <div class="tab-pane fade pt-3" id="profile-settings">
                     <form id="settings-form">
                       <div class="row mb-3">
                         <label class="col-md-4 col-lg-3 col-form-label">Email Notifications</label>
                         <div class="col-md-8 col-lg-9">
                           <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="appointmentReminders"
-                              name="appointmentReminders">
+                            <input class="form-check-input" type="checkbox" id="appointmentReminders" name="appointmentReminders">
                             <label class="form-check-label" for="appointmentReminders">
                               Appointment reminders
                             </label>
                           </div>
                           <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="treatmentUpdates"
-                              name="treatmentUpdates">
+                            <input class="form-check-input" type="checkbox" id="treatmentUpdates" name="treatmentUpdates">
                             <label class="form-check-label" for="treatmentUpdates">
                               Treatment updates and follow-ups
                             </label>
                           </div>
                           <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="promotionalOffers"
-                              name="promotionalOffers">
+                            <input class="form-check-input" type="checkbox" id="promotionalOffers" name="promotionalOffers">
                             <label class="form-check-label" for="promotionalOffers">
                               Promotional offers and news
                             </label>
                           </div>
                           <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="securityNotifications"
-                              name="securityNotifications" disabled checked>
+                            <input class="form-check-input" type="checkbox" id="securityNotifications" name="securityNotifications" disabled checked>
                             <label class="form-check-label" for="securityNotifications">
                               Security notifications
                             </label>
@@ -396,8 +433,7 @@
                             </label>
                           </div>
                           <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="analyticsConsent"
-                              name="analyticsConsent">
+                            <input class="form-check-input" type="checkbox" id="analyticsConsent" name="analyticsConsent">
                             <label class="form-check-label" for="analyticsConsent">
                               Allow anonymous usage data collection for service improvement
                             </label>
@@ -410,26 +446,24 @@
                     </form>
                   </div>
 
+                  <!-- Change Password -->
                   <div class="tab-pane fade pt-3" id="profile-change-password">
                     <form id="change-password-form">
                       <div class="row mb-3">
                         <label for="currentPassword" class="col-md-4 col-lg-3 col-form-label">Current Password</label>
                         <div class="col-md-8 col-lg-9">
-                          <input name="currentPassword" type="password" class="form-control" id="currentPassword"
-                            required>
+                          <input name="currentPassword" type="password" class="form-control" id="currentPassword" required>
                         </div>
                       </div>
                       <div class="row mb-3">
                         <label for="newPassword" class="col-md-4 col-lg-3 col-form-label">New Password</label>
                         <div class="col-md-8 col-lg-9">
                           <input name="newPassword" type="password" class="form-control" id="newPassword" required>
-                          <div class="form-text">Must be at least 8 characters, including uppercase, lowercase, numbers,
-                            and special characters.</div>
+                          <div class="form-text">Must be at least 8 characters, including uppercase, lowercase, numbers, and special characters.</div>
                         </div>
                       </div>
                       <div class="row mb-3">
-                        <label for="renewPassword" class="col-md-4 col-lg-3 col-form-label">Re-enter New
-                          Password</label>
+                        <label for="renewPassword" class="col-md-4 col-lg-3 col-form-label">Re-enter New Password</label>
                         <div class="col-md-8 col-lg-9">
                           <input name="renewPassword" type="password" class="form-control" id="renewPassword" required>
                         </div>
@@ -448,10 +482,9 @@
     </section>
   </main>
 
-  <!-- Edit Appointment Modal -->
-  <div class="modal fade" id="editAppointmentModal" tabindex="-1" aria-labelledby="editAppointmentModalLabel"
-    aria-hidden="true">
-    <div class="modal-dialog">
+  <!-- Updated Edit Appointment Modal with One Time Picker Next to Calendar -->
+  <div class="modal fade" id="editAppointmentModal" tabindex="-1" aria-labelledby="editAppointmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="editAppointmentModalLabel">Edit Appointment</h5>
@@ -460,8 +493,14 @@
         <div class="modal-body">
           <form id="edit-appointment-form">
             <div class="mb-3">
-              <label for="editDate" class="form-label">Appointment Date</label>
-              <input type="datetime-local" class="form-control" id="editDate" required>
+              <label for="editDate" class="form-label">Appointment Date and Time</label>
+              <input type="text" class="form-control" id="editDate" readonly>
+              <div style="display: flex; gap: 20px; margin-top: 10px;">
+                <!-- Container for inline calendar -->
+                <div id="datePickerContainer" style="flex: 1;"></div>
+                <!-- Time picker next to the calendar -->
+                <div id="timePickerBottom" class="time-picker" style="flex: 1;"></div>
+              </div>
             </div>
             <div class="mb-3">
               <label for="editService" class="form-label">Service</label>
@@ -481,6 +520,7 @@
     </div>
   </div>
 
+  <!-- Logout Modal -->
   <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -499,6 +539,7 @@
     </div>
   </div>
 
+  <!-- OTP Verification Modal -->
   <div class="modal fade" id="otpModal" tabindex="-1" aria-labelledby="otpModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
@@ -520,6 +561,7 @@
     </div>
   </div>
 
+  <!-- Footer -->
   <footer id="footer" class="footer light-background">
     <div class="container footer-top">
       <div class="row gy-4">
@@ -546,20 +588,23 @@
     </div>
   </footer>
 
-  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i
-      class="bi bi-arrow-up-short"></i></a>
+  <!-- Scroll Top Button -->
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
   <div id="preloader"></div>
 
+  <!-- Vendor JS Files -->
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script src="assets/vendor/php-email-form/validate.js"></script>
   <script src="assets/vendor/aos/aos.js"></script>
   <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
   <script src="assets/vendor/purecounter/purecounter_vanilla.js"></script>
-  <script src="assets/vendor/swiper/swiper-bundle.min.css"></script>
+  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
+  <!-- Main JavaScript -->
   <script>
     AOS.init();
 
@@ -568,175 +613,240 @@
     let displayedHistoryCount = 0;
     const ITEMS_PER_LOAD = 3;
     let editModalControls;
+    let allBookedAppointments = [];
 
+    // Fetch Clinic-Wide Booked Appointments
+    async function fetchAllBookedAppointments() {
+      try {
+        const response = await fetch('/api/appointments/booked', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to fetch all appointments');
+        const data = await response.json();
+        allBookedAppointments = Array.isArray(data.appointments) ? data.appointments : [];
+      } catch (err) {
+        console.error('Error fetching all appointments:', err);
+        allBookedAppointments = [];
+      }
+    }
+
+    // Initialize Flatpickr for Rescheduling with One Time Picker Next to Calendar
+    function initializeRescheduleDatePicker(bookedAppointments, currentAppointmentId) {
+      const bookedTimes = (Array.isArray(bookedAppointments) ? bookedAppointments : [])
+        .filter(appt => String(appt.id) !== String(currentAppointmentId))
+        .map(appt => {
+          const date = new Date(appt.appointment_date);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const hour = String(date.getHours()).padStart(2, '0');
+          const normalized = `${year}-${month}-${day} ${hour}:00`;
+          console.log('Normalized Booked Time:', normalized);
+          return normalized;
+        });
+    
+      if (bookedTimes.length === 0) {
+        console.warn('No booked times found.');
+      }
+      console.log('Final Booked Times:', bookedTimes);
+    
+      const fp = flatpickr('#editDate', {
+        dateFormat: "Y-m-d h:i K",
+        minDate: "today",
+        inline: true,
+        appendTo: document.getElementById('datePickerContainer'),
+        disable: [
+          function(date) {
+            const now = new Date();
+            const day = date.getDay();
+            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    
+            if (day === 0) return true;
+            if (dateStr === now.toISOString().slice(0, 10) && now.getHours() >= 15) {
+              console.log(`Disabling today (${dateStr}) because it's past 3 PM`);
+              return true;
+            }
+    
+            const hours = [9, 10, 11, 12, 13, 14, 15, 16];
+            return hours.every(hour => bookedTimes.includes(`${dateStr} ${hour.toString().padStart(2, '0')}:00`));
+          }
+        ],
+        onReady: (selectedDates, dateStr, instance) => {
+          console.log('Flatpickr onReady triggered:', { selectedDates, dateStr });
+          const container = instance.calendarContainer;
+          container.classList.add('flatpickr-calendar');
+    
+          const timePickerBottom = document.getElementById('timePickerBottom');
+    
+          const times = [
+            { hour: 9, label: '9 AM' },
+            { hour: 10, label: '10 AM' },
+            { hour: 11, label: '11 AM' },
+            { hour: 12, label: '12 PM' },
+            { hour: 13, label: '1 PM' },
+            { hour: 14, label: '2 PM' },
+            { hour: 15, label: '3 PM' },
+            { hour: 16, label: '4 PM' }
+          ];
+    
+          function createTimeSlots(container) {
+            container.innerHTML = '<div class="time-picker-header">Select Time</div><div class="time-picker-slots"></div>';
+            const slotsContainer = container.querySelector('.time-picker-slots');
+            times.forEach(time => {
+              const slot = document.createElement('div');
+              slot.className = 'time-slot';
+              slot.textContent = time.label;
+              slot.dataset.hour = time.hour;
+              slotsContainer.appendChild(slot);
+            });
+          }
+    
+          createTimeSlots(timePickerBottom);
+    
+          // Manually trigger onChange using instance
+          if (selectedDates.length > 0) {
+            console.log('Manually triggering onChange from onReady');
+            instance.config.onChange.forEach(fn => fn.call(instance, selectedDates, dateStr, instance));
+          }
+        },
+        onChange: (selectedDates, dateStr, instance) => {
+          const selectedDate = selectedDates[0];
+          if (!selectedDate) {
+            console.log('No date selected yet.');
+            return;
+          }
+    
+          const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+          console.log('Selected Date:', dateStrPart);
+    
+          const timePicker = document.getElementById('timePickerBottom');
+          const timeSlots = timePicker.querySelectorAll('.time-slot');
+    
+          console.log('Booked Times for Comparison:', bookedTimes);
+    
+          timeSlots.forEach(slot => {
+            const hour = parseInt(slot.dataset.hour);
+            const timeStr = `${dateStrPart} ${hour.toString().padStart(2, '0')}:00`;
+            const isBooked = bookedTimes.includes(timeStr);
+    
+            console.log(`Checking ${timeStr} - Is Booked: ${isBooked}`);
+    
+            slot.classList.remove('selected', 'disabled');
+            slot.style.pointerEvents = 'auto';
+            slot.onclick = null;
+    
+            if (isBooked) {
+              slot.classList.add('disabled');
+              console.log(`Graying out ${slot.textContent}`);
+            } else {
+              slot.onclick = () => {
+                timePicker.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+                slot.classList.add('selected');
+                selectedDate.setHours(hour, 0, 0, 0);
+                instance.setDate(selectedDate);
+                console.log(`Selected ${slot.textContent}`);
+              };
+            }
+          });
+    
+          const firstAvailable = timePicker.querySelector('.time-slot:not(.disabled)');
+          if (firstAvailable && !timePicker.querySelector('.time-slot.selected')) {
+            console.log('Auto-selecting first available time:', firstAvailable.textContent);
+            firstAvailable.click();
+          } else if (!firstAvailable) {
+            console.log('No available times for this date.');
+            instance.clear();
+            alert('No available times for this date.');
+          }
+        }
+      });
+    
+      return fp; // Ensure fp is returned
+    }
+
+    // Setup Edit Appointment Modal
     function setupEditAppointmentModal() {
       const editModalElement = document.getElementById('editAppointmentModal');
       const editModal = new bootstrap.Modal(editModalElement);
-    
+      let fpInstance;
+
       function openEditModal(appointmentId) {
-        const appointmentData = getAppointmentFromCurrentData(appointmentId);
-    
-        if (!appointmentData || !appointmentData.id) {
-          console.error('Invalid appointment data for ID:', appointmentId, 'Current appointments:', window.currentAppointments);
-          alert('Appointment not found. Please try again.');
+        const appointmentData = window.currentAppointments.find(appt => String(appt.id) === String(appointmentId));
+        if (!appointmentData) {
+          alert('Appointment not found.');
           return;
         }
-    
-        const displayDate = appointmentData.reschedule_at || appointmentData.appointment_date;
-        document.getElementById('editDate').value = new Date(displayDate).toISOString().slice(0, 16);
-        document.getElementById('editService').value = appointmentData.services?.name || 'Unknown Service';
-        document.getElementById('editNotes').value = appointmentData.notes || '';
-        document.getElementById('edit-appointment-form').dataset.appointmentId = appointmentData.id;
-        // Store original data for comparison
-        document.getElementById('edit-appointment-form').dataset.originalDate = document.getElementById('editDate').value;
-        document.getElementById('edit-appointment-form').dataset.originalNotes = document.getElementById('editNotes').value;
-        // Store current status and original appointment_date for reference
-        document.getElementById('edit-appointment-form').dataset.status = appointmentData.status;
-        document.getElementById('edit-appointment-form').dataset.appointmentDate = appointmentData.appointment_date;
-        editModal.show();
+
+        if (fpInstance) fpInstance.destroy();
+
+        fetchAllBookedAppointments().then(() => {
+          fpInstance = initializeRescheduleDatePicker(allBookedAppointments, appointmentId);
+
+          const appointmentDate = new Date(appointmentData.appointment_date);
+          fpInstance.setDate(appointmentDate);
+          document.getElementById('editService').value = appointmentData.services?.name || 'Unknown Service';
+          document.getElementById('editNotes').value = appointmentData.notes || '';
+          document.getElementById('edit-appointment-form').dataset.appointmentId = appointmentId;
+          document.getElementById('edit-appointment-form').dataset.status = appointmentData.status;
+
+          editModal.show();
+        });
       }
-    
-      function getAppointmentFromCurrentData(appointmentId) {
-        const appointments = Array.isArray(window.currentAppointments) ? window.currentAppointments : [];
-        return appointments.find(appt => String(appt.id) === String(appointmentId));
-      }
-    
-      async function notifyAdmin(appointmentId, updatedData) {
-        try {
-          const notificationResponse = await fetch('/api/notify-admin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              appointmentId,
-              changes: updatedData,
-              message: 'User has edited an appointment'
-            }),
-            credentials: 'include'
-          });
-          if (!notificationResponse.ok) {
-            console.error('Failed to notify admin:', await notificationResponse.text());
-          } else {
-            console.log('Admin notified successfully');
-          }
-        } catch (err) {
-          console.error('Error notifying admin:', err);
-        }
-      }
-    
-      function getChangedFields(originalData, updatedData) {
-        const changedFields = {};
-        if (originalData.reschedule_at !== updatedData.reschedule_at) {
-          changedFields.reschedule_at = updatedData.reschedule_at;
-        }
-        if (originalData.notes !== updatedData.notes) {
-          changedFields.notes = updatedData.notes;
-        }
-        return changedFields;
-      }
-    
+
       document.getElementById('saveEditAppointment').addEventListener('click', async function () {
         const form = document.getElementById('edit-appointment-form');
         const appointmentId = form.dataset.appointmentId;
-        const currentStatus = form.dataset.status.toLowerCase();
-        
-        // Allow editing for completed appointments, only block cancelled ones
-        if (['cancelled'].includes(currentStatus)) {
+        const status = form.dataset.status.toLowerCase();
+
+        if (status === 'cancelled') {
           alert('Cannot edit cancelled appointments.');
           editModal.hide();
           return;
         }
-    
-        // Get original values from dataset
-        const originalData = {
-          reschedule_at: form.dataset.originalDate,
-          notes: form.dataset.originalNotes || ''
-        };
-    
-        // Get current values
-        const updatedData = {
-          reschedule_at: document.getElementById('editDate').value,
-          notes: document.getElementById('editNotes').value
-        };
-    
-        // Get only the changed fields
-        const changedFields = getChangedFields(originalData, updatedData);
-    
-        // Check if anything has changed
-        if (Object.keys(changedFields).length === 0) {
-          alert('Nothing has changed!');
-          editModal.hide();
+
+        const selectedDate = fpInstance.selectedDates[0];
+        if (!selectedDate) {
+          alert('Please select a date and time.');
           return;
         }
-    
-        // Always include the original appointment_date in the request
+
+        const isoDate = selectedDate.toISOString();
         const requestData = {
-          appointment_date: form.dataset.appointmentDate,
-          reschedule_at: document.getElementById('editDate').value,
+          appointment_date: isoDate,
           notes: document.getElementById('editNotes').value
         };
-    
-        console.log('Attempting to update appointment with:', { appointmentId, requestData });
-    
+
         try {
-          // Quick auth check before proceeding
-          const authCheck = await fetch('/auth/check-auth', { credentials: 'include' });
-          const authData = await authCheck.json();
-          if (!authData.isLoggedIn) {
-            throw new Error('Session expired. Please log in again.');
-          }
-    
-          // Update appointment with original appointment_date and changed fields
           const response = await fetch(`/api/appointments/${appointmentId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestData),
             credentials: 'include'
           });
-    
-          console.log('Response status:', response.status);
-          const responseText = await response.text();
-          console.log('Raw response text:', responseText);
-    
-          let responseData;
-          try {
-            responseData = JSON.parse(responseText);
-          } catch (jsonErr) {
-            console.error('Failed to parse response as JSON:', jsonErr);
-            throw new Error(`Server returned invalid JSON: ${responseText.slice(0, 100)}...`);
-          }
-    
+
           if (!response.ok) {
-            throw new Error(responseData.message || `Failed to update appointment (Status: ${response.status})`);
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to update appointment');
           }
-    
-          // Notify admin of the change (only send changed fields)
-          await notifyAdmin(appointmentId, changedFields);
-    
+
           editModal.hide();
-          alert('Appointment updated successfully! Admin has been notified.');
+          alert('Appointment updated successfully!');
           await fetchAppointments();
           await fetchHistory();
         } catch (err) {
           console.error('Error updating appointment:', err);
           alert('Failed to update appointment: ' + err.message);
-          if (err.message.includes('Session expired')) {
-            window.location.replace('pages-login.html');
-          }
         }
       });
-    
+
       return { openEditModal };
     }
 
+    // DOM Content Loaded Event Listener
     document.addEventListener('DOMContentLoaded', async function () {
       editModalControls = setupEditAppointmentModal();
 
       try {
         const authResponse = await fetch('/auth/check-auth', { credentials: 'include' });
-        if (!authResponse.ok) {
-          const errorData = await authResponse.json();
-          throw new Error(errorData.message || 'Authentication check failed');
-        }
+        if (!authResponse.ok) throw new Error((await authResponse.json()).message || 'Authentication check failed');
         const authData = await authResponse.json();
         if (!authData.isLoggedIn) {
           alert('You are not logged in. Redirecting to login page.');
@@ -744,19 +854,13 @@
           return;
         }
 
-        const accountLink = document.getElementById('account-link');
-        const profileLink = document.getElementById('profile-link');
-        accountLink.style.display = 'none';
-        profileLink.style.display = 'block';
-
+        document.getElementById('account-link').style.display = 'none';
+        document.getElementById('profile-link').style.display = 'block';
         document.querySelectorAll('#navmenu a').forEach(link => link.classList.remove('active'));
         document.querySelector('#profile-link a').classList.add('active');
 
         const profileResponse = await fetch('/patients/profile', { credentials: 'include' });
-        if (!profileResponse.ok) {
-          const errorData = await profileResponse.json();
-          throw new Error(errorData.message || 'Failed to fetch profile');
-        }
+        if (!profileResponse.ok) throw new Error((await profileResponse.json()).message || 'Failed to fetch profile');
         profileData = await profileResponse.json();
 
         document.getElementById('profile-name').textContent = profileData.full_name || 'N/A';
@@ -803,17 +907,12 @@
 
       document.getElementById('confirmLogout').addEventListener('click', async function () {
         try {
-          const response = await fetch('/auth/logout', {
-            method: 'POST',
-            credentials: 'include'
-          });
+          const response = await fetch('/auth/logout', { method: 'POST', credentials: 'include' });
           if (response.ok) {
             const modal = bootstrap.Modal.getInstance(document.getElementById('logoutModal'));
             if (modal) modal.hide();
             window.location.replace('index.html');
-          } else {
-            alert('Logout failed. Please try again.');
-          }
+          } else alert('Logout failed. Please try again.');
         } catch (err) {
           console.error('Logout error:', err);
           alert('An error occurred during logout.');
@@ -827,31 +926,18 @@
       });
     });
 
+    // Fetch Appointments
     async function fetchAppointments() {
-      const response = await fetch('/api/appointments', { credentials: 'include' });
-      const data = await response.json();
-      console.log('Fetched appointments:', data);
-      window.currentAppointments = Array.isArray(data.appointments) ? data.appointments : [];
       try {
-        const response = await fetch('/api/appointments', {
-          method: 'GET',
-          credentials: 'include'
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to fetch appointments');
-        }
+        const response = await fetch('/api/appointments', { method: 'GET', credentials: 'include' });
+        if (!response.ok) throw new Error((await response.json()).message || 'Failed to fetch appointments');
         const data = await response.json();
-        console.log('Raw Appointments Response:', data);
-        const appointments = Array.isArray(data.appointments) ? data.appointments : [];
-
-        // Store appointments in a global variable
-        window.currentAppointments = appointments;
+        window.currentAppointments = Array.isArray(data.appointments) ? data.appointments : [];
 
         const tbody = document.getElementById('appointments-table');
         const noAppointmentsDiv = document.getElementById('no-appointments');
 
-        if (appointments.length === 0) {
+        if (window.currentAppointments.length === 0) {
           tbody.innerHTML = '';
           noAppointmentsDiv.style.display = 'block';
           return;
@@ -860,7 +946,7 @@
         noAppointmentsDiv.style.display = 'none';
         tbody.innerHTML = '';
 
-        appointments.forEach(appointment => {
+        window.currentAppointments.forEach(appointment => {
           const displayDate = appointment.rescheduled_at || appointment.appointment_date;
           const statusClass = {
             pending: 'status-pending',
@@ -868,7 +954,7 @@
             cancelled: 'status-cancelled',
             completed: 'status-completed'
           }[appointment.status.toLowerCase()] || '';
-      
+
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${new Date(displayDate).toLocaleString()}</td>
@@ -890,37 +976,12 @@
         });
 
         document.querySelectorAll('.edit-appointment').forEach(button => {
-          button.removeEventListener('click', handleEditClick);
-          button.addEventListener('click', handleEditClick);
+          button.addEventListener('click', function () {
+            const appointmentId = this.getAttribute('data-id');
+            if (appointmentId) editModalControls.openEditModal(appointmentId);
+            else alert('Error: No appointment ID found');
+          });
         });
-
-        function handleEditClick() {
-          const appointmentId = this.getAttribute('data-id');
-          console.log('Editing appointment with ID:', appointmentId);
-          if (!appointmentId) {
-            alert('Error: No appointment ID found');
-            return;
-          }
-          editModalControls.openEditModal(appointmentId);
-        }
-
-        // Remove existing listeners to prevent duplicates
-        document.querySelectorAll('.edit-appointment').forEach(button => {
-          button.removeEventListener('click', handleEditClick); // Remove old listener if it exists
-          button.addEventListener('click', handleEditClick);
-        });
-
-        function handleEditClick() {
-          const appointmentId = this.getAttribute('data-id');
-          console.log('Editing appointment with ID:', appointmentId);
-
-          if (!appointmentId) {
-            alert('Error: No appointment ID found');
-            return;
-          }
-
-          editModalControls.openEditModal(appointmentId);
-        }
 
         document.querySelectorAll('.cancel-appointment').forEach(button => {
           button.addEventListener('click', async function () {
@@ -931,10 +992,7 @@
                   method: 'DELETE',
                   credentials: 'include'
                 });
-                if (!cancelResponse.ok) {
-                  const errorData = await cancelResponse.json();
-                  throw new Error(errorData.message || 'Failed to cancel appointment');
-                }
+                if (!cancelResponse.ok) throw new Error((await cancelResponse.json()).message || 'Failed to cancel appointment');
                 alert('Appointment cancelled successfully!');
                 await fetchAppointments();
                 await fetchHistory();
@@ -945,13 +1003,13 @@
             }
           });
         });
-
       } catch (err) {
         console.error('Error fetching appointments:', err);
         document.getElementById('appointments-table').innerHTML = '<tr><td colspan="5">Error loading appointments.</td></tr>';
       }
     }
 
+    // Fetch History
     async function fetchHistory() {
       try {
         const currentDate = new Date().toISOString();
@@ -959,12 +1017,8 @@
           method: 'GET',
           credentials: 'include'
         });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to fetch history');
-        }
+        if (!response.ok) throw new Error((await response.json()).message || 'Failed to fetch history');
         const data = await response.json();
-        console.log('Raw History Response:', data);
         allHistory = Array.isArray(data.appointments) ? data.appointments : [];
         displayedHistoryCount = 0;
         renderHistory(allHistory);
@@ -975,6 +1029,7 @@
       }
     }
 
+    // Render History
     function renderHistory(history) {
       const timeline = document.getElementById('history-timeline');
       const noHistoryDiv = document.getElementById('no-history');
@@ -1010,14 +1065,14 @@
         const timelineItem = document.createElement('div');
         timelineItem.className = 'timeline-item';
         timelineItem.innerHTML = `
-      <div class="timeline-dot"></div>
-      <div class="timeline-content">
-        <h6>${new Date(appointment.appointment_date).toLocaleString()}</h6>
-        <p><strong>Service:</strong> ${appointment.services?.name || 'Unknown Service'}</p>
-        <p><strong>Status:</strong> <span class="appointment-status ${statusClass}">${appointment.status}</span></p>
-        <p><strong>Notes:</strong> ${appointment.notes || 'N/A'}</p>
-      </div>
-    `;
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <h6>${new Date(appointment.appointment_date).toLocaleString()}</h6>
+            <p><strong>Service:</strong> ${appointment.services?.name || 'Unknown Service'}</p>
+            <p><strong>Status:</strong> <span class="appointment-status ${statusClass}">${appointment.status}</span></p>
+            <p><strong>Notes:</strong> ${appointment.notes || 'N/A'}</p>
+          </div>
+        `;
         timeline.appendChild(timelineItem);
       });
 
@@ -1030,6 +1085,7 @@
       renderHistory(allHistory);
     }
 
+    // Save Profile
     async function saveProfile() {
       const formData = new FormData(document.getElementById('profile-edit-form'));
       const profileData = Object.fromEntries(formData);
@@ -1055,6 +1111,7 @@
       }
     }
 
+    // Save Settings
     document.getElementById('settings-form').addEventListener('submit', async function (e) {
       e.preventDefault();
       const formData = new FormData(this);
@@ -1068,18 +1125,15 @@
           credentials: 'include'
         });
 
-        if (response.ok) {
-          alert('Settings saved successfully!');
-        } else {
-          const errorData = await response.json();
-          alert(`Failed to save settings: ${errorData.message || 'Please try again.'}`);
-        }
+        if (response.ok) alert('Settings saved successfully!');
+        else alert(`Failed to save settings: ${(await response.json()).message || 'Please try again.'}`);
       } catch (err) {
         console.error('Error saving settings:', err);
         alert('An error occurred while saving settings.');
       }
     });
 
+    // Change Password
     document.getElementById('change-password-form').addEventListener('submit', async function (e) {
       e.preventDefault();
 
@@ -1093,9 +1147,7 @@
       }
 
       try {
-        if (!profileData || !profileData.email) {
-          throw new Error('Profile data not loaded. Please refresh the page.');
-        }
+        if (!profileData || !profileData.email) throw new Error('Profile data not loaded. Please refresh the page.');
         const email = profileData.email;
 
         const otpRequestResponse = await fetch('/api/send-otp-password-change', {
@@ -1105,9 +1157,8 @@
         });
         if (!otpRequestResponse.ok) {
           const errorData = await otpRequestResponse.json();
-          if (otpRequestResponse.status === 404) {
-            throw new Error('OTP endpoint not found. Check server configuration.');
-          } else if (otpRequestResponse.status === 401) {
+          if (otpRequestResponse.status === 404) throw new Error('OTP endpoint not found. Check server configuration.');
+          else if (otpRequestResponse.status === 401) {
             alert('Session expired. Please log in again.');
             window.location.replace('pages-login.html');
             return;
@@ -1202,6 +1253,7 @@
     });
   </script>
 
+  <!-- Additional Scripts -->
   <script src="assets/js/main.js"></script>
   <script src="assets/js/see-more.js"></script>
   <script src="assets/js/card-overlay.js"></script>

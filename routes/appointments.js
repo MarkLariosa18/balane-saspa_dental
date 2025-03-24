@@ -381,7 +381,7 @@ router.put('/:id', isAuthenticated, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Appointment not found or not authorized' });
     }
 
-    if (!['pending', 'confirmed'].includes(appointmentCheck.status)) {
+    if (['pending', 'confirmed'].includes(appointmentCheck.status)) {
       return res.status(400).json({ success: false, message: 'Cannot edit completed or cancelled appointment' });
     }
 
