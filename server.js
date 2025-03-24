@@ -5,6 +5,8 @@ const morgan = require('morgan');
 const path = require('path');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
+const http = require('http');
+const WebSocket = require('ws');
 
 // Load environment variables
 dotenv.config();
@@ -20,6 +22,43 @@ const authRoutes = require('./routes/auth');
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Initialize WebSocket server
+const wss = new WebSocket.Server({ server });
+app.set('wss', wss);
+
+wss.on('connection', (ws) => {
+  console.log('New WebSocket client connected');
+  ws.on('message', (message) => {
+    console.log('WebSocket message received:', message.toString());
+    try {
+      const data = JSON.parse(message);
+      if (data.type === 'cancel_response') {
+        console.log('Received cancel response:', data);
+        wss.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+              type: 'cancel_response',
+              requestId: data.requestId,
+              status: data.status
+            }));
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error parsing WebSocket message:', error);
+    }
+  });
+  ws.on('close', () => {
+    console.log('WebSocket client disconnected');
+  });
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+  });
+});
 
 // Middleware
 app.use(cors({
@@ -48,7 +87,6 @@ app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 // Middleware to check authentication
 const isAuthenticated = (req, res, next) => {
-  // Skip authentication for public routes
   const publicPaths = [
     '/', '/index.html', '/pages-login.html', '/check-auth', '/check-username', '/logout'
   ];
@@ -56,22 +94,28 @@ const isAuthenticated = (req, res, next) => {
     '/api', // OTP routes
     '/auth', // Authentication routes
     '/services', // Service routes
-    '/patients' // Patient registration (POST /patients/)
+    '/patients' // Patient registration
   ];
 
-  // Allow public paths and API routes
+  // Allow public paths and specific API routes
   if (
     publicPaths.includes(req.path) ||
     publicApiPaths.some(path => req.path.startsWith(path)) ||
-    (req.path === '/patients' && req.method === 'POST') // Explicitly allow POST /patients
+    (req.path === '/patients' && req.method === 'POST')
   ) {
     return next();
   }
 
   // Require authentication for protected routes
   if (!req.session.isLoggedIn || !req.session.userId) {
+    // For API requests, return JSON instead of redirecting
+    if (req.path.startsWith('/api/') || req.path.startsWith('/patients') || req.path.startsWith('/users')) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    console.log(`Redirecting unauthenticated request: ${req.method} ${req.path}`);
     return res.redirect('/pages-login.html');
   }
+  console.log(`Authenticated request: ${req.method} ${req.path}, userId: ${req.session.userId}`);
   next();
 };
 
@@ -89,7 +133,11 @@ app.use('/auth', authRoutes);
 // Check auth status endpoint
 app.get('/check-auth', (req, res) => {
   if (req.session && req.session.isLoggedIn && req.session.userId) {
-    res.json({ isLoggedIn: true, userId: req.session.userId, role: req.session.role || 'patient' });
+    res.json({ 
+      isLoggedIn: true, 
+      userId: req.session.userId, 
+      role: req.session.role || 'patient' 
+    });
   } else {
     res.json({ isLoggedIn: false });
   }
@@ -133,7 +181,7 @@ app.get('/check-username', async (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('Server error:', err.stack);
   res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
 });
 
@@ -152,8 +200,15 @@ app.get('/*.html', (req, res) => {
   });
 });
 
+// Catch-all 404 handler
+app.use((req, res, next) => {
+  console.log(`Route not found: ${req.method} ${req.path}`);
+  res.status(404).json({ error: 'not_found', message: `Cannot ${req.method} ${req.path}` });
+});
+
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Access your app at: http://localhost:${PORT}`);
+  console.log(`WebSocket server running at ws://localhost:${PORT}`);
 });

@@ -1,23 +1,59 @@
 /*--------------------------------------------------------------
 # General
---------------------------------------------------------------*/
-:root {
-  scroll-behavior: smooth;
-}
+-------------------------------------------------------------*/
+  :root {
+    scroll-behavior: smooth;
+    --default-font: "Roboto", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --heading-font: "Raleway", sans-serif;
+    --nav-font: "Poppins", sans-serif;
+  }
+  
+  /* Global Colors - The following color variables are used throughout the website. Updating them here will change the color scheme of the entire website */
+  :root {
+    --background-color: #ffffff;
+    /* Background color for the entire website, including individual sections */
+    --default-color: #444444;
+    /* Default color used for the majority of the text content across the entire website */
+    --heading-color: #000000;
+    /* Color for headings, subheadings and title throughout the website */
+    --accent-color: #84548c;
+    /* Accent color that represents your brand on the website. It's used for buttons, links, and other elements that need to stand out */
+    --surface-color: #ffffff;
+    /* The surface color is used as a background of boxed elements within sections, such as cards, icon boxes, or other elements that require a visual separation from the global background. */
+    --contrast-color: #ffffff;
+    /* Contrast color for text, ensuring readability against backgrounds of accent, heading, or default colors. */
+  
+  }
+  
+  /* Nav Menu Colors - The following color variables are used specifically for the navigation menu. They are separate from the global colors to allow for more customization options */
+  :root {
+    --nav-color: #444444;
+    /* The default color of the main navmenu links */
+    --nav-hover-color: #84548c;
+    /* Applied to main navmenu links when they are hovered over or active */
+    --nav-mobile-background-color: #ffffff;
+    /* Used as the background color for mobile navigation menu */
+    --nav-dropdown-background-color: #ffffff;
+    /* Used as the background color for dropdown items that appear when hovering over primary navigation items */
+    --nav-dropdown-color: #444444;
+    /* Used for navigation links of the dropdown items in the navigation menu. */
+    --nav-dropdown-hover-color: #84548c;
+    /* Similar to --nav-hover-color, this color is applied to dropdown navigation links when they are hovered over. */
+  }
 
 body {
   font-family: "Open Sans", sans-serif;
   background: #f6f9ff;
-  color: #444444;
+  color: #84548c;
 }
 
 a {
-  color: #4154f1;
+  color: #84548c;
   text-decoration: none;
 }
 
 a:hover {
-  color: #717ff5;
+  color: #84548c;
   text-decoration: none;
 }
 
@@ -56,7 +92,7 @@ h6 {
   font-size: 24px;
   margin-bottom: 0;
   font-weight: 600;
-  color: #012970;
+  color: #84548c;
 }
 
 /*--------------------------------------------------------------
@@ -69,7 +105,7 @@ h6 {
   right: 15px;
   bottom: 15px;
   z-index: 99999;
-  background: #4154f1;
+  background: #84548c;
   width: 40px;
   height: 40px;
   border-radius: 4px;
@@ -83,7 +119,7 @@ h6 {
 }
 
 .back-to-top:hover {
-  background: #6776f4;
+  background: #84548c;
   color: #fff;
 }
 
@@ -123,7 +159,7 @@ h6 {
 }
 
 .dropdown-menu .dropdown-divider {
-  color: #a5c5fe;
+  color: #84548c;
   margin: 0;
 }
 
@@ -220,7 +256,7 @@ h6 {
 .card-footer {
   border-color: #ebeef4;
   background-color: #fff;
-  color: #798eb3;
+  color: #84548c;
   padding: 15px;
 }
 
@@ -228,7 +264,7 @@ h6 {
   padding: 20px 0 15px 0;
   font-size: 18px;
   font-weight: 500;
-  color: #012970;
+  color: #84548c;
   font-family: "Poppins", sans-serif;
 }
 
@@ -253,6 +289,45 @@ h6 {
   font-size: 20px;
 }
 
+/*patients add*/
+
+.container {
+  width: 60%;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+.form-container {
+  margin-bottom: 20px;
+}
+input {
+  padding: 10px;
+  margin-right: 10px;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 10px;
+  text-align: left;
+}
+th {
+  background: #007BFF;
+  color: white;
+}
+button {
+  padding: 5px 10px;
+  margin: 5px;
+  border: none;
+  cursor: pointer;
+}
+button:hover {
+  opacity: 0.8;
+}
+
+
+
 /* Close Button */
 .btn-close {
   background-size: 25%;
@@ -274,7 +349,7 @@ h6 {
 }
 
 .accordion-button:not(.collapsed) {
-  color: #012970;
+  color: #84548c;
   background-color: #f6f9ff;
 }
 
@@ -286,12 +361,12 @@ h6 {
 
 .accordion-flush .accordion-button:not(.collapsed) {
   box-shadow: none;
-  color: #4154f1;
+  color: #84548c;
 }
 
 .accordion-flush .accordion-body {
   padding: 0 0 15px 0;
-  color: #3e4f6f;
+  color: #84548c;
   font-size: 15px;
 }
 
@@ -304,12 +379,12 @@ h6 {
 }
 
 .breadcrumb a {
-  color: #899bbd;
+  color: #84548c;
   transition: 0.3s;
 }
 
 .breadcrumb a:hover {
-  color: #51678f;
+  color: #84548c;
 }
 
 .breadcrumb .breadcrumb-item::before {
@@ -317,7 +392,7 @@ h6 {
 }
 
 .breadcrumb .active {
-  color: #51678f;
+  color: #84548c;
   font-weight: 600;
 }
 
@@ -329,18 +404,18 @@ h6 {
 .nav-tabs-bordered .nav-link {
   margin-bottom: -2px;
   border: none;
-  color: #2c384e;
+  color: #84548c;
 }
 
 .nav-tabs-bordered .nav-link:hover,
 .nav-tabs-bordered .nav-link:focus {
-  color: #4154f1;
+  color: #84548c;
 }
 
 .nav-tabs-bordered .nav-link.active {
   background-color: #fff;
-  color: #4154f1;
-  border-bottom: 2px solid #4154f1;
+  color: #84548c;
+  border-bottom: 2px solid #84548c;
 }
 
 /*--------------------------------------------------------------
@@ -364,7 +439,7 @@ h6 {
 .logo span {
   font-size: 26px;
   font-weight: 700;
-  color: #012970;
+  color: #84548c;
   font-family: "Nunito", sans-serif;
 }
 
@@ -375,15 +450,13 @@ h6 {
   box-shadow: 0px 2px 20px rgba(1, 41, 112, 0.1);
   background-color: #fff;
   padding-left: 20px;
-  /* Toggle Sidebar Button */
-  /* Search Bar */
 }
 
 .header .toggle-sidebar-btn {
   font-size: 32px;
   padding-left: 10px;
   cursor: pointer;
-  color: #012970;
+  color: #84548c;
 }
 
 .header .search-bar {
@@ -420,7 +493,7 @@ h6 {
 .header .search-form input {
   border: 0;
   font-size: 14px;
-  color: #012970;
+  color: #84548c;
   border: 1px solid rgba(1, 41, 112, 0.2);
   padding: 7px 38px 7px 8px;
   border-radius: 3px;
@@ -443,7 +516,7 @@ h6 {
 }
 
 .header .search-form button i {
-  color: #012970;
+  color: #84548c;
 }
 
 /*--------------------------------------------------------------
@@ -460,13 +533,13 @@ h6 {
 
 .header-nav .nav-icon {
   font-size: 22px;
-  color: #012970;
+  color: #84548c;
   margin-right: 25px;
   position: relative;
 }
 
 .header-nav .nav-profile {
-  color: #012970;
+  color: #84548c;
 }
 
 .header-nav .nav-profile img {
@@ -676,7 +749,7 @@ h6 {
   align-items: center;
   font-size: 15px;
   font-weight: 600;
-  color: #4154f1;
+  color: #84548c;
   transition: 0.3;
   background: #f6f9ff;
   padding: 10px 15px;
@@ -686,11 +759,11 @@ h6 {
 .sidebar-nav .nav-link i {
   font-size: 16px;
   margin-right: 10px;
-  color: #4154f1;
+  color: #84548c;
 }
 
 .sidebar-nav .nav-link.collapsed {
-  color: #012970;
+  color: #84548c;
   background: #fff;
 }
 
@@ -699,12 +772,12 @@ h6 {
 }
 
 .sidebar-nav .nav-link:hover {
-  color: #4154f1;
+  color: #84548c;
   background: #f6f9ff;
 }
 
 .sidebar-nav .nav-link:hover i {
-  color: #4154f1;
+  color: #84548c;
 }
 
 .sidebar-nav .nav-link .bi-chevron-down {
@@ -727,7 +800,7 @@ h6 {
   align-items: center;
   font-size: 14px;
   font-weight: 600;
-  color: #012970;
+  color: #84548c;
   transition: 0.3;
   padding: 10px 0 10px 40px;
   transition: 0.3s;
@@ -742,11 +815,11 @@ h6 {
 
 .sidebar-nav .nav-content a:hover,
 .sidebar-nav .nav-content a.active {
-  color: #4154f1;
+  color: #84548c;
 }
 
 .sidebar-nav .nav-content a.active i {
-  background-color: #4154f1;
+  background-color: #84548c;
 }
 
 /*--------------------------------------------------------------
@@ -769,7 +842,7 @@ h6 {
 
 .dashboard .filter .icon:hover,
 .dashboard .filter .icon:focus {
-  color: #4154f1;
+  color: #84548c;
 }
 
 .dashboard .filter .dropdown-header {
@@ -797,7 +870,7 @@ h6 {
 
 .dashboard .info-card h6 {
   font-size: 28px;
-  color: #012970;
+  color: #84548c;
   font-weight: 700;
   margin: 0;
   padding: 0;
@@ -813,7 +886,7 @@ h6 {
 }
 
 .dashboard .sales-card .card-icon {
-  color: #4154f1;
+  color: #84548c;
   background: #f6f6fe;
 }
 
@@ -893,12 +966,12 @@ h6 {
 }
 
 .dashboard .news h4 a {
-  color: #012970;
+  color: #84548c;
   transition: 0.3s;
 }
 
 .dashboard .news h4 a:hover {
-  color: #4154f1;
+  color: #84548c;
 }
 
 .dashboard .news p {
@@ -965,7 +1038,7 @@ h6 {
   background-color: #fff;
   border-radius: 0.25rem;
   text-align: center;
-  color: #012970;
+  color: #84548c;
   padding: 15px 0;
 }
 
@@ -1014,7 +1087,7 @@ h6 {
 }
 
 .profile .profile-card .social-links a:hover {
-  color: #012970;
+  color: #84548c;
 }
 
 .profile .profile-overview .row {
@@ -1023,7 +1096,7 @@ h6 {
 }
 
 .profile .profile-overview .card-title {
-  color: #012970;
+  color: #84548c;
 }
 
 .profile .profile-overview .label {
@@ -1046,7 +1119,7 @@ h6 {
 .faq .basic h6 {
   font-size: 18px;
   font-weight: 600;
-  color: #4154f1;
+  color: #84548c;
 }
 
 .faq .basic p {
@@ -1063,12 +1136,12 @@ h6 {
 .contact .info-box i {
   font-size: 38px;
   line-height: 0;
-  color: #4154f1;
+  color: #84548c;
 }
 
 .contact .info-box h3 {
   font-size: 20px;
-  color: #012970;
+  color: #84548c;
   font-weight: 700;
   margin: 20px 0 10px 0;
 }
@@ -1130,7 +1203,7 @@ h6 {
 
 .contact .php-email-form input:focus,
 .contact .php-email-form textarea:focus {
-  border-color: #4154f1;
+  border-color: #84548c;
 }
 
 .contact .php-email-form input {
@@ -1142,7 +1215,7 @@ h6 {
 }
 
 .contact .php-email-form button[type=submit] {
-  background: #4154f1;
+  background: #84548c;
   border: 0;
   padding: 10px 30px;
   color: #fff;
@@ -1151,7 +1224,7 @@ h6 {
 }
 
 .contact .php-email-form button[type=submit]:hover {
-  background: #5969f3;
+  background: #84548c;
 }
 
 @keyframes animate-loading {
@@ -1174,7 +1247,7 @@ h6 {
 .error-404 h1 {
   font-size: 180px;
   font-weight: 700;
-  color: #4154f1;
+  color: #84548c;
   margin-bottom: 0;
   line-height: 150px;
 }
@@ -1182,24 +1255,122 @@ h6 {
 .error-404 h2 {
   font-size: 24px;
   font-weight: 700;
-  color: #012970;
+  color: #84548c;
   margin-bottom: 30px;
 }
 
 .error-404 .btn {
-  background: #51678f;
+  background: #84548c;
   color: #fff;
   padding: 8px 30px;
 }
 
 .error-404 .btn:hover {
-  background: #3e4f6f;
+  background: #84548c;
 }
 
 @media (min-width: 992px) {
   .error-404 img {
     max-width: 50%;
   }
+}
+
+
+/*--------------------------------------------------------------
+# History
+--------------------------------------------------------------*/
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+th, td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+th {
+  background-color: #4CAF50;
+  color: white;
+}
+tr:hover {
+  background-color: #f5f5f5;
+}
+.search-container {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+}
+.search-box {
+  padding: 8px;
+  width: 250px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.date-filter {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.date-filter input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+.pagination button {
+  padding: 8px 16px;
+  margin: 0 5px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.pagination button:hover {
+  background-color: #45a049;
+}
+.status-completed {
+  color: green;
+  font-weight: bold;
+}
+.status-cancelled {
+  color: red;
+  font-weight: bold;
+}
+.status-pending {
+  color: orange;
+  font-weight: bold;
+}
+
+/*--------------------------------------------------------------
+# Patients Modal
+--------------------------------------------------------------*/
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+}
+.modal.show {
+  display: block;
+}
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
 }
 
 /*--------------------------------------------------------------
@@ -1214,12 +1385,13 @@ h6 {
 
 .footer .copyright {
   text-align: center;
-  color: #012970;
+  color: #84548c;
 }
 
 .footer .credits {
   padding-top: 5px;
   text-align: center;
   font-size: 13px;
-  color: #012970;
+  color: #84548c;
 }
+

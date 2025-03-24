@@ -43,10 +43,10 @@ function decrypt(text) {
   const [ivText, encryptedText] = text.split(':');
   if (!ivText || !encryptedText) {
     console.warn(`Data appears unencrypted or invalid format: "${text}". Returning as-is.`);
-    return text; // Return unencrypted text if no colon is found
+    return text;
   }
   try {
-    console.log(`Attempting to decrypt (first pass): "${text}"`); // Debug log
+    console.log(`Attempting to decrypt (first pass): "${text}"`);
     const iv = Buffer.from(ivText, 'hex');
     if (iv.length !== IV_LENGTH) {
       throw new Error(`Invalid IV length: expected ${IV_LENGTH} bytes, got ${iv.length}`);
@@ -57,7 +57,6 @@ function decrypt(text) {
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     let decryptedString = decrypted.toString('utf8');
 
-    // If the result still looks encrypted (contains a colon), attempt a second decryption
     if (decryptedString.includes(':')) {
       console.log(`First decryption produced encrypted output: "${decryptedString}". Attempting second pass.`);
       const [secondIvText, secondEncryptedText] = decryptedString.split(':');
@@ -68,19 +67,17 @@ function decrypt(text) {
       secondDecrypted = Buffer.concat([secondDecrypted, secondDecipher.final()]);
       decryptedString = secondDecrypted.toString('utf8');
 
-      // Validate the second decryption output
       if (!decryptedString || decryptedString.includes(':') || /[^ -~]/.test(decryptedString)) {
         console.warn(`Second decryption produced invalid output: "${decryptedString}". Returning original: "${text}"`);
-        return text; // Fallback to original if still invalid
+        return text;
       }
       console.log(`Successfully decrypted (after second pass): "${text}" -> "${decryptedString}"`);
       return decryptedString;
     }
 
-    // Validate single decryption output
     if (!decryptedString || /[^ -~]/.test(decryptedString)) {
       console.warn(`Single decryption produced invalid output: "${decryptedString}". Returning original: "${text}"`);
-      return text; // Fallback to original if invalid
+      return text;
     }
     console.log(`Successfully decrypted (single pass): "${text}" -> "${decryptedString}"`);
     return decryptedString;
@@ -91,7 +88,7 @@ function decrypt(text) {
       ivLength: ivText?.length,
       keySnippet: ENCRYPTION_KEY.slice(0, 8) + '...'
     });
-    return text; // Return original text on decryption failure
+    return text;
   }
 }
 
@@ -321,7 +318,6 @@ router.get('/profile', isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: 'not_found', message: 'Patient profile not found' });
     }
 
-    // Decrypt encrypted fields and construct response
     const profileData = {
       full_name: `${decrypt(data.first_name)} ${decrypt(data.last_name)}`,
       email: decrypt(data.email),
@@ -332,10 +328,10 @@ router.get('/profile', isAuthenticated, async (req, res) => {
       religion: decrypt(data.religion) || 'N/A',
       nationality: decrypt(data.nationality) || 'N/A',
       home_number: decrypt(data.home_no) || 'N/A',
-      blood_type: 'N/A', // Not in schema, static default
-      allergies: 'None', // Not in schema, static default
-      medical_conditions: 'None', // Not in schema, static default
-      emergency_contact: 'N/A' // Not in schema, static default
+      blood_type: 'N/A',
+      allergies: 'None',
+      medical_conditions: 'None',
+      emergency_contact: 'N/A'
     };
 
     console.log('Profile data retrieved successfully:', profileData);
@@ -345,6 +341,75 @@ router.get('/profile', isAuthenticated, async (req, res) => {
     res.status(500).json({ error: 'server_error', message: 'Failed to fetch profile', details: error.message });
   }
 });
+
+// Fetch all patients (protected, admin-only)
+router.get('/allPatients', isAuthenticated, async (req, res) => {
+  try {
+    console.log('Fetching all patients...');
+    const userId = req.session.userId;
+
+    const { data: adminData, error: adminError } = await supabase
+      .from('admin')
+      .select('id')
+      .eq('id', userId);
+
+    if (adminError) {
+      console.error('Error fetching admin data:', adminError);
+      throw adminError;
+    }
+
+    if (!adminData || adminData.length === 0) {
+      console.log(`No admin found for user_id: ${userId}`);
+      return res.status(403).json({ 
+        error: 'forbidden', 
+        message: 'Admin access required to fetch all patients' 
+      });
+    }
+
+    const { data, error } = await supabase
+      .from('patients')
+      .select('id, first_name, last_name, home_address, sex, birthdate, mobile_no, email')
+      .order('id', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching patients:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      console.log('No patients found');
+      return res.status(200).json([]);
+    }
+
+    const decryptedPatients = data.map(patient => ({
+      id: patient.id,
+      name: `${decrypt(patient.first_name)} ${decrypt(patient.last_name)}`,
+      address: decrypt(patient.home_address),
+      sex: patient.sex === 'M' ? 'Male' : patient.sex === 'F' ? 'Female' : 'Other',
+      age: calculateAge(decrypt(patient.birthdate)),
+      contact: decrypt(patient.mobile_no),
+      email: decrypt(patient.email)
+    }));
+
+    console.log(`Successfully fetched ${decryptedPatients.length} patients`);
+    res.status(200).json(decryptedPatients);
+  } catch (error) {
+    console.error('Error in GET /allPatients:', error);
+    res.status(500).json({ 
+      error: 'server_error', 
+      message: 'Failed to fetch patients', 
+      details: error.message 
+    });
+  }
+});
+
+// Helper function to calculate age
+function calculateAge(birthdate) {
+  const today = new Date();
+  const birth = new Date(birthdate);
+  const age = Math.floor((today - birth) / (365.25 * 24 * 60 * 60 * 1000));
+  return age >= 0 ? age : 0;
+}
 
 // Update profile (protected)
 router.put('/profile', isAuthenticated, async (req, res) => {
@@ -362,11 +427,9 @@ router.put('/profile', isAuthenticated, async (req, res) => {
       email
     } = req.body;
 
-    // Split fullName into first_name and last_name (assuming space-separated)
     const [first_name, ...lastNameParts] = fullName.split(' ');
     const last_name = lastNameParts.join(' ');
 
-    // Encrypt updated fields
     const encryptedData = {
       first_name: encrypt(first_name),
       last_name: encrypt(last_name),
@@ -399,10 +462,8 @@ router.put('/profile', isAuthenticated, async (req, res) => {
 
 // Update settings (protected, placeholder)
 router.put('/settings', isAuthenticated, async (req, res) => {
-  // Placeholder: Add settings table or logic if needed
   try {
     console.log('Settings update received:', req.body);
-    // Example: Store settings in a separate table or ignore for now
     res.status(200).json({ success: true, message: 'Settings saved successfully' });
   } catch (error) {
     console.error('Error saving settings:', error);
@@ -420,7 +481,6 @@ router.put('/change-password', isAuthenticated, async (req, res) => {
       return res.status(400).json({ error: 'missing_fields', message: 'Current and new passwords are required' });
     }
 
-    // Fetch current password
     const { data: userData, error: fetchError } = await supabase
       .from('users')
       .select('password')
@@ -433,13 +493,11 @@ router.put('/change-password', isAuthenticated, async (req, res) => {
       return res.status(404).json({ error: 'not_found', message: 'User not found' });
     }
 
-    // Verify current password
     const passwordMatch = await bcrypt.compare(currentPassword, userData.password);
     if (!passwordMatch) {
       return res.status(401).json({ error: 'invalid_password', message: 'Current password is incorrect' });
     }
 
-    // Validate new password (enhanced password policy)
     const passwordErrors = [];
     if (newPassword.length < 8) passwordErrors.push('Password must be at least 8 characters long');
     if (!/[0-9]/.test(newPassword)) passwordErrors.push('Password must include at least one number');
@@ -458,11 +516,9 @@ router.put('/change-password', isAuthenticated, async (req, res) => {
       });
     }
 
-    // Hash new password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update password
     const { error: updateError } = await supabase
       .from('users')
       .update({ password: hashedPassword })
@@ -472,11 +528,9 @@ router.put('/change-password', isAuthenticated, async (req, res) => {
 
     console.log(`Password updated for user_id: ${userId}`);
 
-    // Invalidate session after password change
     req.session.destroy((err) => {
       if (err) {
         console.error('Error destroying session:', err);
-        // Proceed with response even if session destruction fails
       }
       res.status(200).json({ success: true, message: 'Password changed successfully. Please log in again.' });
     });

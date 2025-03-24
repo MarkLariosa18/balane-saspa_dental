@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>Admin</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+
+  <link href="assets/img/icon.png" rel="icon">
+
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+  <link href="assets/css/style.css" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+</head>
+
+<body>
+
+  <!-- ======= Header ======= -->
+<div id="head_content"></div>
+
+  <main id="main" class="main">
+
+    <div class="pagetitle">
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="index.html">Dashboard</a></li>
+          <li class="breadcrumb-item active">Settings</li>
+        </ol>
+      </nav>
+    </div>
+  
+      <section class="section profile">
+        <div class="container">
+          <div class="row">
+            <!-- Left Column - Profile Card -->
+            <div class="col-xl-4"  style="padding-bottom: 20px;">
+              <div class="card">
+                <div class="card-body profile-card pt-4 d-flex flex-column align-items-center">
+                  <div class="profile-pic-container mb-3" style="background-color: #e9ecef; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="bi bi-person-circle" style="font-size: 100px; color: #6c757d;"></i>
+                  </div>
+                  <h2 id="profile-name">John Doe</h2>
+                  <p class="text-muted">Patient</p>
+                  <button class="btn btn-outline-secondary mt-2">
+                    <i class="bi bi-camera me-2"></i>Change Photo
+                  </button>
+                  <div class="d-flex align-items-center mt-3">
+                    <div class="bg-light rounded-circle p-2 me-3">
+                      <i class="bi bi-envelope text-primary"></i>
+                    </div>
+                    <span id="profile-email">johndoe@example.com</span>
+                  </div>
+                  <div class="d-flex align-items-center mt-2">
+                    <div class="bg-light rounded-circle p-2 me-3">
+                      <i class="bi bi-telephone text-primary"></i>
+                    </div>
+                    <span id="profile-phone">+1 123-456-7890</span>
+                  </div>
+                </div>
+              </div>  
+            </div>
+  
+            <!-- Right Column - Tabbed Content -->
+            <div class="col-xl-8" style="padding-bottom: 20px;">
+              <div class="card">
+                <div class="card-body pt-3">
+                  <!-- Bordered Tabs -->
+                  <ul class="nav nav-tabs nav-tabs-bordered">
+                    <li class="nav-item">
+                      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#profile-overview">Overview</button>
+                    </li>        
+                    <li class="nav-item">
+                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-edit">Edit Profile</button>
+                    </li>
+                    <li class="nav-item">
+                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-settings">Settings</button>
+                    </li>
+                    <li class="nav-item">
+                      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-change-password">Password</button>
+                    </li>
+                  </ul>
+  
+                  <div class="tab-content pt-3">
+                    <!-- Overview Tab -->
+                    <div class="tab-pane fade show active profile-overview" id="profile-overview">
+                      <h5 class="card-title">Personal Information</h5>
+  
+                      <div class="row">
+                        <div class="col-lg-3 col-md-4 label">Full Name</div>
+                        <div class="col-lg-9 col-md-8">John Doe</div>
+                      </div>
+  
+                      <div class="row">
+                        <div class="col-lg-3 col-md-4 label">Date of Birth</div>
+                        <div class="col-lg-9 col-md-8">January 15, 1990</div>
+                      </div>
+  
+                      <div class="row">
+                        <div class="col-lg-3 col-md-4 label">Gender</div>
+                        <div class="col-lg-9 col-md-8">Male</div>
+                      </div>
+  
+                      <div class="row">
+                          <div class="col-lg-3 col-md-4 label">Home Address</div>
+                          <div class="col-lg-9 col-md-8">Anytown, CA 12345</div>
+                        </div>
+  
+                      <div class="row">
+                        <div class="col-lg-3 col-md-4 label">Religion</div>
+                        <div class="col-lg-9 col-md-8">Roman Catholic</div>
+                      </div>
+  
+                      <div class="row">
+                          <div class="col-lg-3 col-md-4 label">Nationality</div>
+                          <div class="col-lg-9 col-md-8">American</div>
+                        </div>
+  
+                      <div class="row">
+                          <div class="col-lg-3 col-md-4 label">Home Number</div>
+                          <div class="col-lg-9 col-md-8">123 Main Street</div>
+                        </div>
+  
+                      <div class="row">
+                        <div class="col-lg-3 col-md-4 label">Phone</div>
+                        <div class="col-lg-9 col-md-8">+1 123-456-7890</div>
+                      </div>
+  
+                      <div class="row">
+                        <div class="col-lg-3 col-md-4 label">Email</div>
+                        <div class="col-lg-9 col-md-8">johndoe@example.com</div>
+                      </div>
+  
+                    
+                  </div>
+
+                     <!-- Edit Profile Tab -->
+                     <div class="tab-pane fade profile-edit pt-3" id="profile-edit">
+                      <!-- Profile Edit Form -->
+                      <form id="profile-edit-form">
+                        <div class="row mb-3">
+                          <label for="fullName" class="col-md-4 col-lg-3 col-form-label">Full Name</label>
+                          <div class="col-md-8 col-lg-9">
+                            <input name="fullName" type="text" class="form-control" id="fullName" value="John Doe">
+                          </div>
+                        </div>
+  
+                        <div class="row mb-3">
+                          <label for="dob" class="col-md-4 col-lg-3 col-form-label">Date of Birth</label>
+                          <div class="col-md-8 col-lg-9">
+                            <input name="dob" type="date" class="form-control" id="dob" value="1990-01-15">
+                          </div>
+                        </div>
+  
+                        <div class="row mb-3">
+                          <label for="gender" class="col-md-4 col-lg-3 col-form-label">Gender</label>
+                          <div class="col-md-8 col-lg-9">
+                            <select name="gender" class="form-select" id="gender">
+                              <option value="male" selected>Male</option>
+                              <option value="female">Female</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                          <label for="Address" class="col-md-4 col-lg-3 col-form-label">Home Address</label>
+                          <div class="col-md-8 col-lg-9">
+                            <input name="address" type="text" class="form-control" id="Address" value="123 Main Street, Anytown, CA 12345">
+                          </div>
+                        </div>
+  
+                        <div class="row mb-3">
+                          <label for="Address" class="col-md-4 col-lg-3 col-form-label">Religion</label>
+                          <div class="col-md-8 col-lg-9">
+                            <input name="address" type="text" class="form-control" id="Address" value="Roman Catholic">
+                          </div>
+                        </div>
+  
+                        <div class="row mb-3">
+                          <label for="Address" class="col-md-4 col-lg-3 col-form-label">Nationality</label>
+                          <div class="col-md-8 col-lg-9">
+                            <input name="address" type="text" class="form-control" id="Address" value="Amecian">
+                          </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                          <label for="Address" class="col-md-4 col-lg-3 col-form-label">Home Number</label>
+                          <div class="col-md-8 col-lg-9">
+                            <input name="address" type="text" class="form-control" id="Address" value="123 Main Street">
+                          </div>
+                        </div>
+  
+                        <div class="row mb-3">
+                          <label for="Phone" class="col-md-4 col-lg-3 col-form-label">Phone</label>
+                          <div class="col-md-8 col-lg-9">
+                            <input name="phone" type="text" class="form-control" id="Phone" value="+1 123-456-7890">
+                          </div>
+                        </div>
+  
+                        <div class="row mb-3">
+                          <label for="Email" class="col-md-4 col-lg-3 col-form-label">Email</label>
+                          <div class="col-md-8 col-lg-9">
+                            <input name="email" type="email" class="form-control" id="Email" value="johndoe@example.com">
+                          </div>
+                        </div>
+  
+                        <div class="text-center">
+                          <button type="button" class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+                        </div>
+                      </form><!-- End Profile Edit Form -->
+                    </div>
+
+  
+                    <!-- Settings Tab -->
+                    <div class="tab-pane fade pt-3" id="profile-settings">
+                      <!-- Settings Form -->
+                      <form>
+                        <div class="row mb-3">
+                          <label class="col-md-4 col-lg-3 col-form-label">Email Notifications</label>
+                          <div class="col-md-8 col-lg-9">
+                            <div class="form-check mb-2">
+                              <input class="form-check-input" type="checkbox" id="appointmentReminders" checked>
+                              <label class="form-check-label" for="appointmentReminders">
+                                Appointment reminders
+                              </label>
+                            </div>
+                            <div class="form-check mb-2">
+                              <input class="form-check-input" type="checkbox" id="treatmentUpdates" checked>
+                              <label class="form-check-label" for="treatmentUpdates">
+                                Treatment updates and follow-ups
+                              </label>
+                            </div>
+                            <div class="form-check mb-2">
+                              <input class="form-check-input" type="checkbox" id="promotionalOffers">
+                              <label class="form-check-label" for="promotionalOffers">
+                                Promotional offers and news
+                              </label>
+                            </div>
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="securityNotifications" checked disabled>
+                              <label class="form-check-label" for="securityNotifications">
+                                Security notifications
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+  
+                        
+  
+                        <div class="row mb-3">
+                          <label class="col-md-4 col-lg-3 col-form-label">Privacy Settings</label>
+                          <div class="col-md-8 col-lg-9">
+                            <div class="form-check mb-2">
+                              <input class="form-check-input" type="checkbox" id="dataSharing">
+                              <label class="form-check-label" for="dataSharing">
+                                Share my data with partners for improved services
+                              </label>
+                            </div>
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" id="analyticsConsent" checked>
+                              <label class="form-check-label" for="analyticsConsent">
+                                Allow anonymous usage data collection for service improvement
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+  
+                        <div class="text-center">
+                          <button type="submit" class="btn btn-primary">Save Preferences</button>
+                        </div>
+                      </form><!-- End settings Form -->
+                    </div>
+  
+                    <!-- Change Password Tab -->
+                    <div class="tab-pane fade pt-3" id="profile-change-password">
+                      <!-- Change Password Form -->
+                      <form>
+                        <div class="row mb-3">
+                          <label for="currentPassword" class="col-md-4 col-lg-3 col-form-label">Current Password</label>
+                          <div class="col-md-8 col-lg-9">
+                            <input name="password" type="password" class="form-control" id="currentPassword">
+                          </div>
+                        </div>
+  
+                        <div class="row mb-3">
+                          <label for="newPassword" class="col-md-4 col-lg-3 col-form-label">New Password</label>
+                          <div class="col-md-8 col-lg-9">
+                            <input name="newpassword" type="password" class="form-control" id="newPassword">
+                            <div class="form-text">Password must be at least 8 characters long with numbers and symbols.</div>
+                          </div>
+                        </div>
+  
+                        <div class="row mb-3">
+                          <label for="renewPassword" class="col-md-4 col-lg-3 col-form-label">Re-enter New Password</label>
+                          <div class="col-md-8 col-lg-9">
+                            <input name="renewpassword" type="password" class="form-control" id="renewPassword">
+                          </div>
+                        </div>
+  
+                        <div class="text-center">
+                          <button type="submit" class="btn btn-primary">Change Password</button>
+                        </div>
+                      </form><!-- End Change Password Form -->
+                    </div>
+                  </div><!-- End Bordered Tabs -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  
+
+
+<!-- ======= Footer ======= -->
+<div id="foot_content"></div>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <script src="assets/js/main.js"></script>
+  <script type="text/javascript">
+    $('#head_content').load('header.html');
+    $('#foot_content').load('footer.html');
+  </script>
+
+
+</body>
+
+</html>

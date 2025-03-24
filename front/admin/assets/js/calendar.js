@@ -78,14 +78,14 @@ function loadSampleAppointments() {
                 {
                     name: "John Smith",
                     time: "09:00",
-                    procedure: "Cleaning",
+                    service: "Cleaning",
                     notes: "First-time patient",
                     status: "pending"
                 },
                 {
                     name: "Sarah Johnson",
                     time: "10:30",
-                    procedure: "Checkup",
+                    service: "Checkup",
                     notes: "Follow-up appointment",
                     status: "approved"
                 }
@@ -94,7 +94,7 @@ function loadSampleAppointments() {
                 {
                     name: "Michael Brown",
                     time: "14:00",
-                    procedure: "Filling",
+                    service: "Filling",
                     notes: "Cavity on lower molar",
                     status: "pending"
                 }
@@ -288,9 +288,9 @@ function createAppointmentCard(appointment, dateKey, index) {
     const details = document.createElement('div');
     details.className = 'appointment-details';
     
-    const procedureElement = document.createElement('p');
-    procedureElement.innerHTML = `<strong>Procedure:</strong> ${appointment.procedure}`;
-    details.appendChild(procedureElement);
+    const serviceElement = document.createElement('p');
+    serviceElement.innerHTML = `<strong>Service:</strong> ${appointment.service}`;
+    details.appendChild(serviceElement);
     
     const notesElement = document.createElement('p');
     notesElement.innerHTML = `<strong>Notes:</strong> ${appointment.notes || 'None'}`;

@@ -1,4 +1,5 @@
-// Sample Data
+// patients.js
+
 let patients = [
     {
         id: 1,
@@ -101,14 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Event Listeners Setup
 function setupEventListeners() {
-    // Navigation
     viewAllBtn.addEventListener('click', showPatientsList);
     addPatientBtn.addEventListener('click', showAddPatientForm);
     backToListBtn.addEventListener('click', showPatientsList);
     editPatientDetailsBtn.addEventListener('click', editCurrentPatient);
     addAppointmentBtn.addEventListener('click', showAddAppointmentForm);
     
-    // Forms
     patientForm.addEventListener('submit', savePatient);
     cancelBtn.addEventListener('click', showPatientsList);
     appointmentForm.addEventListener('submit', saveAppointment);
@@ -116,17 +115,11 @@ function setupEventListeners() {
         showPatientDetails(currentPatientId);
     });
     
-    // Search
     searchPatient.addEventListener('input', filterPatients);
     
-    // Modals
     confirmDeleteBtn.addEventListener('click', confirmDeletePatient);
-    cancelDeleteBtn.addEventListener('click', () => {
-        toggleModal(deleteConfirmModal, false);
-    });
-    closeMessageBtn.addEventListener('click', () => {
-        toggleModal(messageModal, false);
-    });
+    cancelDeleteBtn.addEventListener('click', () => toggleModal(deleteConfirmModal, false));
+    closeMessageBtn.addEventListener('click', () => toggleModal(messageModal, false));
 }
 
 // Load and display patients list
@@ -150,7 +143,6 @@ function loadPatientsList() {
         patientsTableBody.appendChild(row);
     });
     
-    // Add event listeners to the action buttons
     document.querySelectorAll('.view-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const patientId = parseInt(e.target.getAttribute('data-id'));
@@ -180,6 +172,7 @@ function showAddPatientForm() {
     formTitle.textContent = 'Add New Patient';
     patientForm.reset();
     document.getElementById('patientId').value = '';
+    document.getElementById('patientId').removeAttribute('readonly'); // Ensure ID is editable for new patients
     currentPatientId = null;
 }
 
@@ -192,6 +185,7 @@ function editPatient(patientId) {
     formTitle.textContent = 'Edit Patient';
     
     document.getElementById('patientId').value = patient.id;
+    document.getElementById('patientId').setAttribute('readonly', 'readonly'); // Make ID readonly
     document.getElementById('name').value = patient.name;
     document.getElementById('email').value = patient.email;
     document.getElementById('phone').value = patient.phone;
@@ -203,37 +197,31 @@ function editPatient(patientId) {
 
 // Edit current patient from details view
 function editCurrentPatient() {
-    if (currentPatientId) {
-        editPatient(currentPatientId);
-    }
+    if (currentPatientId) editPatient(currentPatientId);
 }
 
 // Save patient (add or update)
 function savePatient(e) {
     e.preventDefault();
     
-    const patientIdInput = document.getElementById('patientId').value;
     const name = document.getElementById('name').value;
     const email = document.getElementById('email').value;
     const phone = document.getElementById('phone').value;
     const address = document.getElementById('address').value;
     const dateOfBirth = document.getElementById('dateOfBirth').value;
     
-    if (patientIdInput) {
+    if (currentPatientId !== null) {
         // Update existing patient
-        const patientId = parseInt(patientIdInput);
-        const patientIndex = patients.findIndex(p => p.id === patientId);
-        
+        const patientIndex = patients.findIndex(p => p.id === currentPatientId);
         if (patientIndex !== -1) {
             patients[patientIndex] = {
-                ...patients[patientIndex],
+                ...patients[patientIndex], // Keep existing id and appointments
                 name,
                 email,
                 phone,
                 address,
                 dateOfBirth
             };
-            
             showMessage('Patient updated successfully');
         }
     } else {
@@ -254,6 +242,8 @@ function savePatient(e) {
     
     loadPatientsList();
     showPatientsList();
+    
+    setTimeout(() => toggleModal(messageModal, false), 2000);
 }
 
 // Show patient details
@@ -269,7 +259,6 @@ function showPatientDetails(patientId) {
     document.getElementById('patientAddress').textContent = patient.address || 'Not provided';
     document.getElementById('patientDOB').textContent = formatDate(patient.dateOfBirth) || 'Not provided';
     
-    // Load appointments
     loadAppointmentsTable(patient.appointments);
     
     currentPatientId = patientId;
@@ -286,7 +275,6 @@ function loadAppointmentsTable(appointments) {
         return;
     }
     
-    // Sort appointments by date (newest first)
     const sortedAppointments = [...appointments].sort((a, b) => {
         return new Date(b.date + 'T' + b.time) - new Date(a.date + 'T' + a.time);
     });
@@ -307,7 +295,6 @@ function loadAppointmentsTable(appointments) {
         appointmentsTableBody.appendChild(row);
     });
     
-    // Add event listeners to the edit appointment buttons
     document.querySelectorAll('.edit-appointment-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const appointmentId = parseInt(e.target.getAttribute('data-id'));
@@ -325,7 +312,6 @@ function showAddAppointmentForm() {
     document.getElementById('appointmentId').value = '';
     document.getElementById('appointmentPatientId').value = currentPatientId;
     
-    // Set default date to today
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('appointmentDate').value = today;
     
@@ -370,7 +356,6 @@ function saveAppointment(e) {
     if (patientIndex === -1) return;
     
     if (appointmentIdInput) {
-        // Update existing appointment
         const appointmentId = parseInt(appointmentIdInput);
         const appointmentIndex = patients[patientIndex].appointments.findIndex(a => a.id === appointmentId);
         
@@ -383,11 +368,9 @@ function saveAppointment(e) {
                 doctor,
                 notes
             };
-            
             showMessage('Appointment updated successfully');
         }
     } else {
-        // Add new appointment
         const newAppointment = {
             id: nextAppointmentId++,
             date,
@@ -402,6 +385,8 @@ function saveAppointment(e) {
     }
     
     showPatientDetails(patientId);
+    
+    setTimeout(() => toggleModal(messageModal, false), 2000);
 }
 
 // Show delete confirmation modal
@@ -424,6 +409,8 @@ function confirmDeletePatient() {
     patientToDelete = null;
     toggleModal(deleteConfirmModal, false);
     showPatientsList();
+    
+    setTimeout(() => toggleModal(messageModal, false), 2000);
 }
 
 // Show patients list section
@@ -471,7 +458,6 @@ function filterPatients() {
         patientsTableBody.appendChild(row);
     });
     
-    // Re-add event listeners to the action buttons
     document.querySelectorAll('.view-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const patientId = parseInt(e.target.getAttribute('data-id'));
@@ -496,23 +482,19 @@ function filterPatients() {
 
 // Set active section
 function setActiveSection(section) {
-    // Hide all sections
     patientsListSection.classList.remove('active');
     patientFormSection.classList.remove('active');
     patientDetailsSection.classList.remove('active');
     appointmentFormSection.classList.remove('active');
     
-    // Show the selected section
     section.classList.add('active');
 }
 
 // Set active sidebar button
 function setActiveSidebarButton(button) {
-    // Remove active class from all buttons
     viewAllBtn.classList.remove('active');
     addPatientBtn.classList.remove('active');
     
-    // Add active class to the selected button
     button.classList.add('active');
 }
 

@@ -144,8 +144,9 @@
       form.addEventListener('submit', async (event) => {
         event.preventDefault();
 
-        const username = usernameField.value;
-        const password = passwordField.value;
+        // Trim only the username to ignore spaces
+        const username = usernameField.value.trim();
+        const password = passwordField.value; // Password remains unchanged
         const remember = rememberMeCheckbox.checked;
 
         if (!form.checkValidity()) {

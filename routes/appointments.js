@@ -2,6 +2,7 @@ const express = require('express');
 const supabase = require('./supabase');
 const router = express.Router();
 const crypto = require('crypto');
+const WebSocket = require('ws'); // Ensure WebSocket is imported if used
 
 // Load environment variables
 require('dotenv').config();
@@ -22,10 +23,11 @@ if (encryptionKey.length !== 32) {
   console.error(`Invalid ENCRYPTION_KEY length: expected 32 bytes (64 hex chars), got ${encryptionKey.length} bytes`);
   process.exit(1);
 }
-console.log('Encryption Key (hex):', ENCRYPTION_KEY.slice(0, 8) + '...'); // Partial debug key
+console.log('Encryption Key (hex):', ENCRYPTION_KEY.slice(0, 8) + '...');
 
 // Middleware to check authentication
 const isAuthenticated = (req, res, next) => {
+  console.log('Authentication check - Session:', req.session);
   if (!req.session || !req.session.isLoggedIn || !req.session.userId) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
@@ -72,10 +74,10 @@ function decrypt(text) {
   const [ivText, encryptedText] = text.split(':');
   if (!ivText || !encryptedText) {
     console.warn(`Data appears unencrypted or invalid format: "${text}". Returning as-is.`);
-    return text; // Return unencrypted text if no colon is found
+    return text;
   }
   try {
-    console.log(`Attempting to decrypt (first pass): "${text}"`); // Debug log
+    console.log(`Attempting to decrypt (first pass): "${text}"`);
     const iv = Buffer.from(ivText, 'hex');
     if (iv.length !== IV_LENGTH) {
       throw new Error(`Invalid IV length: expected ${IV_LENGTH} bytes, got ${iv.length}`);
@@ -86,7 +88,6 @@ function decrypt(text) {
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     let decryptedString = decrypted.toString('utf8');
 
-    // If the result still looks encrypted (contains a colon), attempt a second decryption
     if (decryptedString.includes(':')) {
       console.log(`First decryption produced encrypted output: "${decryptedString}". Attempting second pass.`);
       const [secondIvText, secondEncryptedText] = decryptedString.split(':');
@@ -97,19 +98,17 @@ function decrypt(text) {
       secondDecrypted = Buffer.concat([secondDecrypted, secondDecipher.final()]);
       decryptedString = secondDecrypted.toString('utf8');
 
-      // Validate the second decryption output
       if (!decryptedString || decryptedString.includes(':') || /[^ -~]/.test(decryptedString)) {
         console.warn(`Second decryption produced invalid output: "${decryptedString}". Returning original: "${text}"`);
-        return text; // Fallback to original if still invalid
+        return text;
       }
       console.log(`Successfully decrypted (after second pass): "${text}" -> "${decryptedString}"`);
       return decryptedString;
     }
 
-    // Validate single decryption output
     if (!decryptedString || /[^ -~]/.test(decryptedString)) {
       console.warn(`Single decryption produced invalid output: "${decryptedString}". Returning original: "${text}"`);
-      return text; // Fallback to original if invalid
+      return text;
     }
     console.log(`Successfully decrypted (single pass): "${text}" -> "${decryptedString}"`);
     return decryptedString;
@@ -120,7 +119,7 @@ function decrypt(text) {
       ivLength: ivText?.length,
       keySnippet: ENCRYPTION_KEY.slice(0, 8) + '...'
     });
-    return text; // Return original text on decryption failure
+    return text;
   }
 }
 
@@ -130,7 +129,7 @@ router.get('/booked', async (req, res) => {
     console.log('GET /api/appointments/booked requested');
     const { data, error } = await supabase
       .from('appointments')
-      .select('appointment_date, notes')
+      .select('id, appointment_date, notes') // Added id for exclusion in rescheduling
       .neq('status', 'cancelled')
       .order('appointment_date', { ascending: true });
 
@@ -183,7 +182,7 @@ router.post('/', isAuthenticated, async (req, res) => {
         user_id, 
         appointment_date, 
         service_id, 
-        notes: notes ? encrypt(notes) : null, // Single encryption
+        notes: notes ? encrypt(notes) : null,
         status: 'pending' 
       }])
       .select()
@@ -217,11 +216,14 @@ router.post('/', isAuthenticated, async (req, res) => {
   }
 });
 
-// GET /api/appointments - Fetch upcoming appointments for the logged-in user
+// GET /api/appointments - Fetch upcoming appointments for the logged-in user or past appointments with query param
 router.get('/', isAuthenticated, async (req, res) => {
   try {
-    console.log('Fetching appointments for userId:', req.session.userId);
-    const { data, error } = await supabase
+    const isPast = req.query.past === 'true';
+    const dateFilter = req.query.date || new Date().toISOString().split('T')[0];
+    console.log('Fetching appointments for userId:', req.session.userId, 'Past:', isPast, 'Date:', dateFilter);
+
+    let query = supabase
       .from('appointments')
       .select(`
         id,
@@ -232,10 +234,16 @@ router.get('/', isAuthenticated, async (req, res) => {
         services (name)
       `)
       .eq('user_id', req.session.userId)
-      .gte('appointment_date', new Date().toISOString().split('T')[0])
-      .in('status', ['pending', 'confirmed'])
-      .order('appointment_date', { ascending: true });
+      .order('appointment_date', { ascending: !isPast });
 
+    if (isPast) {
+      query = query.lte('appointment_date', dateFilter);
+    } else {
+      query = query.gte('appointment_date', dateFilter)
+                  .in('status', ['pending', 'confirmed']);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
 
     const decryptedData = data.map(appointment => ({
@@ -273,7 +281,7 @@ router.get('/history/:userId?', isAuthenticated, async (req, res) => {
       `)
       .order('appointment_date', { ascending: false });
 
-    if (!isAdminUser.data && userId && userId !== req.session.userId) {
+    if (!isAdminUser && userId && userId !== req.session.userId) {
       return res.status(403).json({ message: 'Forbidden: Cannot view other users\' history' });
     }
     if (userId) {
@@ -286,11 +294,11 @@ router.get('/history/:userId?', isAuthenticated, async (req, res) => {
     const patientIds = [...new Set(appointments.map(app => app.user_id))];
     const { data: patients, error: patientError } = await supabase
       .from('patients')
-      .select('id, first_name, last_name') // Removed middle_name
+      .select('id, first_name, last_name')
       .in('id', patientIds);
     if (patientError) throw patientError;
 
-    console.log('Patients data before decryption:', patients); // Debug log
+    console.log('Patients data before decryption:', patients);
 
     const patientMap = new Map(patients.map(p => [
       p.id,
@@ -316,6 +324,7 @@ router.get('/history/:userId?', isAuthenticated, async (req, res) => {
 // DELETE /api/appointments/:id - Request cancellation
 router.delete('/:id', isAuthenticated, async (req, res) => {
   const { id } = req.params;
+  const { cancel_reason } = req.body;
   try {
     const { data: appointmentCheck, error: checkError } = await supabase
       .from('appointments')
@@ -343,14 +352,109 @@ router.delete('/:id', isAuthenticated, async (req, res) => {
 
     const { error: updateError } = await supabase
       .from('appointments')
-      .update({ pending_action: 'cancel' })
+      .update({ pending_action: 'cancel', cancel_reason: cancel_reason || 'Not specified' })
       .eq('id', id);
     if (updateError) throw updateError;
+
+    // Broadcast the cancel request via WebSocket
+    if (req.app.get('wss')) {
+      const enrichedAppointment = {
+        ...appointment,
+        notes: appointment.notes ? decrypt(appointment.notes) : null,
+        cancel_reason: cancel_reason || 'Not specified'
+      };
+      console.log('Broadcasting cancel request via WebSocket:', enrichedAppointment);
+      req.app.get('wss').clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'cancel_request',
+            request: enrichedAppointment
+          }));
+        }
+      });
+    } else {
+      console.warn('WebSocket server not found, cannot broadcast cancel request');
+    }
 
     res.status(200).json({ success: true, message: 'Cancellation request submitted, awaiting admin approval' });
   } catch (error) {
     console.error('Error requesting cancellation:', error);
     res.status(500).json({ success: false, message: 'Failed to request cancellation', error: error.message });
+  }
+});
+
+// PUT /api/appointments/:id - Edit an existing appointment
+router.put('/:id', isAuthenticated, async (req, res) => {
+  const { id } = req.params;
+  const { appointment_date, notes } = req.body;
+
+  console.log('PUT /api/appointments/:id called with:', { id, userId: req.session.userId, body: req.body });
+
+  try {
+    if (!appointment_date) {
+      return res.status(400).json({ success: false, message: 'Appointment date is required' });
+    }
+
+    const { data: appointmentCheck, error: checkError } = await supabase
+      .from('appointments')
+      .select('id, user_id, appointment_date, notes, status, pending_action')
+      .eq('id', id)
+      .eq('user_id', req.session.userId)
+      .single();
+
+    if (checkError) throw new Error(`Supabase error: ${checkError.message}`);
+    if (!appointmentCheck) {
+      return res.status(404).json({ success: false, message: 'Appointment not found or not authorized' });
+    }
+
+    if (!['pending', 'confirmed'].includes(appointmentCheck.status)) {
+      return res.status(400).json({ success: false, message: 'Cannot edit completed or cancelled appointment' });
+    }
+
+    if (appointmentCheck.pending_action) {
+      return res.status(400).json({ success: false, message: `Cannot edit: ${appointmentCheck.pending_action} request pending` });
+    }
+
+    const { data: conflictCheck, error: conflictError } = await supabase
+      .from('appointments')
+      .select('id')
+      .eq('appointment_date', appointment_date)
+      .neq('id', id)
+      .neq('status', 'cancelled');
+
+    if (conflictError) throw conflictError;
+    if (conflictCheck.length > 0) {
+      return res.status(409).json({ success: false, message: 'Time slot already booked' });
+    }
+
+    const updatedData = {
+      appointment_date,
+      notes: notes ? encrypt(notes) : null,
+      updated_at: new Date().toISOString()
+    };
+
+    const { data: updatedAppointment, error: updateError } = await supabase
+      .from('appointments')
+      .update(updatedData)
+      .eq('id', id)
+      .select('id, user_id, appointment_date, notes, status, services (name)')
+      .single();
+
+    if (updateError) throw updateError;
+
+    const decryptedAppointment = {
+      ...updatedAppointment,
+      notes: updatedAppointment.notes ? decrypt(updatedAppointment.notes) : null
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Appointment updated successfully',
+      appointment: decryptedAppointment
+    });
+  } catch (error) {
+    console.error('Error updating appointment:', error);
+    res.status(500).json({ success: false, message: 'Failed to update appointment', error: error.message });
   }
 });
 
@@ -376,11 +480,11 @@ router.get('/requests', isAuthenticated, isAdmin, async (req, res) => {
     const patientIds = [...new Set(requests.map(req => req.user_id))];
     const { data: patients, error: patientError } = await supabase
       .from('patients')
-      .select('id, first_name, last_name') // Removed middle_name
+      .select('id, first_name, last_name')
       .in('id', patientIds);
     if (patientError) throw patientError;
 
-    console.log('Patients data before decryption:', patients); // Debug log
+    console.log('Patients data before decryption:', patients);
 
     const patientMap = new Map(patients.map(p => [
       p.id,
@@ -508,11 +612,11 @@ router.get('/all', isAuthenticated, isAdmin, async (req, res) => {
     const patientIds = [...new Set(appointments.map(app => app.user_id))];
     const { data: patients, error: patientError } = await supabase
       .from('patients')
-      .select('id, first_name, last_name') // Removed middle_name
+      .select('id, first_name, last_name')
       .in('id', patientIds);
     if (patientError) throw patientError;
 
-    console.log('Patients data before decryption:', patients); // Debug log
+    console.log('Patients data before decryption:', patients);
 
     const patientMap = new Map(patients.map(p => [
       p.id,
@@ -535,13 +639,236 @@ router.get('/all', isAuthenticated, isAdmin, async (req, res) => {
   }
 });
 
+// POST /api/appointments/:id/confirm - Confirm an appointment (admin only)
+router.post('/:id/confirm', isAuthenticated, isAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data: appointmentCheck, error: checkError } = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('id', id)
+      .eq('status', 'pending')
+      .single();
+    
+    if (checkError) throw checkError;
+    if (!appointmentCheck) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Appointment not found or not in pending status' 
+      });
+    }
+
+    const { error: updateError } = await supabase
+      .from('appointments')
+      .update({ 
+        status: 'confirmed',
+        pending_action: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+
+    const { error: requestUpdateError } = await supabase
+      .from('appointment_requests')
+      .update({ 
+        status: 'approved',
+        updated_at: new Date().toISOString()
+      })
+      .eq('appointment_id', id)
+      .eq('status', 'pending');
+
+    if (requestUpdateError) console.warn('Error updating request status:', requestUpdateError);
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Appointment confirmed successfully' 
+    });
+  } catch (error) {
+    console.error('Error confirming appointment:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to confirm appointment', 
+      error: error.message 
+    });
+  }
+});
+
+// POST /api/appointments/:id/reject - Reject an appointment (admin only)
+router.post('/:id/reject', isAuthenticated, isAdmin, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { data: appointmentCheck, error: checkError } = await supabase
+      .from('appointments')
+      .select('*')
+      .eq('id', id)
+      .eq('status', 'pending')
+      .single();
+    
+    if (checkError) throw checkError;
+    if (!appointmentCheck) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Appointment not found or not in pending status' 
+      });
+    }
+
+    const { error: updateError } = await supabase
+      .from('appointments')
+      .update({ 
+        status: 'rejected',
+        pending_action: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+
+    const { error: requestUpdateError } = await supabase
+      .from('appointment_requests')
+      .update({ 
+        status: 'rejected',
+        updated_at: new Date().toISOString()
+      })
+      .eq('appointment_id', id)
+      .eq('status', 'pending');
+
+    if (requestUpdateError) console.warn('Error updating request status:', requestUpdateError);
+
+    res.status(200).json({ 
+      success: true, 
+      message: 'Appointment rejected successfully' 
+    });
+  } catch (error) {
+    console.error('Error rejecting appointment:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to reject appointment', 
+      error: error.message 
+    });
+  }
+});
+
+// GET /api/appointments/pending-action - Fetch appointments with pending actions (admin only)
+router.get('/pending-action', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    console.log('GET /api/appointments/pending-action requested');
+    const { data: appointments, error } = await supabase
+      .from('appointments')
+      .select(`
+        id,
+        user_id,
+        appointment_date,
+        status,
+        notes,
+        pending_action,
+        cancel_reason,
+        services (name)
+      `)
+      .eq('pending_action', 'cancel')
+      .order('appointment_date', { ascending: true });
+
+    if (error) throw error;
+
+    const patientIds = [...new Set(appointments.map(app => app.user_id))];
+    const { data: patients, error: patientError } = await supabase
+      .from('patients')
+      .select('id, first_name, last_name')
+      .in('id', patientIds);
+    if (patientError) throw patientError;
+
+    console.log('Patients data before decryption:', patients);
+
+    const patientMap = new Map(patients.map(p => [
+      p.id,
+      {
+        first_name: decrypt(p.first_name),
+        last_name: decrypt(p.last_name)
+      }
+    ]));
+
+    const enrichedAppointments = appointments.map(app => ({
+      ...app,
+      notes: app.notes ? decrypt(app.notes) : null,
+      patients: patientMap.get(app.user_id) || { first_name: null, last_name: null }
+    }));
+
+    res.status(200).json(enrichedAppointments);
+  } catch (error) {
+    console.error('Error fetching pending action appointments:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch pending action appointments', error: error.message });
+  }
+});
+
+// PUT /api/appointments/:id/action - Process a pending action (admin only)
+router.put('/:id/action', isAuthenticated, isAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { pending_action, status } = req.body;
+
+  try {
+    const { data: appointmentCheck, error: checkError } = await supabase
+      .from('appointments')
+      .select('pending_action')
+      .eq('id', id)
+      .single();
+    if (checkError) throw checkError;
+    if (!appointmentCheck) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    if (!appointmentCheck.pending_action) {
+      return res.status(400).json({ message: 'No pending action for this appointment' });
+    }
+
+    const { error: updateError } = await supabase
+      .from('appointments')
+      .update({ 
+        pending_action, 
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+    if (updateError) throw updateError;
+
+    const { error: requestUpdateError } = await supabase
+      .from('appointment_requests')
+      .update({ 
+        status: status === 'cancelled' ? 'approved' : 'rejected',
+        updated_at: new Date().toISOString()
+      })
+      .eq('appointment_id', id)
+      .eq('status', 'pending');
+    if (requestUpdateError) console.warn('Error updating request status:', requestUpdateError);
+
+    if (req.app.get('wss')) {
+      console.log(`Broadcasting ${status} action for appointment ${id} via WebSocket`);
+      req.app.get('wss').clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({
+            type: 'cancel_response',
+            requestId: id,
+            status: status
+          }));
+        }
+      });
+    } else {
+      console.warn('WebSocket server not found, cannot broadcast action result');
+    }
+
+    res.status(200).json({ success: true, message: `Appointment ${status} successfully` });
+  } catch (error) {
+    console.error('Error processing appointment action:', error);
+    res.status(500).json({ success: false, message: 'Failed to process appointment action', error: error.message });
+  }
+});
+
 // Test encryption/decryption route
 router.get('/test-encryption', async (req, res) => {
   try {
     const originalText = 'John Smith';
     const encrypted = encrypt(originalText);
-    const decryptedOnce = decrypt(encrypted); // Single decryption
-    const decryptedTwice = decrypt(decryptedOnce); // Double decryption to test
+    const decryptedOnce = decrypt(encrypted);
+    const decryptedTwice = decrypt(decryptedOnce);
     res.status(200).json({
       original: originalText,
       encrypted: encrypted,
