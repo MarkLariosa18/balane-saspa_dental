@@ -1,12 +1,5 @@
 /* Profile Page CSS Styles */
 
-<<<<<<< HEAD
-=======
-/*--------------------------------------------------------------
-# Font & Color Variables
-# Help: https://bootstrapmade.com/color-system/
---------------------------------------------------------------*/
->>>>>>> 1c897b2fa63412a13161ca82685cd35593a0dc10
 /* Fonts */
 :root {
     --default-font: "Roboto", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
@@ -761,14 +754,11 @@
     font-weight: 500;
     transition: all 0.3s ease;
   }
-<<<<<<< HEAD
 
   .btn-primary1 {
     background-color: #0d6efd;
     transition: all 0.3s ease;
   }
-=======
->>>>>>> 1c897b2fa63412a13161ca82685cd35593a0dc10
   
   .btn-primary:hover {
     background-color: #0b5ed7;
