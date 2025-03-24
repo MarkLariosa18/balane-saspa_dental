@@ -23,7 +23,11 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors({
+<<<<<<< HEAD
   origin: 'http://localhost:3000', // Adjust if frontend runs on a different port (e.g., 5500)
+=======
+  origin: 'http://localhost:3000',
+>>>>>>> 1c897b2fa63412a13161ca82685cd35593a0dc10
   credentials: true
 }));
 app.use(express.json());
@@ -59,21 +63,32 @@ const isAuthenticated = (req, res, next) => {
     '/patients' // Patient registration (POST /patients/)
   ];
 
+<<<<<<< HEAD
   // Allow public paths and API routes (adjusted to prevent redirect for APIs)
   if (
     publicPaths.includes(req.path) ||
     publicApiPaths.some(path => req.path.startsWith(path)) ||
     (req.path === '/patients' && req.method === 'POST')
+=======
+  // Allow public paths and API routes
+  if (
+    publicPaths.includes(req.path) ||
+    publicApiPaths.some(path => req.path.startsWith(path)) ||
+    (req.path === '/patients' && req.method === 'POST') // Explicitly allow POST /patients
+>>>>>>> 1c897b2fa63412a13161ca82685cd35593a0dc10
   ) {
     return next();
   }
 
   // Require authentication for protected routes
   if (!req.session.isLoggedIn || !req.session.userId) {
+<<<<<<< HEAD
     // For API requests, return JSON instead of redirecting
     if (req.path.startsWith('/api/') || req.path.startsWith('/patients') || req.path.startsWith('/users')) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
+=======
+>>>>>>> 1c897b2fa63412a13161ca82685cd35593a0dc10
     return res.redirect('/pages-login.html');
   }
   next();

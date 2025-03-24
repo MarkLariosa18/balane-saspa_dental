@@ -26,7 +26,10 @@ console.log('Encryption Key (hex):', ENCRYPTION_KEY.slice(0, 8) + '...'); // Par
 
 // Middleware to check authentication
 const isAuthenticated = (req, res, next) => {
+<<<<<<< HEAD
   console.log('Authentication check - Session:', req.session);
+=======
+>>>>>>> 1c897b2fa63412a13161ca82685cd35593a0dc10
   if (!req.session || !req.session.isLoggedIn || !req.session.userId) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
@@ -355,6 +358,7 @@ router.delete('/:id', isAuthenticated, async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 // PUT /api/appointments/:id - Edit an existing appointment
 router.put('/:id', isAuthenticated, async (req, res) => {
   const { id } = req.params;
@@ -432,6 +436,8 @@ router.put('/:id', isAuthenticated, async (req, res) => {
   }
 });
 
+=======
+>>>>>>> 1c897b2fa63412a13161ca82685cd35593a0dc10
 // GET /api/appointments/requests - Fetch all pending requests (admin only)
 router.get('/requests', isAuthenticated, isAdmin, async (req, res) => {
   try {

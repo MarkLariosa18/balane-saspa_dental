@@ -327,7 +327,11 @@ router.get('/profile', isAuthenticated, async (req, res) => {
       email: decrypt(data.email),
       phone: decrypt(data.mobile_no),
       dob: decrypt(data.birthdate),
+<<<<<<< HEAD
       gender: data.sex === 'M' ? 'Male' : data.sex === 'F' ? 'Female' : '',
+=======
+      gender: data.sex === 'M' ? 'male' : data.sex === 'F' ? 'female' : 'other',
+>>>>>>> 1c897b2fa63412a13161ca82685cd35593a0dc10
       address: decrypt(data.home_address),
       religion: decrypt(data.religion) || 'N/A',
       nationality: decrypt(data.nationality) || 'N/A',
