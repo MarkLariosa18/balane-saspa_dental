@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+    <title>Admin</title>
+    <meta content="" name="description">
+    <meta content="" name="keywords">
+
+    <link href="assets/img/icon.png" rel="icon">
+    <link href="assets/img/icon.png" rel="apple-touch-icon">
+
+    <link href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+    <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+    <link href="assets/vendor/quill/quill.snow.css" rel="stylesheet">
+    <link href="assets/vendor/quill/quill.bubble.css" rel="stylesheet">
+    <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
+    <link href="assets/vendor/simple-datatables/style.css" rel="stylesheet">
+    <link href="assets/css/style.css" rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+
+<body>
+    <div id="head_content"></div>
+
+    <main id="main" class="main">
+        <div class="pagetitle">
+            <nav>
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="index.html">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Patients</li>
+                </ol>
+            </nav>
+        </div>
+
+        <section class="section">
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Patients</h5>
+
+                            <div class="row mb-3">
+                                <div class="col-md-2">
+                                    <!-- "Add Patient" button removed -->
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="entriesSelect" class="form-label">Show Entries:</label>
+                                    <select id="entriesSelect" class="form-select w-auto d-inline-block">
+                                        <option value="5">5</option>
+                                        <option value="10" selected>10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="all">All</option>
+                                    </select>
+                                    <button id="exportCSV" class="btn btn-primary btn-sm ms-2">Export as CSV</button>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="searchInput" class="form-label">Search:</label>
+                                    <input type="text" id="searchInput" class="form-control" placeholder="Search patients...">
+                                </div>
+                            </div>
+
+                            <table class="table" id="patientTable">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-column="id">ID <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-column="name">Name <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-column="address">Address <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-column="sex">Sex <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-column="age">Age <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-column="contact">Contact No. <span class="sort-icon"></span></th>
+                                        <th class="sortable" data-column="email">Email <span class="sort-icon"></span></th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>9958</td>
+                                        <td>Unity Pugh</td>
+                                        <td>Curicó</td>
+                                        <td>Female</td>
+                                        <td>37</td>
+                                        <td>+1234567890</td>
+                                        <td>unity@example.com</td>
+                                        <td>
+                                            <button class="btn btn-danger btn-sm" onclick="deletePatient(this)">Delete</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>8971</td>
+                                        <td>Theodore Duran</td>
+                                        <td>Dhanbad</td>
+                                        <td>Male</td>
+                                        <td>25</td>
+                                        <td>+9876543210</td>
+                                        <td>theodore@example.com</td>
+                                        <td>
+                                            <button class="btn btn-danger btn-sm" onclick="deletePatient(this)">Delete</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div class="modal fade" id="addPatientModal" tabindex="-1" aria-labelledby="addPatientModalLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title" id="addPatientModalLabel">Add New Patient</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <form id="addPatientForm">
+                                                <div class="mb-3">
+                                                    <label for="patientID" class="form-label">ID</label>
+                                                    <input type="text" class="form-control" id="patientID" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="patientName" class="form-label">Name</label>
+                                                    <input type="text" class="form-control" id="patientName" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="patientAddress" class="form-label">Address</label>
+                                                    <input type="text" class="form-control" id="patientAddress" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="patientSex" class="form-label">Sex</label>
+                                                    <select class="form-select" id="patientSex" required>
+                                                        <option value="">Select</option>
+                                                        <option value="Male">Male</option>
+                                                        <option value="Female">Female</option>
+                                                        <option value="Other">Other</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="patientAge" class="form-label">Age</label>
+                                                    <input type="text" class="form-control" id="patientAge" min="0" max="120" required>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="patientContact" class="form-label">Contact No.</label>
+                                                    <input type="text" class="form-control" id="patientContact" required>
+                                                </div>
+                                            </form>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                            <button type="button" class="btn btn-primary" onclick="savePatient()">Save Patient</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <script>
+                                const API_BASE_URL = 'http://localhost:3000/patients';
+                                let allPatients = [];
+                                let currentSort = { column: 'id', direction: 'asc' };
+
+                                // Check authentication status and redirect if not admin
+                                async function checkAuth() {
+                                    try {
+                                        const response = await fetch('http://localhost:3000/check-auth', {
+                                            credentials: 'include'
+                                        });
+                                        const data = await response.json();
+                                        if (!data.isLoggedIn || data.role !== 'admin') {
+                                            window.location.href = '/pages-login.html';
+                                            return false;
+                                        }
+                                        return true;
+                                    } catch (error) {
+                                        console.error('Auth check failed:', error);
+                                        window.location.href = '/pages-login.html';
+                                        return false;
+                                    }
+                                }
+
+                                function savePatient() {
+                                    const id = document.getElementById("patientID").value;
+                                    const name = document.getElementById("patientName").value;
+                                    const address = document.getElementById("patientAddress").value;
+                                    const sex = document.getElementById("patientSex").value;
+                                    const age = document.getElementById("patientAge").value;
+                                    const contact = document.getElementById("patientContact").value;
+
+                                    if (!id || !name || !address || !sex || !age || !contact) {
+                                        alert("Please fill in all fields");
+                                        return;
+                                    }
+
+                                    const table = document.querySelector("#patientTable tbody");
+                                    const newRow = document.createElement("tr");
+                                    newRow.innerHTML = `
+                                        <td>${id}</td>
+                                        <td>${name}</td>
+                                        <td>${address}</td>
+                                        <td>${sex}</td>
+                                        <td>${age}</td>
+                                        <td>${contact}</td>
+                                        <td></td>
+                                        <td>
+                                            <button class="btn btn-danger btn-sm" onclick="deletePatient(this)">Delete</button>
+                                        </td>
+                                    `;
+                                    table.appendChild(newRow);
+
+                                    document.getElementById("addPatientForm").reset();
+                                    const modalElement = document.getElementById('addPatientModal');
+                                    const modal = bootstrap.Modal.getInstance(modalElement);
+                                    if (modal) {
+                                        modal.hide();
+                                    }
+                                    const backdrop = document.querySelector('.modal-backdrop');
+                                    if (backdrop) {
+                                        backdrop.remove();
+                                    }
+                                    document.body.classList.remove('modal-open');
+                                    document.body.style.overflow = '';
+                                    document.body.style.paddingRight = '';
+                                }
+
+                                function editPatient(button) {
+                                    const row = button.closest("tr");
+                                    const cells = row.cells;
+
+                                    document.getElementById("patientID").value = cells[0].innerText;
+                                    document.getElementById("patientName").value = cells[1].innerText;
+                                    document.getElementById("patientAddress").value = cells[2].innerText;
+                                    document.getElementById("patientSex").value = cells[3].innerText;
+                                    document.getElementById("patientAge").value = cells[4].innerText;
+                                    document.getElementById("patientContact").value = cells[5].innerText;
+
+                                    document.getElementById("addPatientModalLabel").innerText = "Edit Patient";
+                                    const modal = new bootstrap.Modal(document.getElementById('addPatientModal'));
+                                    modal.show();
+                                }
+
+                                function viewPatient(button) {
+                                    const row = button.closest("tr");
+                                    const cells = row.cells;
+
+                                    const id = cells[0].innerText;
+                                    const name = cells[1].innerText;
+                                    const address = cells[2].innerText;
+                                    const sex = cells[3].innerText;
+                                    const age = cells[4].innerText;
+                                    const contact = cells[5].innerText;
+
+                                    const patientDetails = 
+                                        `Patient Details:
+                                        ID: ${id}
+                                        Name: ${name}
+                                        Address: ${address}
+                                        Sex: ${sex}
+                                        Age: ${age}
+                                        Contact: ${contact}`;
+                                    alert(patientDetails);
+                                }
+
+                                function deletePatient(button) {
+                                    if (confirm("Are you sure you want to delete this patient?")) {
+                                        const row = button.closest("tr");
+                                        const id = row.cells[0].innerText;
+                                        allPatients = allPatients.filter(patient => patient.id !== id);
+                                        renderTable();
+                                    }
+                                }
+
+                                async function apiRequest(endpoint, method = 'GET', data = null) {
+                                    const options = {
+                                        method,
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                        },
+                                        credentials: 'include'
+                                    };
+                                    
+                                    if (data) {
+                                        options.body = JSON.stringify(data);
+                                    }
+
+                                    try {
+                                        console.log(`Attempting to fetch: ${API_BASE_URL}${endpoint}`);
+                                        const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+                                        console.log(`Response status for ${endpoint}: ${response.status}`);
+                                        
+                                        if (!response.ok) {
+                                            const text = await response.text();
+                                            console.error(`Error response text: ${text}`);
+                                            throw new Error(`HTTP ${response.status}: ${text || 'No response body'}`);
+                                        }
+                                        
+                                        const result = await response.json();
+                                        console.log(`Received data:`, result);
+                                        return result;
+                                    } catch (error) {
+                                        console.error(`API request failed for ${endpoint}:`, error);
+                                        throw error;
+                                    }
+                                }
+
+                                function sortPatients(patients, column, direction) {
+                                    return patients.sort((a, b) => {
+                                        let valueA, valueB;
+                                        switch (column) {
+                                            case 'id':
+                                                valueA = parseInt(a.id);
+                                                valueB = parseInt(b.id);
+                                                break;
+                                            case 'name':
+                                                valueA = a.name.toLowerCase();
+                                                valueB = b.name.toLowerCase();
+                                                break;
+                                            case 'address':
+                                                valueA = a.address.toLowerCase();
+                                                valueB = b.address.toLowerCase();
+                                                break;
+                                            case 'sex':
+                                                valueA = a.sex.toLowerCase();
+                                                valueB = b.sex.toLowerCase();
+                                                break;
+                                            case 'age':
+                                                valueA = parseInt(a.age);
+                                                valueB = parseInt(b.age);
+                                                break;
+                                            case 'contact':
+                                                valueA = a.contact;
+                                                valueB = b.contact;
+                                                break;
+                                            case 'email':
+                                                valueA = (a.email || '').toLowerCase();
+                                                valueB = (b.email || '').toLowerCase();
+                                                break;
+                                            default:
+                                                return 0;
+                                        }
+                                        if (direction === 'asc') {
+                                            return valueA > valueB ? 1 : valueA < valueB ? -1 : 0;
+                                        } else {
+                                            return valueA < valueB ? 1 : valueA > valueB ? -1 : 0;
+                                        }
+                                    });
+                                }
+
+                                function renderTable() {
+                                    const tableBody = document.querySelector("#patientTable tbody");
+                                    tableBody.innerHTML = '';
+
+                                    // Apply search filter
+                                    let filteredPatients = allPatients;
+                                    const searchValue = document.getElementById('searchInput').value.toLowerCase();
+                                    if (searchValue) {
+                                        filteredPatients = allPatients.filter(patient => 
+                                            patient.id.toString().includes(searchValue) ||
+                                            patient.name.toLowerCase().includes(searchValue) ||
+                                            patient.address.toLowerCase().includes(searchValue) ||
+                                            patient.sex.toLowerCase().includes(searchValue) ||
+                                            patient.age.toString().includes(searchValue) ||
+                                            patient.contact.includes(searchValue) ||
+                                            (patient.email || '').toLowerCase().includes(searchValue)
+                                        );
+                                    }
+
+                                    // Apply sort
+                                    filteredPatients = sortPatients(filteredPatients, currentSort.column, currentSort.direction);
+
+                                    // Apply pagination
+                                    const perPage = document.getElementById('entriesSelect').value;
+                                    const displayedPatients = perPage === 'all' ? filteredPatients : filteredPatients.slice(0, parseInt(perPage));
+
+                                    displayedPatients.forEach(patient => {
+                                        const row = document.createElement("tr");
+                                        row.innerHTML = `
+                                            <td>${patient.id}</td>
+                                            <td>${patient.name}</td>
+                                            <td>${patient.address}</td>
+                                            <td>${patient.sex}</td>
+                                            <td>${patient.age}</td>
+                                            <td>${patient.contact}</td>
+                                            <td>${patient.email || ''}</td>
+                                            <td>
+                                                <button class="btn btn-danger btn-sm" onclick="deletePatient(this)">Delete</button>
+                                            </td>
+                                        `;
+                                        tableBody.appendChild(row);
+                                    });
+                                }
+
+                                function exportToCSV() {
+                                    const headers = ['ID', 'Name', 'Address', 'Sex', 'Age', 'Contact No.', 'Email'];
+                                    const rows = allPatients.map(patient => [
+                                        patient.id,
+                                        `"${patient.name.replace(/"/g, '""')}"`, // Escape quotes
+                                        `"${patient.address.replace(/"/g, '""')}"`,
+                                        patient.sex,
+                                        patient.age,
+                                        patient.contact,
+                                        `"${(patient.email || '').replace(/"/g, '""')}"`
+                                    ].join(','));
+
+                                    const csvContent = [headers.join(','), ...rows].join('\n');
+                                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                                    const link = document.createElement('a');
+                                    const url = URL.createObjectURL(blob);
+                                    link.setAttribute('href', url);
+                                    link.setAttribute('download', `patients_${new Date().toISOString().slice(0,10)}.csv`);
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    URL.revokeObjectURL(url);
+                                }
+
+                                async function loadPatients() {
+                                    if (!(await checkAuth())) return;
+
+                                    try {
+                                        allPatients = await apiRequest('/allPatients');
+                                        console.log('Fetched patients:', allPatients);
+
+                                        // Initial render
+                                        renderTable();
+
+                                        // Add sort event listeners
+                                        document.querySelectorAll('.sortable').forEach(header => {
+                                            header.addEventListener('click', () => {
+                                                const column = header.getAttribute('data-column');
+                                                const sortIcon = header.querySelector('.sort-icon');
+                                                if (currentSort.column === column && currentSort.direction === 'asc') {
+                                                    currentSort.direction = 'desc';
+                                                    sortIcon.innerHTML = '↓';
+                                                } else {
+                                                    currentSort.column = column;
+                                                    currentSort.direction = 'asc';
+                                                    sortIcon.innerHTML = '↑';
+                                                }
+                                                // Clear other sort icons
+                                                document.querySelectorAll('.sort-icon').forEach(icon => {
+                                                    if (icon !== sortIcon) icon.innerHTML = '';
+                                                });
+                                                renderTable();
+                                            });
+                                        });
+
+                                        // Add entries select event listener
+                                        document.getElementById('entriesSelect').addEventListener('change', renderTable);
+
+                                        // Add search event listener
+                                        document.getElementById('searchInput').addEventListener('input', renderTable);
+
+                                        // Add export CSV event listener
+                                        document.getElementById('exportCSV').addEventListener('click', exportToCSV);
+                                    } catch (error) {
+                                        console.error('Error loading patients:', error);
+                                        alert(`Failed to load patients: ${error.message || 'Unknown error'}`);
+                                    }
+                                }
+
+                                // Updated dropdown initialization
+                                $(document).ready(() => {
+                                    $('#head_content').load('header.html', (response, status, xhr) => {
+                                        if (status === 'success') {
+                                            console.log('Header loaded successfully in patients.html');
+
+                                            // Initialize sidebar toggle logic
+                                            const toggleSidebarBtn = document.querySelector('.toggle-sidebar-btn');
+                                            const sidebar = document.querySelector('.sidebar');
+                                            const overlay = document.getElementById('sidebarOverlay');
+
+                                            if (toggleSidebarBtn && sidebar && overlay) {
+                                                toggleSidebarBtn.addEventListener('click', () => {
+                                                    sidebar.classList.toggle('active');
+                                                    overlay.classList.toggle('active');
+                                                    overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+                                                });
+
+                                                overlay.addEventListener('click', () => {
+                                                    sidebar.classList.remove('active');
+                                                    overlay.classList.remove('active');
+                                                    overlay.style.display = 'none';
+                                                });
+                                            } else {
+                                                console.error('Sidebar toggle elements not found:', {
+                                                    toggleSidebarBtn: !!toggleSidebarBtn,
+                                                    sidebar: !!sidebar,
+                                                    overlay: !!overlay
+                                                });
+                                            }
+
+                                            // Initialize notification dropdown
+                                            const notificationDropdown = document.getElementById('notificationDropdown');
+                                            const notificationsList = document.getElementById('notificationsList');
+
+                                            if (notificationDropdown && notificationsList) {
+                                                if (typeof bootstrap !== 'undefined') {
+                                                    const dropdown = new bootstrap.Dropdown(notificationDropdown);
+                                                    notificationDropdown.addEventListener('click', (e) => {
+                                                        e.preventDefault();
+                                                        dropdown.toggle();
+                                                        console.log('Notification dropdown toggled');
+                                                    });
+
+                                                    notificationDropdown.addEventListener('shown.bs.dropdown', () => {
+                                                        console.log('Notification dropdown shown');
+                                                    });
+
+                                                    notificationDropdown.addEventListener('hidden.bs.dropdown', () => {
+                                                        console.log('Notification dropdown hidden');
+                                                    });
+                                                } else {
+                                                    console.error('Bootstrap JavaScript not loaded, falling back to manual toggle for notification dropdown');
+                                                    notificationDropdown.addEventListener('click', (e) => {
+                                                        e.preventDefault();
+                                                        notificationsList.classList.toggle('show');
+                                                        console.log('Notification dropdown toggled manually');
+                                                    });
+                                                }
+                                            } else {
+                                                console.error('Notification dropdown elements not found:', {
+                                                    notificationDropdown: !!notificationDropdown,
+                                                    notificationsList: !!notificationsList
+                                                });
+                                            }
+
+                                            // Initialize profile dropdown
+                                            const profileDropdown = document.querySelector('.nav-link.nav-profile');
+                                            const profileDropdownMenu = document.querySelector('.dropdown-menu.profile');
+
+                                            if (profileDropdown && profileDropdownMenu) {
+                                                if (typeof bootstrap !== 'undefined') {
+                                                    const dropdown = new bootstrap.Dropdown(profileDropdown);
+                                                    profileDropdown.addEventListener('click', (e) => {
+                                                        e.preventDefault();
+                                                        dropdown.toggle();
+                                                        console.log('Profile dropdown toggled');
+                                                    });
+
+                                                    profileDropdown.addEventListener('shown.bs.dropdown', () => {
+                                                        console.log('Profile dropdown shown');
+                                                    });
+
+                                                    profileDropdown.addEventListener('hidden.bs.dropdown', () => {
+                                                        console.log('Profile dropdown hidden');
+                                                    });
+                                                } else {
+                                                    console.error('Bootstrap JavaScript not loaded, falling back to manual toggle for profile dropdown');
+                                                    profileDropdown.addEventListener('click', (e) => {
+                                                        e.preventDefault();
+                                                        profileDropdownMenu.classList.toggle('show');
+                                                        console.log('Profile dropdown toggled manually');
+                                                    });
+                                                }
+                                            } else {
+                                                console.error('Profile dropdown elements not found:', {
+                                                    profileDropdown: !!profileDropdown,
+                                                    profileDropdownMenu: !!profileDropdownMenu
+                                                });
+                                            }
+
+                                            // Call loadPatients after header is loaded
+                                            loadPatients();
+                                        } else {
+                                            console.error('Failed to load header.html:', xhr.status, xhr.statusText);
+                                            $('#head_content').html('<p>Error loading header. Please try again later.</p>');
+                                        }
+                                    });
+
+                                    $('#foot_content').load('footer.html', (response, status, xhr) => {
+                                        if (status === 'success') {
+                                            console.log('Footer loaded successfully');
+                                        } else {
+                                            console.error('Failed to load footer.html:', xhr.status, xhr.statusText);
+                                        }
+                                    });
+                                });
+                            </script>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="foot_content"></div>
+
+    <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+    <script src="assets/vendor/apexcharts/apexcharts.min.js"></script>
+    <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/vendor/chart.js/chart.umd.js"></script>
+    <script src="assets/vendor/echarts/echarts.min.js"></script>
+    <script src="assets/vendor/quill/quill.js"></script>
+    <script src="assets/vendor/simple-datatables/simple-datatables.js"></script>
+    <script src="assets/vendor/tinymce/tinymce.min.js"></script>
+    <script>
+        tinymce.init({
+            selector: 'textarea',
+            telemetry: false
+        });
+    </script>
+    <script src="assets/vendor/php-email-form/validate.js"></script>
+
+    <script src="assets/js/main.js"></script>
+    <script type="text/javascript">
+        $('#foot_content').load('footer.html');
+    </script>
+</body>
+</html>

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>Admin</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+
+  <link href="assets/img/icon.png" rel="icon">
+  <link href="assets/img/icon.png" rel="apple-touch-icon">
+
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
+  <link href="assets/vendor/simple-datatables/style.css" rel="stylesheet">
+  <link href="assets/css/style.css" rel="stylesheet">
+  <link href="assets/css/calendar.css" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+</head>
+
+<body>
+
+  <div id="head_content"></div>
+
+  <main id="main" class="main">
+
+    <div class="pagetitle">
+      <h2>Dashboard</h2>
+    </div><!-- End Page Title -->
+
+    <section class="section dashboard">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="row">
+            <!-- Appointment Card: Today -->
+            <div class="col-xxl-4 col-xl-6">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">Appointment <span>| Today</span></h5>
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-people"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6 id="todayCount">0</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Appointment Card: Tomorrow -->
+            <div class="col-xxl-4 col-xl-6">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">Appointment <span>| Tomorrow</span></h5>
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-people"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6 id="tomorrowCount">0</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Appointment Card: Overall -->
+            <div class="col-xxl-4 col-xl-6">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">Appointment <span>| Overall</span></h5>
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-people"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6 id="overallCount">0</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Calendar -->
+            <div class="col-12">
+              <div class="calendar-container">
+                <div class="calendar-header">
+                  <div class="month-year" id="monthYear"></div>
+                  <div class="nav-buttons">
+                    <button id="prevBtn">Previous</button>
+                    <button id="todayBtn" class="today">Today</button>
+                    <button id="nextBtn">Next</button>
+                  </div>
+                </div>
+                <div class="calendar-grid" id="calendarGrid">
+                  <!-- Day labels will be generated here -->
+                </div>
+              </div>
+
+              <!-- Appointment Review Modal -->
+              <div class="modal" id="appointmentModal">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h3 id="modalTitle">Appointments For Review</h3>
+                    <button class="close-modal" id="closeModalBtn">×</button>
+                  </div>
+                  <div id="appointmentsList" class="appointments-list">
+                    <!-- Appointments will be listed here -->
+                  </div>
+                  <div class="button-group">
+                    <button type="button" class="cancel-btn" id="closeBtn">Close</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Recent Appointments -->
+            <div class="col-12">
+              <div class="card recent-sales overflow-auto">
+                <div class="card-body">
+                  <h5 class="card-title">Recent Appointments</h5>
+                  <table class="table table-borderless datatable" id="recentAppointmentsTable">
+                    <thead>
+                      <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Patient</th>
+                        <th scope="col">Service</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recentAppointmentsBody">
+                      <!-- Dynamic data will be inserted here -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main><!-- End #main -->
+
+  <div id="foot_content"></div>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/calendar.js"></script>
+  <script src="assets/js/load-header.js"></script>
+  <script src="assets/js/search.js"></script>
+  <script type="text/javascript">
+    $(document).ready(() => {
+      $('#head_content').load('header.html', (response, status, xhr) => {
+        if (status === 'success') {
+          console.log('Header loaded successfully');
+          // Initialize sidebar toggle logic after header is loaded
+          const toggleSidebarBtn = document.querySelector('.toggle-sidebar-btn');
+          const sidebar = document.querySelector('.sidebar');
+          const overlay = document.getElementById('sidebarOverlay');
+
+          if (toggleSidebarBtn && sidebar && overlay) {
+            toggleSidebarBtn.addEventListener('click', () => {
+              sidebar.classList.toggle('active');
+              overlay.classList.toggle('active');
+              // Ensure overlay visibility matches sidebar state
+              overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+            });
+
+            overlay.addEventListener('click', () => {
+              sidebar.classList.remove('active');
+              overlay.classList.remove('active');
+              overlay.style.display = 'none'; // Explicitly hide the overlay
+            });
+          } else {
+            console.error('Sidebar toggle elements not found:', {
+              toggleSidebarBtn: !!toggleSidebarBtn,
+              sidebar: !!sidebar,
+              overlay: !!overlay
+            });
+          }
+        } else {
+          console.error('Failed to load header.html:', xhr.status, xhr.statusText);
+          $('#head_content').html('<p>Error loading header. Please try again later.</p>');
+        }
+      });
+
+      $('#foot_content').load('footer.html', (response, status, xhr) => {
+        if (status === 'success') {
+          console.log('Footer loaded successfully');
+        } else {
+          console.error('Failed to load footer.html:', xhr.status, xhr.statusText);
+        }
+      });
+    });
+  </script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const authResponse = await fetch('/check-auth', { credentials: 'include' });
+        const authData = await authResponse.json();
+        if (!authData.isLoggedIn || authData.role !== 'admin') {
+          window.location.href = '/pages-login.html';
+          return;
+        }
+
+        const response = await fetch('/api/appointments/all', { credentials: 'include' });
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        const data = await response.json();
+        console.log('Raw API response:', data);
+        if (!data.success) throw new Error(data.message);
+        let appointments = data.appointments;
+
+        // Check and update expired appointments (including historical ones)
+        appointments = await checkAndUpdateExpiredAppointments(appointments);
+
+        updateCalendar(appointments);
+        updateAppointmentCards(appointments);
+        updateRecentAppointments(appointments);
+
+        // Initialize search and sort
+        initializeTableFeatures(appointments);
+      } catch (error) {
+        console.error('Error loading dashboard:', error);
+        alert('Failed to load dashboard: ' + error.message);
+      }
+    });
+
+    async function checkAndUpdateExpiredAppointments(appointments) {
+      const today = new Date('2025-03-22'); // Current date as per system prompt
+      const updates = [];
+
+      // Check all appointments, including those way in the past
+      for (const app of appointments) {
+        const appDate = new Date(app.appointment_date);
+        if (appDate < today && app.status === 'pending') {
+          updates.push({
+            id: app.id,
+            status: 'expired'
+          });
+        }
+      }
+
+      if (updates.length > 0) {
+        try {
+          const response = await fetch('/api/appointments/bulk-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ updates })
+          });
+          
+          if (response.ok) {
+            // Update local appointments array with expired status
+            appointments = appointments.map(app => {
+              const update = updates.find(u => u.id === app.id);
+              if (update) {
+                return { ...app, status: 'expired' };
+              }
+              return app;
+            });
+            console.log(`Updated ${updates.length} historical appointments to expired status`);
+          } else {
+            console.error('Failed to update expired appointments:', await response.text());
+          }
+        } catch (error) {
+          console.error('Error updating expired appointments:', error);
+        }
+      }
+
+      return appointments;
+    }
+
+    function updateCalendar(appointments) {
+      console.log('Appointments passed to calendar:', appointments);
+      const calendarGrid = document.getElementById('calendarGrid');
+      const monthYear = document.getElementById('monthYear');
+      let currentDate = new Date();
+      currentDate.setDate(1);
+      const today = new Date('2025-03-22');
+
+      function renderCalendar() {
+        calendarGrid.innerHTML = '';
+        const month = currentDate.getMonth();
+        const year = currentDate.getFullYear();
+        monthYear.textContent = `${currentDate.toLocaleString('default', { month: 'long' })} ${year}`;
+
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        days.forEach(day => {
+          const div = document.createElement('div');
+          div.className = 'calendar-day-label';
+          div.textContent = day;
+          calendarGrid.appendChild(div);
+        });
+
+        const firstDay = new Date(year, month, 1).getDay();
+        for (let i = 0; i < firstDay; i++) {
+          const emptyDiv = document.createElement('div');
+          emptyDiv.className = 'calendar-day';
+          calendarGrid.appendChild(emptyDiv);
+        }
+
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let day = 1; day <= daysInMonth; day++) {
+          const date = new Date(year, month, day);
+          const dayDiv = document.createElement('div');
+          dayDiv.className = 'calendar-day';
+          if (date < today) {
+            dayDiv.classList.add('past-date');
+          }
+          if (date.toDateString() === today.toDateString()) {
+            dayDiv.classList.add('current-day');
+          }
+          const dayNumber = document.createElement('span');
+          dayNumber.className = 'day-number';
+          dayNumber.textContent = day;
+          dayDiv.appendChild(dayNumber);
+
+          const dayAppointments = appointments.filter(app => {
+            const appDate = new Date(app.appointment_date);
+            return appDate.getDate() === day && appDate.getMonth() === month && appDate.getFullYear() === year;
+          });
+
+          if (dayAppointments.length > 0) {
+            dayDiv.classList.add('has-appointments');
+            const appointmentsList = document.createElement('div');
+            appointmentsList.className = 'appointments-list';
+            dayAppointments.forEach(app => {
+              const time = new Date(app.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const appDiv = document.createElement('div');
+              appDiv.className = `appointment ${app.status ? app.status.toLowerCase() : 'pending'}`;
+              const patientData = app.patients || {};
+              console.log('Patient data for calendar:', patientData);
+              const patientName = patientData.first_name || patientData.middle_name || patientData.last_name
+                ? `${patientData.first_name || ''} ${patientData.middle_name || ''} ${patientData.last_name || ''}`.trim() || 'No Name'
+                : 'Unknown';
+              appDiv.textContent = `${time} - ${patientName}`;
+              const tooltip = document.createElement('span');
+              tooltip.className = 'tooltip';
+              tooltip.textContent = `${time} - ${patientName} (${app.services?.name || 'N/A'})`;
+              appDiv.appendChild(tooltip);
+              appointmentsList.appendChild(appDiv);
+            });
+            dayDiv.appendChild(appointmentsList);
+            dayDiv.addEventListener('click', () => showAppointmentsModal(dayAppointments, date));
+          }
+
+          calendarGrid.appendChild(dayDiv);
+        }
+
+        // Attach event listeners after rendering the calendar
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const todayBtn = document.getElementById('todayBtn');
+
+        if (prevBtn && nextBtn && todayBtn) {
+          prevBtn.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+          });
+
+          nextBtn.addEventListener('click', () => {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+          });
+
+          todayBtn.addEventListener('click', () => {
+            currentDate = new Date();
+            currentDate.setDate(1);
+            renderCalendar();
+          });
+        } else {
+          console.error('Calendar navigation buttons not found:', {
+            prevBtn: !!prevBtn,
+            nextBtn: !!nextBtn,
+            todayBtn: !!todayBtn
+          });
+        }
+      }
+
+      renderCalendar();
+    }
+
+    async function confirmAppointment(appointmentId) {
+      try {
+        const response = await fetch(`http://localhost:3000/api/appointments/${appointmentId}/confirm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (response.ok) {
+          alert('Appointment approved!');
+          window.location.reload();
+        } else {
+          console.error('Error response:', data);
+          alert(`Failed to approve appointment: ${data.message || 'Please try again.'}`);
+        }
+      } catch (err) {
+        console.error('Error approving appointment:', err);
+        alert('An error occurred while approving the appointment.');
+      }
+    }
+
+    async function rejectAppointment(appointmentId) {
+      try {
+        const response = await fetch(`/api/appointments/${appointmentId}/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+        if (response.ok) {
+          alert('Appointment rejected!');
+          window.location.reload();
+        } else {
+          const errorData = await response.json();
+          alert(`Failed to reject appointment: ${errorData.message || 'Please try again.'}`);
+        }
+      } catch (err) {
+        console.error('Error rejecting appointment:', err);
+        alert('An error occurred while rejecting the appointment.');
+      }
+    }
+
+    function showAppointmentsModal(appointments, date) {
+      console.log('Appointments for modal:', appointments);
+      const modal = document.getElementById('appointmentModal');
+      const title = document.getElementById('modalTitle');
+      const list = document.getElementById('appointmentsList');
+      const closeBtn = document.getElementById('closeBtn');
+      const closeModalBtn = document.getElementById('closeModalBtn');
+      const today = new Date('2025-03-22');
+
+      title.textContent = `Appointments on ${date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}`;
+      list.innerHTML = '';
+      let selectedAppointmentId = null;
+
+      appointments.forEach(app => {
+        const time = new Date(app.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const patientData = app.patients || {};
+        console.log('Patient data for modal:', patientData);
+        const patientName = patientData.first_name || patientData.middle_name || patientData.last_name
+          ? `${patientData.first_name || ''} ${patientData.middle_name || ''} ${patientData.last_name || ''}`.trim() || 'No Name'
+          : 'Unknown';
+        const status = (app.status || 'pending').toLowerCase();
+        const div = document.createElement('div');
+        div.className = `appointment-item ${status}`;
+        const isPastDate = date < today;
+
+        div.innerHTML = `
+          <div class="appointment-details">
+            <p><strong>Time:</strong> ${time}</p>
+            <p><strong>Patient:</strong> ${patientName}</p>
+            <p><strong>Procedure:</strong> ${app.services?.name || 'N/A'}</p>
+            <p><strong>Notes:</strong> ${app.notes || 'N/A'}</p>
+            <p><strong>Status:</strong> <span class="status-${status}">${app.status || 'Pending'}</span></p>
+          </div>
+          <div class="appointment-actions">
+            <span class="appointment-time">${time}</span>
+          </div>
+          ${
+            status === 'pending' && !isPastDate
+              ? `
+                <div class="appointment-buttons">
+                  <button class="approve-btn" onclick="confirmAppointment('${app.id}')">Approve</button>
+                  <button class="reject-btn" onclick="rejectAppointment('${app.id}')">Reject</button>
+                </div>
+              `
+              : status === 'pending' && isPastDate
+              ? `
+                <div class="appointment-buttons">
+                  <button class="approve-btn" disabled style="background-color: #cccccc; color: #666666; cursor: not-allowed;">Approve</button>
+                  <button class="reject-btn" disabled style="background-color: #cccccc; color: #666666; cursor: not-allowed;">Reject</button>
+                </div>
+              `
+              : ''
+          }
+        `;
+        if (status === 'pending' && !isPastDate) {
+          div.style.cursor = 'pointer';
+          div.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON') {
+              selectedAppointmentId = app.id;
+              list.querySelectorAll('.appointment-item').forEach(item => item.style.backgroundColor = '');
+              div.style.backgroundColor = '#e6f3ff';
+            }
+          });
+        }
+        list.appendChild(div);
+      });
+
+      document.body.classList.add('modal-open');
+      modal.style.display = 'none';
+      modal.classList.remove('show');
+      setTimeout(() => {
+        modal.style.display = 'flex';
+        modal.classList.add('show');
+      }, 10);
+
+      const closeModal = () => {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+      };
+
+      closeBtn.removeEventListener('click', closeModal);
+      closeModalBtn.removeEventListener('click', closeModal);
+      closeBtn.addEventListener('click', closeModal);
+      closeModalBtn.addEventListener('click', closeModal);
+    }
+
+    function updateAppointmentCards(appointments) {
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+
+      const todayCount = appointments.filter(app => {
+        const appDate = new Date(app.appointment_date);
+        return appDate.toDateString() === today.toDateString() && app.status !== 'cancelled';
+      }).length;
+
+      const tomorrowCount = appointments.filter(app => {
+        const appDate = new Date(app.appointment_date);
+        return appDate.toDateString() === tomorrow.toDateString() && app.status !== 'cancelled';
+      }).length;
+
+      const overallCount = appointments.filter(app => app.status !== 'cancelled').length;
+
+      document.getElementById('todayCount').textContent = todayCount;
+      document.getElementById('tomorrowCount').textContent = tomorrowCount;
+      document.getElementById('overallCount').textContent = overallCount;
+    }
+
+    function updateRecentAppointments(appointments, filteredAppointments = null) {
+      const tbody = document.getElementById('recentAppointmentsBody');
+      tbody.innerHTML = '';
+
+      const appointmentsToDisplay = filteredAppointments || [...appointments].sort((a, b) => 
+        new Date(b.appointment_date) - new Date(a.appointment_date)
+      ).slice(0, 5);
+
+      appointmentsToDisplay.forEach((app, index) => {
+        const patientData = app.patients || {};
+        console.log('Patient data for recent appointments:', patientData);
+        const patientName = patientData.first_name || patientData.middle_name || patientData.last_name 
+          ? `${patientData.first_name || ''} ${patientData.middle_name || ''} ${patientData.last_name || ''}`.trim() || 'No Name'
+          : 'Unknown';
+        const statusClass = {
+          'confirmed': 'bg-success',
+          'pending': 'bg-warning',
+          'cancelled': 'bg-danger',
+          'rejected': 'bg-danger',
+          'expired': 'bg-secondary'
+        }[app.status] || 'bg-secondary';
+
+        const idString = String(app.id || app._id || index + 1);
+        const shortId = idString.length > 4 ? idString.slice(0, 4) : idString.padEnd(4, '0');
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <th scope="row"><a href="#">#${shortId}</a></th>
+          <td>${patientName}</td>
+          <td>${app.services?.name || 'N/A'}</td>
+          <td>${new Date(app.appointment_date).toLocaleDateString()}</td>
+          <td><span class="badge ${statusClass}">${app.status}</span></td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      if (appointmentsToDisplay.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="5" class="text-center">No recent appointments</td>';
+        tbody.appendChild(row);
+      }
+    }
+
+    function initializeTableFeatures(appointments) {
+      const searchInput = document.getElementById('searchInput');
+      const table = document.getElementById('recentAppointmentsTable');
+      const tbody = document.getElementById('recentAppointmentsBody');
+      let sortDirection = {};
+      
+      // Search functionality
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          const searchTerm = searchInput.value.trim().toLowerCase();
+          const filteredAppointments = appointments.filter(app => {
+            const patientData = app.patients || {};
+            const patientName = `${patientData.first_name || ''} ${patientData.middle_name || ''} ${patientData.last_name || ''}`.trim().toLowerCase() || 'no name';
+            const serviceName = (app.services?.name || 'N/A').toLowerCase();
+            const dateStr = new Date(app.appointment_date).toLocaleDateString().toLowerCase();
+            const status = (app.status || '').toLowerCase();
+            
+            return patientName.includes(searchTerm) || 
+                   serviceName.includes(searchTerm) || 
+                   dateStr.includes(searchTerm) || 
+                   status.includes(searchTerm);
+          }).slice(0, 5);
+          updateRecentAppointments(appointments, filteredAppointments);
+        });
+      } else {
+        console.error('Search input element not found');
+      }
+
+      // Sort functionality
+      if (table) {
+        table.querySelectorAll('thead th[data-sort]').forEach(th => {
+          th.addEventListener('click', () => {
+            const column = th.getAttribute('data-sort');
+            const isAscending = sortDirection[column] === 'asc';
+            sortDirection[column] = isAscending ? 'desc' : 'asc';
+
+            table.querySelectorAll('thead th').forEach(header => {
+              header.classList.remove('sort-asc', 'sort-desc');
+            });
+            th.classList.add(isAscending ? 'sort-desc' : 'sort-asc');
+
+            const sortedAppointments = [...appointments].sort((a, b) => {
+              let aValue, bValue;
+              switch (column) {
+                case 'patient':
+                  aValue = `${a.patients?.first_name || ''} ${a.patients?.last_name || ''}`.trim().toLowerCase();
+                  bValue = `${b.patients?.first_name || ''} ${b.patients?.last_name || ''}`.trim().toLowerCase();
+                  break;
+                case 'service':
+                  aValue = (a.services?.name || 'N/A').toLowerCase();
+                  bValue = (b.services?.name || 'N/A').toLowerCase();
+                  break;
+                case 'date':
+                  aValue = new Date(a.appointment_date);
+                  bValue = new Date(b.appointment_date);
+                  break;
+                case 'status':
+                  aValue = (a.status || '').toLowerCase();
+                  bValue = (b.status || '').toLowerCase();
+                  break;
+              }
+              if (column === 'date') {
+                return isAscending ? aValue - bValue : bValue - aValue;
+              }
+              return isAscending 
+                ? aValue.localeCompare(bValue) 
+                : bValue.localeCompare(aValue);
+            }).slice(0, 5);
+            
+            updateRecentAppointments(appointments, sortedAppointments);
+          });
+        });
+      } else {
+        console.error('Table element not found');
+      }
+    }
+  </script>
+</body>
+</html>

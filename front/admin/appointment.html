@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>Admin - Appointment Graph</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+
+  <link href="assets/img/icon.png" rel="icon">
+  <link href="assets/img/icon.png" rel="apple-touch-icon">
+
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="assets/vendor/quill/quill.snow.css" rel="stylesheet">
+  <link href="assets/vendor/quill/quill.bubble.css" rel="stylesheet">
+  <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
+  <link href="assets/vendor/simple-datatables/style.css" rel="stylesheet">
+  <link href="assets/css/style.css" rel="stylesheet">
+  <link href="assets/css/calendar.css" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    .graph-container {
+      margin: 20px 0;
+      padding: 15px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+    .highlight-text {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-top: 15px;
+      color: #1a73e8;
+    }
+    .filter-container {
+      margin-bottom: 15px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-container select, .filter-container button {
+      padding: 8px 12px;
+      font-size: 0.95rem;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+      transition: all 0.3s ease;
+    }
+    .filter-container select:focus, .filter-container button:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+    .filter-container button {
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .filter-container button:hover {
+      background-color: #1557b0;
+    }
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 5px 10px;
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+    }
+    .legend-item:hover {
+      background: #e8f0fe;
+    }
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .legend-item.hidden {
+      opacity: 0.5;
+    }
+    .recent-appointments-filter {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    .search-container {
+      flex: 1;
+      min-width: 200px;
+    }
+    .search-container input {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 0.95rem;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+      transition: all 0.3s ease;
+    }
+    .search-container input:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    }
+    .load-more-container {
+      text-align: center;
+      margin-top: 15px;
+    }
+    .load-more-btn {
+      padding: 8px 20px;
+      font-size: 0.95rem;
+      border-radius: 6px;
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .load-more-btn:hover {
+      background-color: #1557b0;
+    }
+    .load-more-btn:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="head_content"></div>
+
+  <main id="main" class="main">
+    <div class="pagetitle">
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="index.html">Dashboard</a></li>
+          <li class="breadcrumb-item active">Appointments Graph</li>
+        </ol>
+      </nav>
+      <h2 id="pageTitle">Monthly Appointments Overview</h2>
+    </div>
+
+    <section class="section">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="graph-container">
+            <div class="filter-container">
+              <label for="yearFilter">Year: </label>
+              <select id="yearFilter"></select>
+              <label for="serviceFilter">Service: </label>
+              <select id="serviceFilter">
+                <option value="all">All Services</option>
+              </select>
+              <button id="exportCsvBtn">Export Graph Data as CSV</button>
+            </div>
+            <div id="chartLegend" class="chart-legend"></div>
+            <canvas id="appointmentsChart" height="100"></canvas>
+            <div class="highlight-text" id="highestMonthText"></div>
+          </div>
+
+          <!-- All Appointments -->
+          <div class="card recent-sales overflow-auto">
+            <div class="card-body">
+              <h5 class="card-title">All Appointments</h5>
+              <div class="recent-appointments-filter">
+                <label for="statusFilter">Status: </label>
+                <select id="statusFilter">
+                  <option value="all">All Statuses</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="pending">Pending</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <label for="serviceTableFilter">Service: </label>
+                <select id="serviceTableFilter">
+                  <option value="all">All Services</option>
+                </select>
+                <div class="search-container">
+                  <input type="text" id="searchInput" placeholder="Search by patient, service, or date...">
+                </div>
+                <button id="exportTableCsvBtn">Export Table as CSV</button>
+              </div>
+              <table class="table table-borderless" id="recentAppointmentsTable">
+                <thead>
+                  <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Patient</th>
+                    <th scope="col">Service</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="recentAppointmentsBody"></tbody>
+              </table>
+              <div class="load-more-container">
+                <button id="loadMoreBtn" class="load-more-btn">Load More</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="foot_content"></div>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/quill/quill.js"></script>
+  <script src="assets/vendor/simple-datatables/simple-datatables.js"></script>
+  <script src="assets/vendor/tinymce/tinymce.min.js"></script>
+  <script src="assets/vendor/php-email-form/validate.js"></script>
+  <script src="assets/js/main.js"></script>
+
+  <script type="text/javascript">
+    $(document).ready(() => {
+      $('#head_content').load('header.html', (response, status, xhr) => {
+        if (status === 'success') {
+          console.log('Header loaded successfully in appointment.html');
+
+          // Initialize sidebar toggle logic
+          const toggleSidebarBtn = document.querySelector('.toggle-sidebar-btn');
+          const sidebar = document.querySelector('.sidebar');
+          const overlay = document.getElementById('sidebarOverlay');
+
+          if (toggleSidebarBtn && sidebar && overlay) {
+            toggleSidebarBtn.addEventListener('click', () => {
+              sidebar.classList.toggle('active');
+              overlay.classList.toggle('active');
+              overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+            });
+
+            overlay.addEventListener('click', () => {
+              sidebar.classList.remove('active');
+              overlay.classList.remove('active');
+              overlay.style.display = 'none';
+            });
+          } else {
+            console.error('Sidebar toggle elements not found:', {
+              toggleSidebarBtn: !!toggleSidebarBtn,
+              sidebar: !!sidebar,
+              overlay: !!overlay
+            });
+          }
+
+          // Initialize bell icon (notification) dropdown
+          const notificationDropdown = document.getElementById('notificationDropdown');
+          const notificationsList = document.getElementById('notificationsList');
+
+          if (notificationDropdown && notificationsList) {
+            if (typeof bootstrap !== 'undefined') {
+              const dropdown = new bootstrap.Dropdown(notificationDropdown);
+              notificationDropdown.addEventListener('click', (e) => {
+                e.preventDefault();
+                dropdown.toggle();
+                console.log('Notification dropdown toggled');
+              });
+
+              notificationDropdown.addEventListener('shown.bs.dropdown', () => {
+                console.log('Notification dropdown shown');
+              });
+
+              notificationDropdown.addEventListener('hidden.bs.dropdown', () => {
+                console.log('Notification dropdown hidden');
+              });
+            } else {
+              console.error('Bootstrap JavaScript not loaded, falling back to manual toggle for notification dropdown');
+              notificationDropdown.addEventListener('click', (e) => {
+                e.preventDefault();
+                notificationsList.classList.toggle('show');
+                console.log('Notification dropdown toggled manually');
+              });
+            }
+          } else {
+            console.error('Notification dropdown elements not found:', {
+              notificationDropdown: !!notificationDropdown,
+              notificationsList: !!notificationsList
+            });
+          }
+
+          // Initialize profile dropdown
+          const profileDropdown = document.querySelector('.nav-link.nav-profile');
+          const profileDropdownMenu = document.querySelector('.dropdown-menu.profile');
+
+          if (profileDropdown && profileDropdownMenu) {
+            if (typeof bootstrap !== 'undefined') {
+              const dropdown = new bootstrap.Dropdown(profileDropdown);
+              profileDropdown.addEventListener('click', (e) => {
+                e.preventDefault();
+                dropdown.toggle();
+                console.log('Profile dropdown toggled');
+              });
+
+              profileDropdown.addEventListener('shown.bs.dropdown', () => {
+                console.log('Profile dropdown shown');
+              });
+
+              profileDropdown.addEventListener('hidden.bs.dropdown', () => {
+                console.log('Profile dropdown hidden');
+              });
+            } else {
+              console.error('Bootstrap JavaScript not loaded, falling back to manual toggle for profile dropdown');
+              profileDropdown.addEventListener('click', (e) => {
+                e.preventDefault();
+                profileDropdownMenu.classList.toggle('show');
+                console.log('Profile dropdown toggled manually');
+              });
+            }
+          } else {
+            console.error('Profile dropdown elements not found:', {
+              profileDropdown: !!profileDropdown,
+              profileDropdownMenu: !!profileDropdownMenu
+            });
+          }
+        } else {
+          console.error('Failed to load header.html:', xhr.status, xhr.statusText);
+          $('#head_content').html('<p>Error loading header. Please try again later.</p>');
+        }
+      });
+
+      $('#foot_content').load('footer.html', (response, status, xhr) => {
+        if (status === 'success') {
+          console.log('Footer loaded successfully');
+        } else {
+          console.error('Failed to load footer.html:', xhr.status, xhr.statusText);
+        }
+      });
+    });
+
+    let chartInstance = null;
+    let allAppointments = [];
+    let allServices = [];
+    let filteredAppointments = [];
+    let displayedAppointments = [];
+    const ITEMS_PER_PAGE = 10;
+    let currentPage = 1;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // Check authentication
+        const authResponse = await fetch('/check-auth', { credentials: 'include' });
+        const authData = await authResponse.json();
+        if (!authData.isLoggedIn || authData.role !== 'admin') {
+          window.location.href = '/pages-login.html';
+          return;
+        }
+
+        // Fetch all appointments
+        const appointmentsResponse = await fetch('/api/appointments/all', { credentials: 'include' });
+        if (!appointmentsResponse.ok) throw new Error(`HTTP error! Status: ${appointmentsResponse.status}`);
+        const appointmentsData = await appointmentsResponse.json();
+        console.log('Appointments API Response:', appointmentsData);
+        if (!appointmentsData.success) throw new Error(appointmentsData.message);
+        allAppointments = appointmentsData.appointments;
+
+        // Log unique services in appointments
+        const uniqueServices = [...new Set(allAppointments.map(app => app.services?.name).filter(name => name))];
+        console.log('Unique services in appointments:', uniqueServices);
+
+        // Fetch all services
+        try {
+          const servicesResponse = await fetch('/api/services/all', { credentials: 'include' });
+          if (!servicesResponse.ok) throw new Error(`HTTP error! Status: ${servicesResponse.status}`);
+          const servicesData = await servicesResponse.json();
+          console.log('Services API Response:', servicesData);
+          if (!servicesData.success) throw new Error(servicesData.message);
+          allServices = servicesData.services;
+        } catch (error) {
+          console.error('Error fetching services:', error);
+          allServices = uniqueServices.map(name => ({ name }));
+        }
+
+        const currentYear = new Date().getFullYear(); // 2025 as of March 24, 2025
+        populateYearFilter(allAppointments, currentYear);
+        populateServiceFilter(allServices);
+        populateServiceTableFilter(allServices);
+        renderAppointmentsGraph(allAppointments, allServices, currentYear, 'all');
+        console.log('Appointments passed to updateRecentAppointments:', allAppointments);
+        filteredAppointments = [...allAppointments];
+        updateRecentAppointments();
+
+        // Event listeners for graph filters
+        document.getElementById('yearFilter').addEventListener('change', (e) => {
+          renderAppointmentsGraph(allAppointments, allServices, parseInt(e.target.value), document.getElementById('serviceFilter').value);
+        });
+        document.getElementById('serviceFilter').addEventListener('change', (e) => {
+          renderAppointmentsGraph(allAppointments, allServices, parseInt(document.getElementById('yearFilter').value), e.target.value);
+        });
+        document.getElementById('exportCsvBtn').addEventListener('click', () => {
+          exportGraphToCsv(allAppointments, parseInt(document.getElementById('yearFilter').value));
+        });
+
+        // Event listeners for table filters
+        document.getElementById('statusFilter').addEventListener('change', filterAppointments);
+        document.getElementById('serviceTableFilter').addEventListener('change', filterAppointments);
+        document.getElementById('searchInput').addEventListener('input', filterAppointments);
+        document.getElementById('exportTableCsvBtn').addEventListener('click', () => {
+          exportTableToCsv(filteredAppointments);
+        });
+        document.getElementById('loadMoreBtn').addEventListener('click', loadMoreAppointments);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        document.getElementById('highestMonthText').textContent = 'Failed to load appointment data from the database.';
+      }
+    });
+
+    function populateYearFilter(appointments, currentYear) {
+      const yearFilter = document.getElementById('yearFilter');
+      const years = [...new Set(appointments.map(app => new Date(app.appointment_date).getFullYear()))].sort((a, b) => b - a);
+      years.forEach(year => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        yearFilter.appendChild(option);
+      });
+      yearFilter.value = currentYear;
+    }
+
+    function populateServiceFilter(services) {
+      const serviceFilter = document.getElementById('serviceFilter');
+      services.forEach(service => {
+        const option = document.createElement('option');
+        option.value = service.name;
+        option.textContent = service.name;
+        serviceFilter.appendChild(option);
+      });
+    }
+
+    function populateServiceTableFilter(services) {
+      const serviceTableFilter = document.getElementById('serviceTableFilter');
+      services.forEach(service => {
+        const option = document.createElement('option');
+        option.value = service.name;
+        option.textContent = service.name;
+        serviceTableFilter.appendChild(option);
+      });
+    }
+
+    function renderAppointmentsGraph(appointments, services, year, selectedService) {
+      const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ];
+      const serviceColors = {
+        'CONSULTATION': '#1a73e8',
+        'ORAL PROPHYLAXIS': '#ff6d00',
+        'FLEXITE': '#34c759',
+        'RESTORATIONS TEMPORARY FILLING': '#ff3b30',
+        'SURGERY EXTRACTION': '#af52de',
+        'COMPOSITE FILLING': '#00c4b4',
+        'JACKET CROWN': '#ffeb3b',
+        'ROOT CANAL': '#ff4081',
+        'VENEERS': '#3f51b5',
+        'SERVICE_10': '#ff9800',
+        'SERVICE_11': '#4caf50',
+        'SERVICE_12': '#e91e63',
+        'SERVICE_13': '#2196f3',
+        'SERVICE_14': '#ff5722',
+        'SERVICE_15': '#9c27b0',
+        'SERVICE_16': '#00bcd4',
+        'SERVICE_17': '#f44336',
+        'SERVICE_18': '#8bc34a',
+        'SERVICE_19': '#03a9f4',
+        'SERVICE_20': '#cddc39'
+      };
+
+      const serviceData = {};
+      services.forEach(service => {
+        serviceData[service.name] = Array(12).fill(0);
+      });
+
+      appointments.forEach(app => {
+        const date = new Date(app.appointment_date);
+        if (isNaN(date.getTime())) {
+          console.warn(`Invalid appointment_date for appointment ID ${app.id}: ${app.appointment_date}`);
+          return;
+        }
+        const monthIndex = date.getMonth();
+        const appYear = date.getFullYear();
+        const serviceName = app.services?.name || 'Unknown';
+        if (appYear === year && serviceData[serviceName]) {
+          serviceData[serviceName][monthIndex]++;
+        }
+      });
+
+      const datasets = Object.keys(serviceData).map((service) => {
+        const color = serviceColors[service] || '#666666';
+        return {
+          label: service,
+          data: serviceData[service],
+          borderColor: color,
+          backgroundColor: color + '33',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          hidden: selectedService !== 'all' && service !== selectedService
+        };
+      });
+
+      let monthlyTotals;
+      if (selectedService === 'all') {
+        monthlyTotals = Array(12).fill(0);
+        datasets.forEach(dataset => {
+          dataset.data.forEach((count, i) => {
+            monthlyTotals[i] += count;
+          });
+        });
+      } else {
+        monthlyTotals = serviceData[selectedService] || Array(12).fill(0);
+      }
+
+      const maxCount = Math.max(...monthlyTotals);
+      const highestMonthIndex = monthlyTotals.indexOf(maxCount);
+      const highestMonth = months[highestMonthIndex];
+
+      const ctx = document.getElementById('appointmentsChart').getContext('2d');
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: months,
+          datasets: datasets
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Number of Appointments',
+                font: { size: 14, weight: '600' },
+                color: '#333'
+              },
+              ticks: {
+                stepSize: 1,
+                font: { size: 12 },
+                color: '#666'
+              },
+              grid: {
+                color: '#e0e0e0',
+                borderDash: [5, 5]
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: `Month (${year})`,
+                font: { size: 14, weight: '600' },
+                color: '#333'
+              },
+              ticks: {
+                font: { size: 12 },
+                color: '#666'
+              },
+              grid: {
+                display: false
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            title: {
+              display: true,
+              text: `Appointments by Month and Service (${year})`,
+              font: { size: 16, weight: '600' },
+              color: '#333',
+              padding: { top: 10, bottom: 20 }
+            },
+            tooltip: {
+              backgroundColor: '#fff',
+              titleColor: '#333',
+              bodyColor: '#666',
+              borderColor: '#e0e0e0',
+              borderWidth: 1,
+              cornerRadius: 8,
+              padding: 10,
+              titleFont: { size: 14, weight: '600' },
+              bodyFont: { size: 12 }
+            }
+          },
+          animation: {
+            duration: 1000,
+            easing: 'easeOutQuart'
+          }
+        }
+      });
+
+      const legendContainer = document.getElementById('chartLegend');
+      legendContainer.innerHTML = '';
+      datasets.forEach((dataset) => {
+        const legendItem = document.createElement('div');
+        legendItem.className = `legend-item ${dataset.hidden ? 'hidden' : ''}`;
+        legendItem.innerHTML = `
+          <span class="legend-color" style="background-color: ${dataset.borderColor};"></span>
+          <span>${dataset.label}</span>
+        `;
+        legendItem.addEventListener('click', () => {
+          dataset.hidden = !dataset.hidden;
+          legendItem.classList.toggle('hidden');
+          chartInstance.update();
+        });
+        legendContainer.appendChild(legendItem);
+      });
+
+      document.getElementById('pageTitle').textContent = `Monthly Appointments Overview (${year})`;
+      document.getElementById('highestMonthText').textContent = 
+        selectedService === 'all' 
+          ? `Month with Highest Total Appointments: ${highestMonth} (${maxCount} appointments)`
+          : `Month with Highest Appointments for ${selectedService}: ${highestMonth} (${maxCount} appointments)`;
+    }
+
+    function filterAppointments() {
+      const statusFilter = document.getElementById('statusFilter').value;
+      const serviceFilter = document.getElementById('serviceTableFilter').value;
+      const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+
+      filteredAppointments = allAppointments.filter(app => {
+        const matchesStatus = statusFilter === 'all' || app.status?.toLowerCase() === statusFilter;
+        const matchesService = serviceFilter === 'all' || app.services?.name === serviceFilter;
+        const patientName = `${app.patients?.first_name || ''} ${app.patients?.last_name || ''}`.toLowerCase();
+        const serviceName = app.services?.name?.toLowerCase() || '';
+        const dateStr = new Date(app.appointment_date).toLocaleDateString().toLowerCase();
+        const matchesSearch = 
+          patientName.includes(searchQuery) ||
+          serviceName.includes(searchQuery) ||
+          dateStr.includes(searchQuery);
+        return matchesStatus && matchesService && matchesSearch;
+      });
+
+      currentPage = 1;
+      displayedAppointments = [];
+      updateRecentAppointments();
+    }
+
+    function updateRecentAppointments() {
+      const tbody = document.getElementById('recentAppointmentsBody');
+      if (!tbody) {
+        console.error('Recent appointments table body not found.');
+        return;
+      }
+
+      const sortedAppointments = [...filteredAppointments].sort((a, b) => 
+        new Date(b.appointment_date) - new Date(a.appointment_date)
+      );
+
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      const endIndex = startIndex + ITEMS_PER_PAGE;
+      const appointmentsToAdd = sortedAppointments.slice(startIndex, endIndex);
+
+      displayedAppointments = [...displayedAppointments, ...appointmentsToAdd];
+
+      tbody.innerHTML = '';
+      if (displayedAppointments.length === 0) {
+        console.warn('No appointments to display.');
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="5" class="text-center">No appointments match the selected filters</td>';
+        tbody.appendChild(row);
+      } else {
+        displayedAppointments.forEach((app, index) => {
+          const patientName = `${app.patients?.first_name || ''} ${app.patients?.last_name || ''}`.trim() || 'Unknown';
+          const statusClass = {
+            'confirmed': 'bg-success',
+            'pending': 'bg-warning',
+            'cancelled': 'bg-danger',
+            'rejected': 'bg-danger'
+          }[app.status?.toLowerCase()] || 'bg-secondary';
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <th scope="row"><a href="#">#${app.id || (index + 1)}</a></th>
+            <td>${patientName}</td>
+            <td>${app.services?.name || 'N/A'}</td>
+            <td>${new Date(app.appointment_date).toLocaleDateString()}</td>
+            <td><span class="badge ${statusClass}">${app.status || 'Unknown'}</span></td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      const loadMoreBtn = document.getElementById('loadMoreBtn');
+      if (displayedAppointments.length >= sortedAppointments.length) {
+        loadMoreBtn.disabled = true;
+      } else {
+        loadMoreBtn.disabled = false;
+      }
+    }
+
+    function loadMoreAppointments() {
+      currentPage++;
+      updateRecentAppointments();
+    }
+
+    function exportGraphToCsv(appointments, year) {
+      const filteredAppointments = appointments.filter(app => new Date(app.appointment_date).getFullYear() === year);
+      const csvRows = [
+        ['ID', 'Patient', 'Service', 'Date', 'Status'].join(',')
+      ];
+
+      filteredAppointments.forEach(app => {
+        const patientName = `${app.patients?.first_name || ''} ${app.patients?.last_name || ''}`.trim() || 'Unknown';
+        const row = [
+          app.id || '',
+          `"${patientName}"`,
+          `"${app.services?.name || 'N/A'}"`,
+          new Date(app.appointment_date).toISOString().split('T')[0],
+          app.status || 'Unknown'
+        ].join(',');
+        csvRows.push(row);
+      });
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `appointments_graph_${year}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportTableToCsv(appointments) {
+      const csvRows = [
+        ['ID', 'Patient', 'Service', 'Date', 'Status'].join(',')
+      ];
+
+      appointments.forEach(app => {
+        const patientName = `${app.patients?.first_name || ''} ${app.patients?.last_name || ''}`.trim() || 'Unknown';
+        const row = [
+          app.id || '',
+          `"${patientName}"`,
+          `"${app.services?.name || 'N/A'}"`,
+          new Date(app.appointment_date).toISOString().split('T')[0],
+          app.status || 'Unknown'
+        ].join(',');
+        csvRows.push(row);
+      });
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `appointments_table_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>

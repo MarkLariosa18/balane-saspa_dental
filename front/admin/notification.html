@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>Admin</title>
+  <meta content="" name="description">
+  <meta content="" name="keywords">
+
+  <link href="assets/img/icon.png" rel="icon">
+
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
+  <link href="assets/vendor/simple-datatables/style.css" rel="stylesheet">
+  <link href="assets/css/style.css" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <!-- Add simple-datatables JavaScript -->
+  <script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest" defer></script>
+
+  <!-- Notification-related styles -->
+  <style>
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      transition: opacity 0.3s ease;
+      opacity: 0;
+    }
+    .overlay.active {
+      display: block;
+      opacity: 1;
+    }
+
+    /* DataTable adjustments */
+    .dataTable-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .dataTable-table th, .dataTable-table td {
+      padding: 10px;
+      text-align: left;
+    }
+    .dataTable-table th {
+      background-color: #f8f9fa;
+    }
+
+    /* Button group styling */
+    .action-buttons {
+      display: flex;
+      gap: 5px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ======= Header ======= -->
+  <div id="head_content"></div>
+
+  <main id="main" class="main">
+
+    <div class="pagetitle">
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="index.html">Dashboard</a></li>
+          <li class="breadcrumb-item active">Notification</li>
+        </ol>
+      </nav>
+      <h1>Pending Cancel Requests</h1>
+    </div>
+
+    <!-- DataTable for notifications -->
+    <section class="section">
+      <div class="card">
+        <div class="card-body">
+          <table id="notificationsTable" class="table datatable">
+            <thead>
+              <tr>
+                <th>Request ID</th>
+                <th>Patient Name</th>
+                <th>Appointment Date</th>
+                <th>Service</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Data will be populated by JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main><!-- End #main -->
+
+  <!-- ======= Footer ======= -->
+  <div id="foot_content"></div>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script type="text/javascript">
+    $(document).ready(() => {
+      $('#head_content').load('header.html', (response, status, xhr) => {
+        if (status === 'success') {
+          console.log('Header loaded successfully in notifications.html');
+
+          // Initialize sidebar toggle logic
+          const toggleSidebarBtn = document.querySelector('.toggle-sidebar-btn');
+          const sidebar = document.querySelector('.sidebar');
+          const overlay = document.getElementById('sidebarOverlay');
+
+          if (toggleSidebarBtn && sidebar && overlay) {
+            toggleSidebarBtn.addEventListener('click', () => {
+              sidebar.classList.toggle('active');
+              overlay.classList.toggle('active');
+              overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+            });
+
+            overlay.addEventListener('click', () => {
+              sidebar.classList.remove('active');
+              overlay.classList.remove('active');
+              overlay.style.display = 'none';
+            });
+          } else {
+            console.error('Sidebar toggle elements not found:', {
+              toggleSidebarBtn: !!toggleSidebarBtn,
+              sidebar: !!sidebar,
+              overlay: !!overlay
+            });
+          }
+
+          // Initialize notification dropdown
+          const notificationDropdown = document.getElementById('notificationDropdown');
+          const notificationsList = document.getElementById('notificationsList');
+
+          if (notificationDropdown && notificationsList) {
+            if (typeof bootstrap !== 'undefined') {
+              const dropdown = new bootstrap.Dropdown(notificationDropdown);
+              notificationDropdown.addEventListener('click', (e) => {
+                e.preventDefault();
+                dropdown.toggle();
+                console.log('Notification dropdown toggled');
+              });
+
+              notificationDropdown.addEventListener('shown.bs.dropdown', () => {
+                console.log('Notification dropdown shown');
+              });
+
+              notificationDropdown.addEventListener('hidden.bs.dropdown', () => {
+                console.log('Notification dropdown hidden');
+              });
+            } else {
+              console.error('Bootstrap JavaScript not loaded, falling back to manual toggle for notification dropdown');
+              notificationDropdown.addEventListener('click', (e) => {
+                e.preventDefault();
+                notificationsList.classList.toggle('show');
+                console.log('Notification dropdown toggled manually');
+              });
+            }
+          } else {
+            console.error('Notification dropdown elements not found:', {
+              notificationDropdown: !!notificationDropdown,
+              notificationsList: !!notificationsList
+            });
+          }
+
+          // Initialize profile dropdown
+          const profileDropdown = document.querySelector('.nav-link.nav-profile');
+          const profileDropdownMenu = document.querySelector('.dropdown-menu.profile');
+
+          if (profileDropdown && profileDropdownMenu) {
+            if (typeof bootstrap !== 'undefined') {
+              const dropdown = new bootstrap.Dropdown(profileDropdown);
+              profileDropdown.addEventListener('click', (e) => {
+                e.preventDefault();
+                dropdown.toggle();
+                console.log('Profile dropdown toggled');
+              });
+
+              profileDropdown.addEventListener('shown.bs.dropdown', () => {
+                console.log('Profile dropdown shown');
+              });
+
+              profileDropdown.addEventListener('hidden.bs.dropdown', () => {
+                console.log('Profile dropdown hidden');
+              });
+            } else {
+              console.error('Bootstrap JavaScript not loaded, falling back to manual toggle for profile dropdown');
+              profileDropdown.addEventListener('click', (e) => {
+                e.preventDefault();
+                profileDropdownMenu.classList.toggle('show');
+                console.log('Profile dropdown toggled manually');
+              });
+            }
+          } else {
+            console.error('Profile dropdown elements not found:', {
+              profileDropdown: !!profileDropdown,
+              profileDropdownMenu: !!profileDropdownMenu
+            });
+          }
+        } else {
+          console.error('Failed to load header.html:', xhr.status, xhr.statusText);
+          $('#head_content').html('<p>Error loading header. Please try again later.</p>');
+        }
+      });
+
+      $('#foot_content').load('footer.html', (response, status, xhr) => {
+        if (status === 'success') {
+          console.log('Footer loaded successfully');
+        } else {
+          console.error('Failed to load footer.html:', xhr.status, xhr.statusText);
+        }
+      });
+    });
+  </script>
+
+  <!-- Notification functions with DataTable integration -->
+  <script>
+    (function() {
+      let cancelRequests = [];
+      let consecutiveFetchFailures = 0;
+      const MAX_CONSECUTIVE_FAILURES = 5;
+      let dataTable;
+  
+      $(document).ready(() => {
+        console.log('DOM loaded, initializing notifications');
+  
+        // Initialize DataTable
+        const table = document.getElementById('notificationsTable');
+        if (table) {
+          dataTable = new simpleDatatables.DataTable(table, {
+            searchable: true,
+            sortable: true,
+            paging: true,
+            perPage: 10,
+            perPageSelect: [5, 10, 15, 20]
+          });
+          console.log('DataTable initialized successfully');
+        } else {
+          console.error('Notifications table element not found');
+        }
+  
+        console.log('Initial fetch of pending cancel requests');
+        fetchPendingCancelRequests();
+      });
+  
+      window.addEventListener('load', () => {
+        console.log('Window loaded, ensuring notifications are fetched');
+        fetchPendingCancelRequests();
+      });
+  
+      function updateCancelRequests() {
+        if (!dataTable) {
+          console.error('DataTable not initialized');
+          return;
+        }
+  
+        console.log('Updating cancel requests, count:', cancelRequests.length, 'requests:', cancelRequests);
+  
+        // Prepare data for DataTable
+        const data = cancelRequests.map((request, index) => {
+          const patientData = request.patients || request.patient || {};
+          const patientName = `${patientData.first_name || patientData.firstname || ''} ${patientData.last_name || patientData.lastname || ''}`.trim() || 'Unknown';
+          const serviceName = (request.services || request.service || {}).name || request.service_name || 'N/A';
+          const appointmentDate = request.appointment_date ? new Date(request.appointment_date).toLocaleString() : 'N/A';
+  
+          console.log(`Processing request ${index}:`, { id: request.id, patientName, appointmentDate, serviceName });
+  
+          return [
+            request.id || 'N/A',
+            patientName,
+            appointmentDate,
+            serviceName,
+            `<div class="action-buttons">
+              <button class="btn btn-sm btn-success" onclick="acceptCancel(${index})">Confirm</button>
+              <button class="btn btn-sm btn-danger" onclick="rejectCancel(${index})">Reject</button>
+            </div>`
+          ];
+        });
+  
+        console.log('Data prepared for DataTable:', data);
+  
+        // Update DataTable
+        const table = document.getElementById('notificationsTable');
+        if (!table) {
+          console.error('Notifications table element not found during update');
+          return;
+        }
+  
+        // Destroy the existing DataTable instance
+        try {
+          dataTable.destroy();
+          console.log('DataTable destroyed successfully');
+        } catch (error) {
+          console.error('Error destroying DataTable:', error);
+        }
+  
+        // Reinitialize DataTable
+        try {
+          dataTable = new simpleDatatables.DataTable(table, {
+            data: {
+              headings: ['Request ID', 'Patient Name', 'Appointment Date', 'Service', 'Action'],
+              data: data
+            },
+            searchable: true,
+            sortable: true,
+            paging: true,
+            perPage: 10,
+            perPageSelect: [5, 10, 15, 20]
+          });
+          console.log('DataTable reinitialized successfully with data');
+        } catch (error) {
+          console.error('Error reinitializing DataTable:', error);
+          // Fallback: Manually populate the table
+          const tableBody = table.querySelector('tbody');
+          if (tableBody) {
+            tableBody.innerHTML = ''; // Clear existing rows
+            if (cancelRequests.length === 0) {
+              tableBody.innerHTML = '<tr><td colspan="5" class="text-center">No pending cancel requests found.</td></tr>';
+            } else {
+              data.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                  const td = document.createElement('td');
+                  td.innerHTML = cell;
+                  tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+              });
+              console.log('Fallback: Table populated manually');
+            }
+          } else {
+            console.error('Table body not found for manual population');
+          }
+        }
+  
+        // Update notification count in header (if present)
+        const count = document.getElementById('notificationCount');
+        const headerCount = document.getElementById('notificationHeaderCount');
+        if (count) count.textContent = cancelRequests.length;
+        if (headerCount) headerCount.textContent = cancelRequests.length;
+      }
+  
+      // Attach functions to window object to make them globally accessible
+      window.acceptCancel = async function(index) {
+        const request = cancelRequests[index];
+        if (!request) {
+          console.error('No request found at index:', index);
+          return;
+        }
+        try {
+          console.log('Accepting cancel request:', request.id);
+          const response = await fetch(`/api/appointments/${request.id}/action`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ pending_action: null, status: 'cancelled' })
+          });
+          if (response.ok) {
+            console.log('Cancel request accepted:', request.id);
+            cancelRequests = cancelRequests.filter((_, i) => i !== index);
+            updateCancelRequests();
+            if (window.location.pathname.includes('index.html')) {
+              window.location.reload();
+            }
+          } else {
+            const error = await response.text();
+            console.error('Failed to accept cancellation:', error);
+            alert('Failed to accept cancellation: ' + error);
+          }
+        } catch (error) {
+          console.error('Error accepting cancellation:', error);
+          alert('Error processing request');
+        }
+      };
+  
+      window.rejectCancel = async function(index) {
+        const request = cancelRequests[index];
+        if (!request) {
+          console.error('No request found at index:', index);
+          return;
+        }
+        try {
+          console.log('Rejecting cancel request:', request.id);
+          const response = await fetch(`/api/appointments/${request.id}/action`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ pending_action: null, status: 'confirmed' })
+          });
+          if (response.ok) {
+            console.log('Cancel request rejected:', request.id);
+            cancelRequests = cancelRequests.filter((_, i) => i !== index);
+            updateCancelRequests();
+          } else {
+            const error = await response.text();
+            console.error('Failed to reject cancellation:', error);
+            alert('Failed to reject cancellation: ' + error);
+          }
+        } catch (error) {
+          console.error('Error rejecting cancellation:', error);
+          alert('Error processing request');
+        }
+      };
+  
+      async function fetchPendingCancelRequests() {
+        try {
+          console.log('Fetching pending cancel requests from /api/appointments/pending-action');
+          const response = await fetch('/api/appointments/pending-action', {
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+          console.log('Response status:', response.status);
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Pending cancel requests response:', data);
+            // Log all field names for the first record (if any) to inspect structure
+            if (data.length > 0) {
+              console.log('Fields in first record:', Object.keys(data[0]));
+            }
+            console.log('Pending actions in response:', data.map(req => req.pending_action));
+            cancelRequests = data.filter(req => req.pending_action && req.pending_action.toLowerCase() === 'cancel');
+            console.log('Filtered cancel requests:', cancelRequests);
+            updateCancelRequests();
+            consecutiveFetchFailures = 0;
+          } else {
+            const errorText = await response.text();
+            console.error('Failed to fetch pending cancel requests:', response.status, errorText);
+            consecutiveFetchFailures++;
+            console.log('Consecutive fetch failures:', consecutiveFetchFailures);
+            if (consecutiveFetchFailures >= MAX_CONSECUTIVE_FAILURES) {
+              console.error('Too many consecutive fetch failures, stopping further attempts');
+              alert('Unable to fetch notifications due to repeated server errors. Please contact support.');
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching cancel requests:', error.message, error.stack);
+          consecutiveFetchFailures++;
+          console.log('Consecutive fetch failures:', consecutiveFetchFailures);
+          if (consecutiveFetchFailures >= MAX_CONSECUTIVE_FAILURES) {
+            console.error('Too many consecutive fetch failures, stopping further attempts');
+            alert('Unable to fetch notifications due to repeated server errors. Please contact support.');
+          }
+        }
+      }
+    })();
+  </script>
+</body>
+
+</html>
