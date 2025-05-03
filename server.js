@@ -4,7 +4,8 @@ const dotenv = require('dotenv');
 const morgan = require('morgan');
 const path = require('path');
 const session = require('express-session');
-const RedisStore = require('connect-redis').default;
+const SessionRedisStore = require('connect-redis').default; // For session store
+const RateLimitRedisStore = require('rate-limit-redis'); // For rate limiter
 const Redis = require('ioredis');
 const cookieParser = require('cookie-parser');
 const { createServer } = require('http');
@@ -28,6 +29,10 @@ requiredEnvVars.forEach((varName) => {
   }
 });
 
+console.log('RateLimitRedisStore:', RateLimitRedisStore);
+console.log('Typeof RateLimitRedisStore:', typeof RateLimitRedisStore);
+console.log('RateLimitRedisStore prototype:', RateLimitRedisStore && RateLimitRedisStore.prototype);
+
 // Import routes and their Socket.IO handlers
 const patientRoutes = require('./routes/patients');
 const userRoutes = require('./routes/users');
@@ -40,6 +45,12 @@ const authRoutes = require('./routes/auth');
 const redis = new Redis(process.env.REDIS_URL, {
   retryStrategy: (times) => Math.min(times * 50, 2000),
   maxRetriesPerRequest: 10,
+});
+
+redis.ping().then((result) => {
+  console.log('Redis ping:', result); // Should log 'PONG'
+}).catch((err) => {
+  console.error('Redis connection error:', err);
 });
 
 // Initialize Express app
@@ -77,9 +88,9 @@ app.set('socketio', io);
 // Rate limiters with Redis store
 const createRateLimiter = (prefix, windowMs, max, message) =>
   rateLimit({
-    store: new rateLimit.RedisStore({
-      sendCommand: (...args) => redis.call(...args),
-      prefix,
+    store: new RateLimitRedisStore.default({
+      sendCommand: (...args) => redis.call(...args), // Use ioredis call method
+      prefix: `ratelimit:${prefix}`,
     }),
     windowMs,
     max,
@@ -95,7 +106,7 @@ const staticFileLimiter = createRateLimiter('rl:static:', 15 * 60 * 1000, 1000, 
 
 // Session configuration
 const sessionMiddleware = session({
-  store: new RedisStore({ client: redis, prefix: 'session:' }),
+  store: new SessionRedisStore({ client: redis, prefix: 'session:' }),
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
