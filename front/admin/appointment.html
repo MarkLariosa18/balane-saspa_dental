@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>Admin - Appointment Graph</title>
+  <meta content="Visualize appointment trends by month and service" name="description">
+  <meta content="appointments, graph, admin, dashboard" name="keywords">
+
+  <link href="assets/img/icon.png" rel="icon">
+  <link href="assets/img/icon.png" rel="apple-touch-icon">
+
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="assets/vendor/quill/quill.snow.css" rel="stylesheet">
+  <link href="assets/vendor/quill/quill.bubble.css" rel="stylesheet">
+  <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
+  <link href="assets/vendor/simple-datatables/style.css" rel="stylesheet">
+  <link href="assets/css/style.css" rel="stylesheet">
+  <link href="assets/css/calendar.css" rel="stylesheet">
+
+  <!-- SweetAlert2 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+
+  <style>
+    .graph-container {
+      margin: 20px 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #ffffff, #f8f9fa);
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+      transition: box-shadow 0.3s;
+    }
+    .graph-container:hover {
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+    .highlight-text {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-top: 20px;
+      color: #4154f1;
+    }
+    .filter-container {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-container label {
+      font-weight: 500;
+      color: #333;
+    }
+    .filter-container select, .filter-container button {
+      padding: 10px 15px;
+      font-size: 0.95rem;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      transition: all 0.3s ease;
+    }
+    .filter-container select:focus, .filter-container button:focus {
+      outline: none;
+      border-color: #4154f1;
+      box-shadow: 0 0 0 3px rgba(65, 84, 241, 0.1);
+    }
+    .filter-container button {
+      background-color: #4154f1;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .filter-container button:hover {
+      background-color: #3340c1;
+    }
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: #fff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .legend-item:hover {
+      background: #e6f3ff;
+      transform: translateY(-2px);
+    }
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      margin-right: 10px;
+      box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+    }
+    .legend-item.hidden {
+      opacity: 0.6;
+      background: #f0f0f0;
+    }
+    .recent-appointments-filter {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .search-container {
+      flex: 1;
+      min-width: 200px;
+    }
+    .search-container input {
+      width: 100%;
+      padding: 10px 15px;
+      font-size: 0.95rem;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      transition: all 0.3s ease;
+    }
+    .search-container input:focus {
+      outline: none;
+      border-color: #4154f1;
+      box-shadow: 0 0 0 3px rgba(65, 84, 241, 0.1);
+    }
+    .load-more-container {
+      text-align: center;
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+    }
+    .load-more-btn, .load-less-btn {
+      padding: 10px 25px;
+      font-size: 0.95rem;
+      border-radius: 8px;
+      background-color: #4154f1;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .load-more-btn:hover, .load-less-btn:hover {
+      background-color: #3340c1;
+      transform: translateY(-2px);
+    }
+    .load-more-btn:disabled, .load-less-btn:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .recent-sales table {
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .recent-sales th {
+      background: #f8f9fa;
+      padding: 12px;
+      font-weight: 600;
+      color: #333;
+    }
+    .recent-sales tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    .recent-sales tr:hover {
+      background: #e6f3ff;
+    }
+    .badge {
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+    }
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      min-height: 300px;
+    }
+    #appointmentsChart {
+      width: 100% !important;
+      height: 300px !important;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+      .filter-container, .recent-appointments-filter {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .filter-container select, .filter-container button, .search-container input {
+        width: 100%;
+        font-size: 0.9rem;
+        padding: 8px 12px;
+      }
+      .chart-legend {
+        gap: 8px;
+      }
+      .legend-item {
+        font-size: 0.85rem;
+        padding: 5px 10px;
+      }
+      .legend-color {
+        width: 12px;
+        height: 12px;
+      }
+      .recent-sales table {
+        display: block;
+        overflow-x: auto;
+      }
+      .recent-sales th, .recent-sales td {
+        font-size: 0.8rem;
+        padding: 8px;
+      }
+      .load-more-btn, .load-less-btn {
+        font-size: 0.9rem;
+        padding: 8px 20px;
+      }
+      .canvas-container {
+        min-height: 200px;
+      }
+      #appointmentsChart {
+        height: 200px !important;
+      }
+    }
+    @media (max-width: 576px) {
+      .graph-container {
+        padding: 15px;
+      }
+      .highlight-text {
+        font-size: 1rem;
+      }
+      .filter-container label {
+        font-size: 0.9rem;
+      }
+      .load-more-container {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+  </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Fallback for Chart.js -->
+  <script>window.Chart || document.write('<script src="assets/vendor/chart.js/chart.min.js"><\/script>');</script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+  <div id="head_content"></div>
+
+  <main id="main" class="main">
+    <div class="pagetitle">
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="index.html">Dashboard</a></li>
+          <li class="breadcrumb-item active">Appointments Graph</li>
+        </ol>
+      </nav>
+      <h2 id="pageTitle">Monthly Appointments Overview</h2>
+    </div>
+
+    <section class="section">
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="graph-container">
+            <div class="filter-container">
+              <label for="yearFilter">Year:</label>
+              <select id="yearFilter"></select>
+              <label for="serviceFilter">Service:</label>
+              <select id="serviceFilter">
+                <option value="all">All Services</option>
+              </select>
+              <button id="exportCsvBtn">Export Graph Data as CSV</button>
+            </div>
+            <div id="chartLegend" class="chart-legend"></div>
+            <div class="canvas-container">
+              <canvas id="appointmentsChart"></canvas>
+            </div>
+            <div class="highlight-text" id="highestMonthText"></div>
+          </div>
+
+          <div class="card recent-sales overflow-auto">
+            <div class="card-body">
+              <h5 class="card-title">All Appointments</h5>
+              <div class="recent-appointments-filter">
+                <label for="statusFilter">Status:</label>
+                <select id="statusFilter">
+                  <option value="all">All Statuses</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="pending">Pending</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <label for="serviceTableFilter">Service:</label>
+                <select id="serviceTableFilter">
+                  <option value="all">All Services</option>
+                </select>
+                <div class="search-container">
+                  <input type="text" id="searchInput" placeholder="Search by patient, service, or date...">
+                </div>
+                <button id="exportTableCsvBtn">Export Table as CSV</button>
+              </div>
+              <table class="table table-borderless" id="recentAppointmentsTable">
+                <thead>
+                  <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Patient</th>
+                    <th scope="col">Service</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="recentAppointmentsBody"></tbody>
+              </table>
+              <div class="load-more-container">
+                <button id="loadMoreBtn" class="load-more-btn">Load More</button>
+                <button id="loadLessBtn" class="load-less-btn" style="display: none;">Load Less</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="foot_content"></div>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/quill/quill.js"></script>
+  <script src="assets/vendor/simple-datatables/simple-datatables.js"></script>
+  <script src="assets/vendor/tinymce/tinymce.min.js"></script>
+  <script src="assets/vendor/php-email-form/validate.js"></script>
+  <script src="assets/js/main.js"></script>
+
+  <script type="text/javascript">
+ $(document).ready(() => {
+  $('#head_content').load('header.html', (response, status, xhr) => {
+    if (status === 'success') {
+      console.log('Header loaded successfully in appointment.html');
+      initSidebarToggle();
+      initDropdowns();
+    } else {
+      console.error('Failed to load header:', xhr.status, xhr.statusText);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Failed to load header. Please try again later.',
+        confirmButtonColor: '#4154f1'
+      });
+      $('#head_content').html('<p>Error loading header. Please try again later.</p>');
+    }
+  });
+
+  $('#foot_content').load('footer.html', (response, status, xhr) => {
+    if (status === 'success') {
+      console.log('Footer loaded successfully');
+    } else {
+      console.error('Failed to load footer:', xhr.status, xhr.statusText);
+    }
+  });
+});
+
+function initSidebarToggle() {
+  const toggleSidebarBtn = document.querySelector('.toggle-sidebar-btn');
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+
+  if (toggleSidebarBtn && sidebar && overlay) {
+    toggleSidebarBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('active');
+      overlay.classList.toggle('active');
+      overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+    });
+
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('active');
+      overlay.classList.remove('active');
+      overlay.style.display = 'none';
+    });
+  } else {
+    console.error('Sidebar toggle elements not found:', {
+      toggleSidebarBtn: !!toggleSidebarBtn,
+      sidebar: !!sidebar,
+      overlay: !!overlay
+    });
+  }
+}
+
+function initDropdowns() {
+  const notificationDropdown = document.getElementById('notificationDropdown');
+  const notificationsList = document.getElementById('notificationsList');
+  const profileDropdown = document.querySelector('.nav-link.nav-profile');
+  const profileDropdownMenu = document.querySelector('.dropdown-menu.profile');
+
+  if (notificationDropdown && notificationsList) {
+    if (typeof bootstrap !== 'undefined') {
+      const dropdown = new bootstrap.Dropdown(notificationDropdown);
+      notificationDropdown.addEventListener('click', (e) => {
+        e.preventDefault();
+        dropdown.toggle();
+        console.log('Notification dropdown toggled');
+      });
+    } else {
+      console.error('Bootstrap JS not loaded, using manual toggle for notification dropdown');
+      notificationDropdown.addEventListener('click', (e) => {
+        e.preventDefault();
+        notificationsList.classList.toggle('show');
+        console.log('Notification dropdown toggled manually');
+      });
+    }
+  }
+
+  if (profileDropdown && profileDropdownMenu) {
+    if (typeof bootstrap !== 'undefined') {
+      const dropdown = new bootstrap.Dropdown(profileDropdown);
+      profileDropdown.addEventListener('click', (e) => {
+        e.preventDefault();
+        dropdown.toggle();
+        console.log('Profile dropdown toggled');
+      });
+    } else {
+      console.error('Bootstrap JS not loaded, using manual toggle for profile dropdown');
+      profileDropdown.addEventListener('click', (e) => {
+        e.preventDefault();
+        profileDropdownMenu.classList.toggle('show');
+        console.log('Profile dropdown toggled manually');
+      });
+    }
+  }
+}
+
+// Test Chart.js availability
+console.log('Chart.js loaded:', typeof Chart !== 'undefined');
+
+let chartInstance = null;
+let allAppointments = [];
+let allServices = [];
+let filteredAppointments = [];
+let displayedAppointments = [];
+const ITEMS_PER_PAGE = 10;
+let currentPage = 1;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Test basic chart rendering
+  function testChart() {
+    const testCanvas = document.createElement('canvas');
+    testCanvas.id = 'testChart';
+    testCanvas.style.display = 'none';
+    document.body.appendChild(testCanvas);
+    try {
+      new Chart(testCanvas.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: ['Test'],
+          datasets: [{ label: 'Test', data: [1] }]
+        }
+      });
+      console.log('Test chart rendered successfully');
+      document.body.removeChild(testCanvas);
+    } catch (error) {
+      console.error('Test chart failed:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Chart Error',
+        text: 'Failed to initialize Chart.js: ' + error.message,
+        confirmButtonColor: '#4154f1'
+      });
+    }
+  }
+  testChart();
+
+  // Initialize WebSocket
+  let ws;
+  function initWebSocket() {
+    ws = new WebSocket('wss://balane-saspa-dental-1.onrender.com');
+    ws.onopen = () => console.log('WebSocket connected');
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      handleWebSocketMessage(message);
+    };
+    ws.onclose = () => {
+      console.log('WebSocket disconnected. Reconnecting in 5s...');
+      setTimeout(initWebSocket, 5000);
+    };
+    ws.onerror = (error) => console.error('WebSocket error:', error);
+  }
+  initWebSocket();
+
+  async function handleWebSocketMessage(message) {
+    console.log('Received WebSocket message:', message);
+    const yearFilter = document.getElementById('yearFilter');
+    const serviceFilter = document.getElementById('serviceFilter');
+    const currentYear = parseInt(yearFilter.value);
+    const currentService = serviceFilter.value;
+
+    switch (message.type) {
+      case 'reschedule_request':
+      case 'cancel_request':
+        Swal.fire({
+          icon: 'info',
+          title: `${message.type === 'reschedule_request' ? 'Reschedule' : 'Cancel'} Request`,
+          text: `New ${message.type === 'reschedule_request' ? 'reschedule' : 'cancel'} request for ${getPatientName(message.request.patients)}.`,
+          confirmButtonColor: '#4154f1',
+          timer: 3000
+        });
+        break;
+      case 'confirm_response':
+      case 'reschedule_response':
+      case 'cancel_response':
+      case 'reject_response':
+        const appointmentId = message.request.appointment_id || message.requestId;
+        const appointmentIndex = allAppointments.findIndex(app => app.id === appointmentId);
+        if (appointmentIndex !== -1) {
+          const appointment = allAppointments[appointmentIndex];
+          if (message.type === 'confirm_response' && message.status === 'approved') {
+            appointment.status = 'confirmed';
+            appointment.pending_action = null;
+          } else if (message.type === 'reschedule_response' && message.status === 'approved') {
+            appointment.appointment_date = message.request.new_appointment_date;
+            appointment.status = 'confirmed';
+            appointment.pending_action = null;
+          } else if (message.type === 'cancel_response' && message.status === 'approved') {
+            appointment.status = 'cancelled';
+            appointment.pending_action = null;
+          } else if (message.type === 'reject_response' && message.status === 'rejected') {
+            appointment.status = 'rejected';
+            appointment.reject_reason = message.reject_reason || 'N/A';
+            appointment.pending_action = null;
+          }
+          allAppointments[appointmentIndex] = appointment;
+          filterAppointments();
+          renderAppointmentsGraph(allAppointments, allServices, currentYear, currentService);
+          Swal.fire({
+            icon: message.status === 'approved' ? 'success' : 'error',
+            title: `${message.type.replace('_response', '').capitalize()} ${message.status.capitalize()}`,
+            text: `Appointment ${message.status} for ${getPatientName(appointment.patients)}.`,
+            confirmButtonColor: '#4154f1',
+            timer: 3000
+          });
+        }
+        break;
+      case 'service_added':
+        const newService = message.service;
+        if (!allServices.some(s => s.name === newService.name)) {
+          allServices.push(newService);
+          populateServiceFilter(allServices);
+          populateServiceTableFilter(allServices);
+          renderAppointmentsGraph(allAppointments, allServices, currentYear, currentService);
+          Swal.fire({
+            icon: 'info',
+            title: 'New Service',
+            text: `Service "${newService.name}" added.`,
+            confirmButtonColor: '#4154f1',
+            timer: 3000
+          });
+        }
+        break;
+    }
+  }
+
+  // String prototype for capitalization
+  String.prototype.capitalize = function() {
+    return this.charAt(0).toUpperCase() + this.slice(1);
+  };
+
+  try {
+    // Check authentication
+    const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', { credentials: 'include' });
+    if (!authResponse.ok) {
+      const errorData = await authResponse.json();
+      throw new Error(errorData.message || 'Authentication check failed');
+    }
+    const authData = await authResponse.json();
+
+    if (!authData.isLoggedIn || authData.role !== 'admin') {
+      Swal.fire({
+        icon: 'error',
+        title: 'Unauthorized',
+        text: 'You are not authorized to access this page. Redirecting to login page.',
+        confirmButtonColor: '#4154f1',
+        allowOutsideClick: false
+      }).then(() => {
+        window.location.href = '/pages-login.html';
+      });
+      return;
+    }
+
+    // Fetch appointments
+    const appointmentsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', { credentials: 'include' });
+    if (!appointmentsResponse.ok) throw new Error(`Failed to fetch appointments: ${appointmentsResponse.status}`);
+    const appointmentsData = await appointmentsResponse.json();
+    if (!appointmentsData.success) throw new Error(appointmentsData.message);
+    allAppointments = appointmentsData.appointments;
+    console.log('Appointments loaded:', allAppointments);
+
+    // Fetch services
+    try {
+      const servicesResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/services/all', { credentials: 'include' });
+      if (!servicesResponse.ok) throw new Error(`Failed to fetch services: ${servicesResponse.status}`);
+      const servicesData = await servicesResponse.json();
+      if (!servicesData.success) throw new Error(servicesData.message);
+      allServices = servicesData.services;
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      Swal.fire({
+        icon: 'warning',
+        title: 'Service Fetch Failed',
+        text: 'Could not load services. Using appointment data as fallback.',
+        confirmButtonColor: '#4154f1'
+      });
+      const uniqueServices = [...new Set(allAppointments.map(app => app.services?.name).filter(name => name))];
+      allServices = uniqueServices.map(name => ({ name }));
+    }
+    console.log('Services loaded:', allServices);
+
+    // Validate appointment dates
+    const invalidAppointments = allAppointments.filter(app => isNaN(new Date(app.appointment_date).getTime()));
+    if (invalidAppointments.length > 0) {
+      console.warn('Invalid appointment dates:', invalidAppointments);
+      Swal.fire({
+        icon: 'warning',
+        title: 'Invalid Data',
+        text: `${invalidAppointments.length} appointment(s) have invalid dates and will be excluded from the graph.`,
+        confirmButtonColor: '#4154f1'
+      });
+      allAppointments = allAppointments.filter(app => !isNaN(new Date(app.appointment_date).getTime()));
+    }
+
+    if (allAppointments.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: 'No Appointments',
+        text: 'No appointment data available to display.',
+        confirmButtonColor: '#4154f1'
+      });
+      document.getElementById('highestMonthText').textContent = 'No appointment data available.';
+      return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    populateYearFilter(allAppointments, currentYear);
+    populateServiceFilter(allServices);
+    populateServiceTableFilter(allServices);
+    filteredAppointments = [...allAppointments];
+    requestAnimationFrame(() => {
+      const canvas = document.getElementById('appointmentsChart');
+      console.log('Canvas element:', canvas);
+      if (canvas) {
+        const style = getComputedStyle(canvas);
+        console.log('Canvas styles:', {
+          display: style.display,
+          width: style.width,
+          height: style.height,
+          visibility: style.visibility
+        });
+      }
+      renderAppointmentsGraph(allAppointments, allServices, currentYear, 'all');
+    });
+    updateRecentAppointments();
+
+    // Event listeners for graph filters
+    document.getElementById('yearFilter').addEventListener('change', (e) => {
+      renderAppointmentsGraph(allAppointments, allServices, parseInt(e.target.value), document.getElementById('serviceFilter').value);
+    });
+    document.getElementById('serviceFilter').addEventListener('change', (e) => {
+      renderAppointmentsGraph(allAppointments, allServices, parseInt(document.getElementById('yearFilter').value), e.target.value);
+    });
+    document.getElementById('exportCsvBtn').addEventListener('click', () => {
+      exportGraphToCsv(allAppointments, parseInt(document.getElementById('yearFilter').value));
+    });
+
+    // Event listeners for table filters
+    document.getElementById('statusFilter').addEventListener('change', filterAppointments);
+    document.getElementById('serviceTableFilter').addEventListener('change', filterAppointments);
+    document.getElementById('searchInput').addEventListener('input', filterAppointments);
+    document.getElementById('exportTableCsvBtn').addEventListener('click', () => {
+      exportTableToCsv(filteredAppointments);
+    });
+    document.getElementById('loadMoreBtn').addEventListener('click', loadMoreAppointments);
+    document.getElementById('loadLessBtn').addEventListener('click', loadLessAppointments);
+
+  } catch (error) {
+    console.error('Error loading data:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: `Failed to load data: ${error.message}`,
+      confirmButtonColor: '#4154f1'
+    });
+    document.getElementById('highestMonthText').textContent = 'Failed to load appointment data.';
+  }
+});
+
+function getPatientName(patientData) {
+  if (!patientData) return 'Unknown';
+  const { first_name, middle_name, last_name } = patientData;
+  return [first_name, middle_name, last_name].filter(Boolean).join(' ').trim() || 'Unknown';
+}
+
+function populateYearFilter(appointments, currentYear) {
+  const yearFilter = document.getElementById('yearFilter');
+  const years = [...new Set(appointments.map(app => new Date(app.appointment_date).getFullYear()))].sort((a, b) => b - a);
+  yearFilter.innerHTML = '';
+  years.forEach(year => {
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year;
+    yearFilter.appendChild(option);
+  });
+  yearFilter.value = currentYear;
+}
+
+function populateServiceFilter(services) {
+  const serviceFilter = document.getElementById('serviceFilter');
+  serviceFilter.innerHTML = '<option value="all">All Services</option>';
+  services.forEach(service => {
+    const option = document.createElement('option');
+    option.value = service.name;
+    option.textContent = service.name;
+    serviceFilter.appendChild(option);
+  });
+}
+
+function populateServiceTableFilter(services) {
+  const serviceTableFilter = document.getElementById('serviceTableFilter');
+  serviceTableFilter.innerHTML = '<option value="all">All Services</option>';
+  services.forEach(service => {
+    const option = document.createElement('option');
+    option.value = service.name;
+    option.textContent = service.name;
+    serviceTableFilter.appendChild(option);
+  });
+}
+
+function generateColor(index) {
+  const colors = [
+    '#2563eb', '#f97316', '#dc2626', '#14b8a6', '#9333ea', '#f59e0b', '#16a34a',
+    '#db2777', '#eab308', '#3b82f6', '#4f46e5', '#a3e635', '#22c55e', '#ea580c',
+    '#7c3aed', '#06b6d4', '#ec4899', '#ef4444', '#65a30d', '#0ea5e9'
+  ];
+  return colors[index % colors.length];
+}
+
+function renderAppointmentsGraph(appointments, services, year, selectedService) {
+  try {
+    const canvas = document.getElementById('appointmentsChart');
+    if (!canvas) {
+      throw new Error('Canvas element #appointmentsChart not found');
+    }
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Failed to get 2D context for canvas');
+    }
+
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const serviceData = {};
+    services.forEach((service, index) => {
+      serviceData[service.name] = {
+        counts: Array(12).fill(0),
+        color: generateColor(index)
+      };
+    });
+
+    console.log('Processing appointments:', appointments.length);
+    appointments.forEach(app => {
+      const date = new Date(app.appointment_date);
+      if (isNaN(date.getTime())) return;
+      const monthIndex = date.getMonth();
+      const appYear = date.getFullYear();
+      const serviceName = app.services?.name || 'Unknown';
+      if (appYear === year && serviceData[serviceName]) {
+        serviceData[serviceName].counts[monthIndex]++;
+      }
+    });
+    console.log('Service data:', serviceData);
+
+    const datasets = Object.keys(serviceData).map(service => {
+      const data = serviceData[service].counts;
+      const hasAppointments = data.reduce((sum, value) => sum + value, 0) > 0;
+      const color = hasAppointments ? serviceData[service].color : '#6b7280';
+      return {
+        label: service,
+        data: data,
+        borderColor: color,
+        backgroundColor: `${color}40`,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        hidden: selectedService !== 'all' && service !== selectedService
+      };
+    });
+    console.log('Datasets:', datasets);
+
+    let monthlyTotals;
+    if (selectedService === 'all') {
+      monthlyTotals = Array(12).fill(0);
+      datasets.forEach(dataset => {
+        dataset.data.forEach((count, i) => {
+          monthlyTotals[i] += count;
+        });
+      });
+    } else {
+      monthlyTotals = serviceData[selectedService]?.counts || Array(12).fill(0);
+    }
+
+    const maxCount = Math.max(...monthlyTotals);
+    const highestMonthIndex = monthlyTotals.indexOf(maxCount);
+    const highestMonth = months[highestMonthIndex];
+
+    if (chartInstance) {
+      chartInstance.destroy();
+    }
+
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: months,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Number of Appointments',
+              font: { size: 14, weight: '600', family: 'Nunito' },
+              color: '#333'
+            },
+            ticks: {
+              stepSize: 1,
+              font: { size: 12, family: 'Nunito' },
+              color: '#666'
+            },
+            grid: {
+              color: '#e0e0e0',
+              borderDash: [5, 5]
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: `Month (${year})`,
+              font: { size: 14, weight: '600', family: 'Nunito' },
+              color: '#333'
+            },
+            ticks: {
+              font: { size: 12, family: 'Nunito' },
+              color: '#666'
+            },
+            grid: {
+              display: false
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          title: {
+            display: true,
+            text: `Appointments by Month and Service (${year})`,
+            font: { size: 18, weight: '600', family: 'Nunito' },
+            color: '#333',
+            padding: { top: 10, bottom: 20 }
+          },
+          tooltip: {
+            backgroundColor: '#fff',
+            titleColor: '#333',
+            bodyColor: '#666',
+            borderColor: '#e0e0e0',
+            borderWidth: 1,
+            cornerRadius: 8,
+            padding: 12,
+            titleFont: { size: 14, weight: '600', family: 'Nunito' },
+            bodyFont: { size: 12, family: 'Nunito' }
+          }
+        },
+        animation: {
+          duration: 1000,
+          easing: 'easeOutQuart'
+        }
+      }
+    });
+    console.log('Chart instance created:', chartInstance);
+
+    const legendContainer = document.getElementById('chartLegend');
+    legendContainer.innerHTML = '';
+    datasets.forEach((dataset) => {
+      const legendItem = document.createElement('div');
+      legendItem.className = `legend-item ${dataset.hidden ? 'hidden' : ''}`;
+      legendItem.innerHTML = `
+        <span class="legend-color" style="background-color: ${dataset.borderColor};"></span>
+        <span>${dataset.label}</span>
+      `;
+      legendItem.addEventListener('click', () => {
+        dataset.hidden = !dataset.hidden;
+        legendItem.classList.toggle('hidden');
+        chartInstance.update();
+      });
+      legendContainer.appendChild(legendItem);
+    });
+
+    document.getElementById('pageTitle').textContent = `Monthly Appointments Overview (${year})`;
+    document.getElementById('highestMonthText').textContent = 
+      selectedService === 'all' 
+        ? `Month with Highest Total Appointments: ${highestMonth} (${maxCount} appointments)`
+        : `Month with Highest Appointments for ${selectedService}: ${highestMonth} (${maxCount} appointments)`;
+  } catch (error) {
+    console.error('Error rendering graph:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Graph Error',
+      text: `Failed to render graph: ${error.message}`,
+      confirmButtonColor: '#4154f1'
+    });
+    document.getElementById('highestMonthText').textContent = 'Failed to render graph.';
+  }
+}
+
+function filterAppointments() {
+  const statusFilter = document.getElementById('statusFilter').value;
+  const serviceFilter = document.getElementById('serviceTableFilter').value;
+  const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+
+  filteredAppointments = allAppointments.filter(app => {
+    const matchesStatus = statusFilter === 'all' || app.status?.toLowerCase() === statusFilter;
+    const matchesService = serviceFilter === 'all' || app.services?.name === serviceFilter;
+    const patientName = getPatientName(app.patients).toLowerCase();
+    const serviceName = app.services?.name?.toLowerCase() || '';
+    const dateStr = new Date(app.appointment_date).toLocaleDateString().toLowerCase();
+    const matchesSearch = 
+      patientName.includes(searchQuery) ||
+      serviceName.includes(searchQuery) ||
+      dateStr.includes(searchQuery);
+    return matchesStatus && matchesService && matchesSearch;
+  });
+
+  currentPage = 1;
+  displayedAppointments = [];
+  updateRecentAppointments();
+}
+
+function updateRecentAppointments() {
+  const tbody = document.getElementById('recentAppointmentsBody');
+  if (!tbody) {
+    console.error('Recent appointments table body not found.');
+    return;
+  }
+
+  const sortedAppointments = [...filteredAppointments].sort((a, b) => 
+    new Date(b.appointment_date) - new Date(a.appointment_date)
+  );
+
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const appointmentsToAdd = sortedAppointments.slice(startIndex, endIndex);
+
+  displayedAppointments = [...displayedAppointments, ...appointmentsToAdd];
+
+  tbody.innerHTML = '';
+  if (displayedAppointments.length === 0) {
+    const row = document.createElement('tr');
+    row.innerHTML = '<td colspan="5" class="text-center">No appointments match the selected filters</td>';
+    tbody.appendChild(row);
+  } else {
+    displayedAppointments.forEach((app, index) => {
+      const patientName = getPatientName(app.patients);
+      const statusClass = {
+        'confirmed': 'bg-success',
+        'pending': 'bg-warning',
+        'cancelled': 'bg-danger',
+        'rejected': 'bg-danger',
+        'expired': 'bg-secondary'
+      }[app.status?.toLowerCase()] || 'bg-secondary';
+      const idString = String(app.id || app._id || index + 1);
+      const shortId = idString.length > 4 ? idString.slice(0, 4) : idString.padEnd(4, '0');
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <th scope="row"><a href="#">#${shortId}</a></th>
+        <td>${patientName}</td>
+        <td>${app.services?.name || 'N/A'}</td>
+        <td>${new Date(app.appointment_date).toLocaleDateString()}</td>
+        <td><span class="badge ${statusClass}">${app.status?.capitalize() || 'Unknown'}</span></td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
+  const loadLessBtn = document.getElementById('loadLessBtn');
+  const allLoaded = displayedAppointments.length >= sortedAppointments.length;
+  loadMoreBtn.style.display = allLoaded ? 'none' : 'inline-block';
+  loadLessBtn.style.display = allLoaded && sortedAppointments.length > ITEMS_PER_PAGE ? 'inline-block' : 'none';
+}
+
+function loadMoreAppointments() {
+  currentPage++;
+  updateRecentAppointments();
+}
+
+function loadLessAppointments() {
+  currentPage = 1;
+  displayedAppointments = [];
+  updateRecentAppointments();
+}
+
+function exportGraphToCsv(appointments, year) {
+  const filteredAppointments = appointments.filter(app => new Date(app.appointment_date).getFullYear() === year);
+  const csvRows = [
+    ['ID', 'Patient', 'Service', 'Date', 'Status'].join(',')
+  ];
+
+  filteredAppointments.forEach(app => {
+    const patientName = getPatientName(app.patients);
+    const row = [
+      app.id || '',
+      `"${patientName}"`,
+      `"${app.services?.name || 'N/A'}"`,
+      new Date(app.appointment_date).toISOString().split('T')[0],
+      app.status?.capitalize() || 'Unknown'
+    ].join(',');
+    csvRows.push(row);
+  });
+
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `appointments_graph_${year}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  Swal.fire({
+    icon: 'success',
+    title: 'Export Successful',
+    text: `Graph data exported as appointments_graph_${year}.csv`,
+    confirmButtonColor: '#4154f1',
+    timer: 1500
+  });
+}
+
+function exportTableToCsv(appointments) {
+  const csvRows = [
+    ['ID', 'Patient', 'Service', 'Date', 'Status'].join(',')
+  ];
+
+  appointments.forEach(app => {
+    const patientName = getPatientName(app.patients);
+    const row = [
+      app.id || '',
+      `"${patientName}"`,
+      `"${app.services?.name || 'N/A'}"`,
+      new Date(app.appointment_date).toISOString().split('T')[0],
+      app.status?.capitalize() || 'Unknown'
+    ].join(',');
+    csvRows.push(row);
+  });
+
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `appointments_table_${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  Swal.fire({
+    icon: 'success',
+    title: 'Export Successful',
+    text: `Table data exported as appointments_table_${new Date().toISOString().split('T')[0]}.csv`,
+    confirmButtonColor: '#4154f1',
+    timer: 1500
+  });
+}
+  </script>
+</body>
+</html>

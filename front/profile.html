@@ -1,0 +1,1794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Balane-Saspa Dental Clinic - Profile</title>
+  <meta name="description" content="">
+  <meta name="keywords" content="">
+
+  <link href="assets/img/icon.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
+  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+  <link href="assets/css/profile.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-color: #b994c0;
+      --primary-hover: #a07dab;
+      --secondary-color: #f8f9fa;
+      --text-color: #333;
+      --border-radius: 8px;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+      color: var(--text-color);
+    }
+
+    .header {
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border-bottom: 1px solid #eee;
+    }
+
+    .topbar {
+      background: var(--primary-color);
+      color: #fff;
+      padding: 10px 0;
+      font-size: 14px;
+    }
+
+    .branding .logo img {
+      max-height: 60px;
+      transition: transform 0.3s ease;
+    }
+
+    .branding .logo img:hover {
+      transform: scale(1.1);
+    }
+
+    .navmenu ul li a {
+      color: var(--text-color);
+      font-weight: 500;
+      padding: 10px 15px;
+      transition: color 0.3s ease;
+    }
+
+    .navmenu ul li a:hover,
+    .navmenu ul li a.active {
+      color: var(--primary-color);
+    }
+
+    .cta-btn {
+      background: var(--primary-color);
+      color: #fff;
+      border-radius: var(--border-radius);
+      padding: 8px 20px;
+      transition: background 0.3s ease;
+    }
+
+    .cta-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .card {
+      border: none;
+      border-radius: var(--border-radius);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+
+    .profile-card {
+      background: #fff;
+      text-align: center;
+      padding: 30px;
+    }
+
+    .profile-pic-container {
+      width: 120px;
+      height: 120px;
+      background: var(--secondary-color);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s ease;
+    }
+
+    .profile-pic-container:hover {
+      background: #e0e0e0;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      border: none;
+      border-radius: var(--border-radius);
+      padding: 10px 20px;
+      transition: background 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-outline-secondary {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+      border-radius: var(--border-radius);
+      transition: all 0.3s ease;
+    }
+
+    .btn-outline-secondary:hover {
+      background: var(--primary-color);
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      border-radius: var(--border-radius);
+      transition: background 0.3s ease;
+    }
+
+    .btn-danger:hover {
+      background: #c82333;
+    }
+
+    .nav-tabs {
+      border-bottom: 2px solid #eee;
+    }
+
+    .nav-tabs .nav-link {
+      color: var(--text-color);
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      padding: 10px 20px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .nav-tabs .nav-link:hover,
+    .nav-tabs .nav-link.active {
+      color: var(--primary-color);
+      border-bottom: 3px solid var(--primary-color);
+    }
+
+    .form-control,
+    .form-select {
+      border-radius: var(--border-radius);
+      border: 1px solid #ced4da;
+      padding: 10px;
+      transition: border-color 0.3s ease;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 5px rgba(185, 148, 192, 0.5);
+    }
+
+    .appointment-status {
+      padding: 4px 12px;
+      border-radius: 15px;
+      font-size: 0.9em;
+      color: #fff;
+      display: inline-block;
+    }
+
+    .status-pending { background-color: #ffc107; }
+    .status-confirmed { background-color: #28a745; }
+    .status-cancelled { background-color: #dc3545; }
+    .status-completed { background-color: #6c757d; }
+
+    .timeline-item {
+      margin-bottom: 25px;
+      position: relative;
+      padding-left: 35px;
+      background: #fff;
+      padding: 20px;
+      border-radius: var(--border-radius);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: var(--primary-color);
+    }
+
+    .timeline-item .timeline-dot {
+      position: absolute;
+      left: 10px;
+      top: 20px;
+      width: 14px;
+      height: 14px;
+      background: var(--primary-color);
+      border-radius: 50%;
+      border: 2px solid #fff;
+    }
+
+    .time-picker {
+      padding: 15px;
+      border: 1px solid #e0e0e0;
+      border-radius: var(--border-radius);
+      background: #fff;
+    }
+
+    .time-picker-header {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: var(--primary-color);
+    }
+
+    .time-picker-slots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .time-slot {
+      padding: 8px 15px;
+      border: 1px solid #ced4da;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      background: #fff;
+      transition: all 0.3s ease;
+    }
+
+    .time-slot:hover {
+      background: var(--primary-color);
+      color: #fff;
+      border-color: var(--primary-color);
+    }
+
+    .time-slot.selected {
+      background: var(--primary-color);
+      color: #fff;
+      border-color: var(--primary-color);
+    }
+
+    .time-slot.disabled {
+      background: #e9ecef;
+      color: #6c757d;
+      pointer-events: none;
+    }
+
+    .modal-content {
+      border-radius: var(--border-radius);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+      background: var(--primary-color);
+      color: #fff;
+      border-top-left-radius: var(--border-radius);
+      border-top-right-radius: var(--border-radius);
+    }
+
+    .modal-footer {
+      border-top: none;
+      padding: 15px;
+    }
+
+    .footer {
+      background: #fff;
+      padding: 40px 0;
+      box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    }
+
+    .footer .sitename {
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    .scroll-top {
+      background: var(--primary-color);
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      transition: background 0.3s ease;
+    }
+
+    .scroll-top:hover {
+      background: var(--primary-hover);
+    }
+
+    @media (max-width: 768px) {
+      .card {
+        margin-bottom: 20px;
+      }
+
+      .nav-tabs .nav-link {
+        padding: 8px 10px;
+        font-size: 14px;
+      }
+
+      .profile-pic-container {
+        width: 100px;
+        height: 100px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header id="header" class="header sticky-top">
+    <div class="topbar d-flex align-items-center">
+      <div class="container">
+        <div class="row">
+          <div class="col-6 d-flex align-items-center justify-content-center justify-content-md-start">
+            <i class="bi bi-clock me-1"></i> Mon - Sat, 9AM to 4PM
+          </div>
+          <div class="col-6 d-flex align-items-center justify-content-center justify-content-md-end">
+            <i class="bi bi-phone me-1"></i> +63 920 797 6690
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="branding d-flex align-items-center">
+      <div class="container position-relative d-flex align-items-center justify-content-end">
+        <a href="index.html" class="logo d-flex align-items-center me-auto">
+          <img src="assets/img/logo.jpeg" alt="">
+        </a>
+
+        <nav id="navmenu" class="navmenu">
+          <ul>
+            <li><a href="index.html#hero">Home</a></li>
+            <li><a href="index.html#about">About</a></li>
+            <li><a href="index.html#services">Services</a></li>
+            <li><a href="index.html#doctors">Doctors</a></li>
+            <li><a href="index.html#contact">Contact</a></li>
+            <li><a href="pages-login.html" id="account-link">Account</a></li>
+            <li id="profile-link" style="display: none;"><a href="profile.html">Profile</a></li>
+            <li><a href="make-appointment.html" class="cta-btn">Appointment</a></li>
+          </ul>
+          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="main">
+    <div class="pagetitle container mt-3">
+      <nav>
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="index.html">Home</a></li>
+          <li class="breadcrumb-item active">Profile</li>
+        </ol>
+      </nav>
+      <h3>Profile</h3>
+    </div>
+
+    <section class="section profile">
+      <div class="container">
+        <div class="row">
+          <div class="col-xl-4" style="padding-bottom: 50px;">
+            <div class="card">
+              <div class="card-body profile-card pt-4 d-flex flex-column align-items-center">
+                <div class="profile-pic-container mb-3">
+                  <i class="bi bi-person-circle" style="font-size: 100px; color: #6c757d;"></i>
+                </div>
+                <h2 id="profile-name">Loading...</h2>
+                <p class="text-muted">Patient</p>
+                <button class="btn btn-outline-secondary mt-2">
+                  <i class="bi bi-camera me-2"></i>Change Photo
+                </button>
+                <div class="d-flex align-items-center mt-3">
+                  <div class="bg-light rounded-circle p-2 me-3">
+                    <i class="bi bi-envelope text-primary"></i>
+                  </div>
+                  <span id="profile-email">Loading...</span>
+                </div>
+                <div class="d-flex align-items-center mt-2">
+                  <div class="bg-light rounded-circle p-2 me-3">
+                    <i class="bi bi-telephone text-primary"></i>
+                  </div>
+                  <span id="profile-phone">Loading...</span>
+                </div>
+                <button class="btn btn-danger mt-4" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                  <i class="bi bi-box-arrow-right me-2"></i>Logout
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-xl-8" style="padding-bottom: 50px;">
+            <div class="card">
+              <div class="card-body pt-3">
+                <ul class="nav nav-tabs nav-tabs-bordered">
+                  <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#profile-overview">Overview</button>
+                  </li>
+                  <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-appointments">Appointments</button>
+                  </li>
+                  <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-history">History Log</button>
+                  </li>
+                  <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-edit">Edit Profile</button>
+                  </li>
+                  <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-settings">Settings</button>
+                  </li>
+                  <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-change-password">Password</button>
+                  </li>
+                </ul>
+
+                <div class="tab-content pt-3">
+                  <div class="tab-pane fade show active profile-overview" id="profile-overview">
+                    <h5 class="card-title">Personal Information</h5>
+                    <div class="row">
+                      <div class="col-lg-3 col-md-4 label">Full Name</div>
+                      <div class="col-lg-9 col-md-8" id="overview-name">Loading...</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-3 col-md-4 label">Date of Birth</div>
+                      <div class="col-lg-9 col-md-8" id="overview-dob">Loading...</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-3 col-md-4 label">Gender</div>
+                      <div class="col-lg-9 col-md-8" id="overview-gender">Loading...</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-3 col-md-4 label">Home Address</div>
+                      <div class="col-lg-9 col-md-8" id="overview-address">Loading...</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-3 col-md-4 label">Religion</div>
+                      <div class="col-lg-9 col-md-8" id="overview-religion">Loading...</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-3 col-md-4 label">Nationality</div>
+                      <div class="col-lg-9 col-md-8" id="overview-nationality">Loading...</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-3 col-md-4 label">Home Number</div>
+                      <div class="col-lg-9 col-md-8" id="overview-homeNumber">Loading...</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-3 col-md-4 label">Phone</div>
+                      <div class="col-lg-9 col-md-8" id="overview-phone">Loading...</div>
+                    </div>
+                    <div class="row">
+                      <div class="col-lg-3 col-md-4 label">Email</div>
+                      <div class="col-lg-9 col-md-8" id="overview-email">Loading...</div>
+                    </div>
+                  </div>
+
+                  <div class="tab-pane fade profile-appointments pt-3" id="profile-appointments">
+                    <h5 class="card-title">Upcoming Appointments</h5>
+                    <div class="table-responsive" style="overflow-x: auto; white-space: nowrap;">
+                      <table class="table table-hover">
+                        <thead class="table-light">
+                          <tr>
+                            <th>Appointment Date & Time</th>
+                            <th>Service Name</th>
+                            <th>Status</th>
+                            <th>Notes/Reason</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody id="appointments-table">
+                        </tbody>
+                      </table>
+                    </div>
+                    <div id="no-appointments" class="alert alert-info" style="display: none;">
+                      No upcoming appointments found.
+                    </div>
+                    <button class="btn btn-primary mt-2" onclick="window.location.href='make-appointment.html'">
+                      <i class="bi bi-plus-circle me-2"></i>Book New Appointment
+                    </button>
+                  </div>
+
+                  <div class="tab-pane fade" id="profile-history">
+                    <h5 class="card-title">Dental History Log</h5>
+                    <div class="history-log">
+                      <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="history-search" placeholder="Search by service, date, or notes">
+                      </div>
+                      <div class="timeline" id="history-timeline">
+                      </div>
+                      <div id="no-history" class="alert alert-info mt-3" style="display: none;">
+                        No past appointments found.
+                      </div>
+                      <div class="text-center mt-4">
+                        <button class="btn btn-outline-primary" id="load-more-history">
+                          <i class="bi bi-arrow-down-circle me-2"></i>Load More History
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="tab-pane fade profile-edit pt-3" id="profile-edit">
+                    <form id="profile-edit-form">
+                      <div class="row mb-3">
+                        <label for="fullName" class="col-md-4 col-lg-3 col-form-label">Full Name</label>
+                        <div class="col-md-8 col-lg-9">
+                          <input name="fullName" type="text" class="form-control" id="fullName" value="">
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label for="dob" class="col-md-4 col-lg-3 col-form-label">Date of Birth</label>
+                        <div class="col-md-8 col-lg-9">
+                          <input name="dob" type="date" class="form-control" id="dob">
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label for="gender" class="col-md-4 col-lg-3 col-form-label">Gender</label>
+                        <div class="col-md-8 col-lg-9">
+                          <select name="gender" class="form-select" id="gender">
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label for="Address" class="col-md-4 col-lg-3 col-form-label">Home Address</label>
+                        <div class="col-md-8 col-lg-9">
+                          <input name="address" type="text" class="form-control" id="Address">
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label for="religion" class="col-md-4 col-lg-3 col-form-label">Religion</label>
+                        <div class="col-md-8 col-lg-9">
+                          <input name="religion" type="text" class="form-control" id="religion" placeholder="If not applicable, Type N/A">
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label for="nationality" class="col-md-4 col-lg-3 col-form-label">Nationality</label>
+                        <div class="col-md-8 col-lg-9">
+                          <input name="nationality" type="text" class="form-control" id="nationality" placeholder="If not applicable, Type N/A">
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label for="homeNumber" class="col-md-4 col-lg-3 col-form-label">Home Number</label>
+                        <div class="col-md-8 col-lg-9">
+                          <input name="homeNumber" type="text" class="form-control" id="homeNumber" placeholder="If not applicable, Type N/A">
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label for="Phone" class="col-md-4 col-lg-3 col-form-label">Phone</label>
+                        <div class="col-md-8 col-lg-9">
+                          <input name="phone" type="text" class="form-control" id="Phone">
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label for="Email" class="col-md-4 col-lg-3 col-form-label">Email</label>
+                        <div class="col-md-8 col-lg-9">
+                          <input name="email" type="email" class="form-control" id="Email" readonly>
+                        </div>
+                      </div>
+                      <div class="text-center">
+                        <button type="button" class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div class="tab-pane fade pt-3" id="profile-settings">
+                    <form id="settings-form">
+                      <div class="row mb-3">
+                        <label class="col-md-4 col-lg-3 col-form-label">Email Notifications</label>
+                        <div class="col-md-8 col-lg-9">
+                          <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="appointmentReminders" name="appointmentReminders">
+                            <label class="form-check-label" for="appointmentReminders">
+                              Appointment reminders
+                            </label>
+                          </div>
+                          <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="treatmentUpdates" name="treatmentUpdates">
+                            <label class="form-check-label" for="treatmentUpdates">
+                              Treatment updates and follow-ups
+                            </label>
+                          </div>
+                          <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="promotionalOffers" name="promotionalOffers">
+                            <label class="form-check-label" for="promotionalOffers">
+                              Promotional offers and news
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="securityNotifications" name="securityNotifications" disabled checked>
+                            <label class="form-check-label" for="securityNotifications">
+                              Security notifications
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label class="col-md-4 col-lg-3 col-form-label">Privacy Settings</label>
+                        <div class="col-md-8 col-lg-9">
+                          <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="dataSharing" name="dataSharing">
+                            <label class="form-check-label" for="dataSharing">
+                              Share my data with partners for improved services
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="analyticsConsent" name="analyticsConsent">
+                            <label class="form-check-label" for="analyticsConsent">
+                              Allow anonymous usage data collection for service improvement
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="text-center">
+                        <button type="button" class="btn btn-primary" onclick="saveSettings()">Save Preferences</button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div class="tab-pane fade pt-3" id="profile-change-password">
+                    <form id="change-password-form">
+                      <div class="row mb-3">
+                        <label for="currentPassword" class="col-md-4 col-lg-3 col-form-label">Current Password</label>
+                        <div class="col-md-8 col-lg-9">
+                          <input name="currentPassword" type="password" class="form-control" id="currentPassword" required>
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label for="newPassword" class="col-md-4 col-lg-3 col-form-label">New Password</label>
+                        <div class="col-md-8 col-lg-9">
+                          <input name="newPassword" type="password" class="form-control" id="newPassword" required>
+                          <div class="form-text">Must be at least 8 characters, including uppercase, lowercase, numbers, and special characters.</div>
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label for="renewPassword" class="col-md-4 col-lg-3 col-form-label">Re-enter New Password</label>
+                        <div class="col-md-8 col-lg-9">
+                          <input name="renewPassword" type="password" class="form-control" id="renewPassword" required>
+                        </div>
+                      </div>
+                      <div class="text-center">
+                        <button type="button" class="btn btn-primary" onclick="changePassword()">Change Password</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal fade" id="editAppointmentModal" tabindex="-1" aria-labelledby="editAppointmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editAppointmentModalLabel">Edit Appointment</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="edit-appointment-form">
+            <div class="mb-3">
+              <label for="editDate" class="form-label">Appointment Date and Time</label>
+              <input type="text" class="form-control" id="editDate" readonly>
+              <div style="display: flex; gap: 20px; margin-top: 10px;">
+                <div id="datePickerContainer" style="flex: 1;"></div>
+                <div id="timePickerBottom" class="time-picker" style="flex: 1;"></div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="editService" class="form-label">Service</label>
+              <input type="text" class="form-control" id="editService" readonly>
+            </div>
+            <div class="mb-3">
+              <label for="editReason" class="form-label">Reason for Rescheduling <span class="text-danger">*</span></label>
+              <textarea class="form-control" id="editReason" rows="3" required placeholder="e.g., Schedule conflict"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="saveEditAppointment">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="logoutModalLabel">Confirm Logout</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          Are you sure you want to logout?
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmLogout">Logout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="otpModal" tabindex="-1" aria-labelledby="otpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="otpModalLabel">Verify OTP</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Please enter the 6-digit OTP sent to your email to verify your password change.</p>
+          <div class="mb-3">
+            <input type="text" class="form-control" id="otpInput" maxlength="6" placeholder="Enter OTP">
+          </div>
+          <div class="text-center">
+            <button type="button" class="btn btn-primary" id="verifyOtp">Verify OTP</button>
+            <button type="button" class="btn btn-link" id="resendOtp">Resend OTP</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="cancelAppointmentModal" tabindex="-1" aria-labelledby="cancelAppointmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="cancelAppointmentModalLabel">Cancel Appointment</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Please provide a reason for cancelling your appointment. This is required.</p>
+          <div id="cancel-appointment-details" class="mb-3">
+            <strong>Appointment Details:</strong>
+            <div id="cancel-appointment-date"></div>
+            <div id="cancel-appointment-service"></div>
+          </div>
+          <form id="cancel-appointment-form">
+            <div class="mb-3">
+              <label for="cancelReason" class="form-label">Reason for Cancellation</label>
+              <textarea class="form-control" id="cancelReason" rows="3" required placeholder="e.g., Personal emergency"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-danger" id="confirmCancelAppointment">Confirm Cancellation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer id="footer" class="footer light-background">
+    <div class="container footer-top">
+      <div class="row gy-4">
+        <div class="col-lg-4 col-md-6 footer-about">
+          <a href="index.html" class="logo d-flex align-items-center">
+            <span class="sitename">Balane-Saspa Dental Clinic</span>
+          </a>
+          <div class="footer-contact pt-3">
+            <p>4X94+XQ2, Bagasbas Road, Daet</p>
+            <p>Camarines Norte, Philippines</p>
+            <p class="mt-3"><strong>Phone:</strong> <span>+63 920 797 6690</span></p>
+            <p><strong>Email:</strong> <span>dmdannsaspa@yahoo.com</span></p>
+            <p><strong>Monday - Saturday, 9AM to 4PM</strong></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container copyright text-center mt-4">
+      <p>© <span>Copyright</span> <strong class="px-1 sitename">2025</strong> <span>All Rights Reserved</span></p>
+      <div class="credits">
+        Designed by <a href="https://bootstrapmade.com/">BootstrapMade | Code Clipse</a>
+      </div>
+    </div>
+  </footer>
+
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+  <div id="preloader"></div>
+
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/php-email-form/validate.js"></script>
+  <script src="assets/vendor/aos/aos.js"></script>
+  <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
+  <script src="assets/vendor/purecounter/purecounter_vanilla.js"></script>
+  <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+  AOS.init();
+
+let profileData;
+let allHistory = [];
+let displayedHistoryCount = 0;
+const ITEMS_PER_LOAD = 3;
+let editModalControls;
+let cancelModalControls;
+let allBookedAppointments = [];
+let currentAppointments = [];
+let ws;
+let csrfToken;
+
+// Determine base URL dynamically
+const BASE_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000' 
+  : 'https://balane-saspa-dental-1.onrender.com';
+const WS_URL = window.location.hostname === 'localhost' 
+  ? 'ws://localhost:3000/ws' 
+  : 'wss://balane-saspa-dental-1.onrender.com/ws';
+
+async function fetchCsrfToken() {
+  try {
+    const response = await fetch(`${BASE_URL}/csrf-token`, { credentials: 'include' });
+    if (!response.ok) throw new Error('Failed to fetch CSRF token');
+    const data = await response.json();
+    csrfToken = data.csrfToken;
+    return csrfToken;
+  } catch (err) {
+    console.error('Error fetching CSRF token:', err);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Failed to initialize security token. Please refresh the page.',
+      confirmButtonColor: '#b994c0'
+    });
+    throw err;
+  }
+}
+
+function clearSessionCookie() {
+  document.cookie = 'connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+}
+
+function initializeWebSocket() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => console.log('WebSocket connected');
+  ws.onmessage = async (event) => {
+    const data = JSON.parse(event.data);
+    console.log('WebSocket message:', data);
+    if (['reschedule_request', 'cancel_request', 'reschedule_response', 'cancel_response'].includes(data.type)) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Appointment Update',
+        text: `Your appointment has been updated: ${data.message}`,
+        confirmButtonColor: '#b994c0'
+      });
+      await fetchAppointments();
+      await fetchHistory();
+    }
+  };
+  ws.onerror = (error) => console.error('WebSocket error:', error);
+  ws.onclose = () => {
+    console.log('WebSocket disconnected. Attempting to reconnect...');
+    setTimeout(initializeWebSocket, 5000);
+  };
+}
+
+async function fetchAllBookedAppointments() {
+  try {
+    const response = await fetch(`${BASE_URL}/api/appointments/booked`, { credentials: 'include' });
+    if (!response.ok) throw new Error('Failed to fetch all appointments');
+    const data = await response.json();
+    allBookedAppointments = Array.isArray(data.appointments) ? data.appointments : [];
+  } catch (err) {
+    console.error('Error fetching all appointments:', err);
+    allBookedAppointments = [];
+  }
+}
+
+function showError(message) {
+  Swal.fire({
+    icon: 'error',
+    title: 'Error',
+    text: message,
+    confirmButtonColor: '#b994c0'
+  });
+  console.error(message);
+}
+
+function initializeRescheduleDatePicker(bookedAppointments, currentAppointmentId) {
+  const bookedTimes = (Array.isArray(bookedAppointments) ? bookedAppointments : [])
+    .filter(appt => String(appt.id) !== String(currentAppointmentId))
+    .map(appt => {
+      const date = new Date(appt.appointment_date);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hour = String(date.getHours()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hour}:00`;
+    });
+
+  const fp = flatpickr('#editDate', {
+    dateFormat: "Y-m-d h:i K",
+    minDate: "today",
+    inline: true,
+    appendTo: document.getElementById('datePickerContainer'),
+    disable: [
+      function(date) {
+        const now = new Date();
+        const day = date.getDay();
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        if (day === 0) return true;
+        if (dateStr === now.toISOString().slice(0, 10) && now.getHours() >= 15) return true;
+        const hours = [9, 10, 11, 12, 13, 14, 15, 16];
+        return hours.every(hour => bookedTimes.includes(`${dateStr} ${hour.toString().padStart(2, '0')}:00`));
+      }
+    ],
+    onReady: (selectedDates, dateStr, instance) => {
+      const container = instance.calendarContainer;
+      container.classList.add('flatpickr-calendar');
+      const timePickerBottom = document.getElementById('timePickerBottom');
+      const times = [
+        { hour: 9, label: '9 AM' },
+        { hour: 10, label: '10 AM' },
+        { hour: 11, label: '11 AM' },
+        { hour: 12, label: '12 PM' },
+        { hour: 13, label: '1 PM' },
+        { hour: 14, label: '2 PM' },
+        { hour: 15, label: '3 PM' },
+        { hour: 16, label: '4 PM' }
+      ];
+
+      function createTimeSlots(container) {
+        container.innerHTML = '<div class="time-picker-header">Select Time</div><div class="time-picker-slots"></div>';
+        const slotsContainer = container.querySelector('.time-picker-slots');
+        times.forEach(time => {
+          const slot = document.createElement('div');
+          slot.className = 'time-slot';
+          slot.textContent = time.label;
+          slot.dataset.hour = time.hour;
+          slotsContainer.appendChild(slot);
+        });
+      }
+
+      createTimeSlots(timePickerBottom);
+      if (selectedDates.length > 0) {
+        instance.config.onChange.forEach(fn => fn.call(instance, selectedDates, dateStr, instance));
+      }
+    },
+    onChange: (selectedDates, dateStr, instance) => {
+      const selectedDate = selectedDates[0];
+      if (!selectedDate) return;
+
+      const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+      const timePicker = document.getElementById('timePickerBottom');
+      const timeSlots = timePicker.querySelectorAll('.time-slot');
+
+      timeSlots.forEach(slot => {
+        const hour = parseInt(slot.dataset.hour);
+        const timeStr = `${dateStrPart} ${hour.toString().padStart(2, '0')}:00`;
+        const isBooked = bookedTimes.includes(timeStr);
+
+        slot.classList.remove('selected', 'disabled');
+        slot.style.pointerEvents = 'auto';
+        slot.onclick = null;
+
+        if (isBooked) {
+          slot.classList.add('disabled');
+        } else {
+          slot.onclick = () => {
+            timePicker.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'));
+            slot.classList.add('selected');
+            selectedDate.setHours(hour, 0, 0, 0);
+            instance.setDate(selectedDate);
+          };
+        }
+      });
+
+      const firstAvailable = timePicker.querySelector('.time-slot:not(.disabled)');
+      if (firstAvailable && !timePicker.querySelector('.time-slot.selected')) {
+        firstAvailable.click();
+      } else if (!firstAvailable) {
+        instance.clear();
+        Swal.fire({
+          icon: 'warning',
+          title: 'No Availability',
+          text: 'No available times for this date.',
+          confirmButtonColor: '#b994c0'
+        });
+      }
+    }
+  });
+
+  return fp;
+}
+
+function setupEditAppointmentModal() {
+  const editModalElement = document.getElementById('editAppointmentModal');
+  const editModal = new bootstrap.Modal(editModalElement);
+  let fpInstance;
+
+  function openEditModal(appointmentId) {
+    const appointmentData = currentAppointments.find(appt => String(appt.id) === String(appointmentId));
+    if (!appointmentData) {
+      showError('Appointment not found.');
+      return;
+    }
+
+    if (fpInstance) fpInstance.destroy();
+
+    fetchAllBookedAppointments().then(() => {
+      fpInstance = initializeRescheduleDatePicker(allBookedAppointments, appointmentId);
+      fpInstance.setDate(new Date(appointmentData.appointment_date));
+      document.getElementById('editService').value = appointmentData.services?.name || 'Unknown Service';
+      document.getElementById('editReason').value = appointmentData.cancel_reason || '';
+      document.getElementById('edit-appointment-form').dataset.appointmentId = appointmentId;
+      document.getElementById('edit-appointment-form').dataset.status = appointmentData.status;
+
+      editModal.show();
+    });
+  }
+
+  document.getElementById('saveEditAppointment').addEventListener('click', async function () {
+    const form = document.getElementById('edit-appointment-form');
+    const appointmentId = form.dataset.appointmentId;
+    const status = form.dataset.status.toLowerCase();
+    const reason = document.getElementById('editReason').value.trim();
+
+    if (status === 'cancelled') {
+      showError('Cannot reschedule cancelled appointments.');
+      editModal.hide();
+      return;
+    }
+
+    const selectedDate = fpInstance.selectedDates[0];
+    if (!selectedDate) {
+      showError('Please select a date and time.');
+      return;
+    }
+
+    if (!reason) {
+      showError('Please provide a reason for rescheduling.');
+      return;
+    }
+    if (reason.length < 5) {
+      showError('Rescheduling reason must be at least 5 characters long.');
+      return;
+    }
+
+    const localDateString = selectedDate.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).replace(/(\d+)\/(\d+)\/(\d+), (\d+):(\d+):(\d+)/, '$3-$1-$2 $4:$5:$6');
+
+    const requestData = {
+      appointment_date: localDateString,
+      cancel_reason: reason
+    };
+
+    try {
+      await fetchCsrfToken();
+      const response = await fetch(`${BASE_URL}/api/appointments/${appointmentId}/reschedule`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'CSRF-Token': csrfToken
+        },
+        body: JSON.stringify(requestData),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to request reschedule');
+      }
+
+      const updatedAppointment = {
+        ...currentAppointments.find(appt => String(appt.id) === String(appointmentId)),
+        status: 'pending',
+        pending_action: 'reschedule',
+        appointment_date: localDateString,
+        cancel_reason: reason
+      };
+      currentAppointments = currentAppointments.map(appt => 
+        String(appt.id) === String(appointmentId) ? updatedAppointment : appt
+      );
+
+      editModal.hide();
+      renderAppointments();
+      await fetchHistory();
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Reschedule request submitted successfully! Awaiting admin approval.',
+        confirmButtonColor: '#b994c0'
+      });
+    } catch (err) {
+      showError('Failed to request reschedule: ' + err.message);
+    }
+  });
+
+  return { openEditModal };
+}
+
+function setupCancelAppointmentModal() {
+  const cancelModalElement = document.getElementById('cancelAppointmentModal');
+  const cancelModal = new bootstrap.Modal(cancelModalElement, { backdrop: 'static', keyboard: false });
+
+  function openCancelModal(appointmentId) {
+    const appointmentData = currentAppointments.find(appt => String(appt.id) === String(appointmentId));
+    if (!appointmentData) {
+      showError('Appointment not found.');
+      return;
+    }
+
+    document.getElementById('cancelReason').value = '';
+    document.getElementById('cancel-appointment-form').dataset.appointmentId = appointmentId;
+    document.getElementById('cancel-appointment-date').textContent = 
+      `Date: ${new Date(appointmentData.appointment_date).toLocaleString()}`;
+    document.getElementById('cancel-appointment-service').textContent = 
+      `Service: ${appointmentData.services?.name || 'Unknown Service'}`;
+
+    cancelModal.show();
+  }
+
+  document.getElementById('confirmCancelAppointment').addEventListener('click', async function () {
+    const form = document.getElementById('cancel-appointment-form');
+    const appointmentId = form.dataset.appointmentId;
+    const cancelReason = document.getElementById('cancelReason').value.trim();
+
+    if (!cancelReason) {
+      showError('Please provide a reason for cancellation.');
+      return;
+    }
+    if (cancelReason.length < 5) {
+      showError('Cancellation reason must be at least 5 characters long.');
+      return;
+    }
+
+    try {
+      await fetchCsrfToken();
+      const response = await fetch(`${BASE_URL}/api/appointments/${appointmentId}`, {
+        method: 'DELETE',
+        headers: { 
+          'Content-Type': 'application/json',
+          'CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ cancel_reason: cancelReason }),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to cancel appointment');
+      }
+
+      const updatedAppointment = {
+        ...currentAppointments.find(appt => String(appt.id) === String(appointmentId)),
+        status: 'pending',
+        pending_action: 'cancel',
+        cancel_reason: cancelReason
+      };
+      currentAppointments = currentAppointments.map(appt => 
+        String(appt.id) === String(appointmentId) ? updatedAppointment : appt
+      );
+
+      cancelModal.hide();
+      renderAppointments();
+      await fetchHistory();
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: 'Cancellation request submitted successfully! Awaiting admin approval.',
+        confirmButtonColor: '#b994c0'
+      });
+    } catch (err) {
+      showError('Failed to cancel appointment: ' + err.message);
+    }
+  });
+
+  return { openCancelModal };
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+  try {
+    await fetchCsrfToken();
+    editModalControls = setupEditAppointmentModal();
+    cancelModalControls = setupCancelAppointmentModal();
+    initializeWebSocket();
+
+    const authResponse = await fetch(`${BASE_URL}/auth/check-auth`, { credentials: 'include' });
+    if (!authResponse.ok) {
+      const errorData = await authResponse.json();
+      throw new Error(errorData.message || 'Authentication check failed');
+    }
+    const authData = await authResponse.json();
+    if (!authData.isLoggedIn) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Session Expired',
+        text: 'You are not logged in. Redirecting to login page.',
+        confirmButtonColor: '#b994c0'
+      }).then(() => {
+        window.location.replace('pages-login.html');
+      });
+      return;
+    }
+
+    document.getElementById('account-link').style.display = 'none';
+    document.getElementById('profile-link').style.display = 'block';
+    document.querySelectorAll('#navmenu a').forEach(link => link.classList.remove('active'));
+    document.querySelector('#profile-link a').classList.add('active');
+
+    const profileResponse = await fetch(`${BASE_URL}/patients/profile`, { credentials: 'include' });
+    if (!profileResponse.ok) {
+      const errorData = await profileResponse.json();
+      throw new Error(errorData.message || 'Failed to fetch profile');
+    }
+    profileData = await profileResponse.json();
+
+    // Handle null or undefined values from decryption
+    const safeProfileData = {
+      full_name: profileData.full_name || 'N/A',
+      email: profileData.email || 'N/A',
+      phone: profileData.phone || 'N/A',
+      dob: profileData.dob || 'N/A',
+      gender: profileData.gender || 'N/A',
+      address: profileData.address || 'N/A',
+      religion: profileData.religion || 'N/A',
+      nationality: profileData.nationality || 'N/A',
+      home_number: profileData.home_number || 'N/A'
+    };
+
+    document.getElementById('profile-name').textContent = safeProfileData.full_name;
+    document.getElementById('profile-email').textContent = safeProfileData.email;
+    document.getElementById('profile-phone').textContent = safeProfileData.phone;
+
+    document.getElementById('overview-name').textContent = safeProfileData.full_name;
+    document.getElementById('overview-dob').textContent = safeProfileData.dob;
+    document.getElementById('overview-gender').textContent = safeProfileData.gender;
+    document.getElementById('overview-address').textContent = safeProfileData.address;
+    document.getElementById('overview-religion').textContent = safeProfileData.religion;
+    document.getElementById('overview-nationality').textContent = safeProfileData.nationality;
+    document.getElementById('overview-homeNumber').textContent = safeProfileData.home_number;
+    document.getElementById('overview-phone').textContent = safeProfileData.phone;
+    document.getElementById('overview-email').textContent = safeProfileData.email;
+
+    document.getElementById('fullName').value = safeProfileData.full_name !== 'N/A' ? safeProfileData.full_name : '';
+    document.getElementById('dob').value = safeProfileData.dob !== 'N/A' ? safeProfileData.dob : '';
+    document.getElementById('gender').value = safeProfileData.gender !== 'N/A' ? safeProfileData.gender : 'other';
+    document.getElementById('Address').value = safeProfileData.address !== 'N/A' ? safeProfileData.address : '';
+    document.getElementById('religion').value = safeProfileData.religion !== 'N/A' ? safeProfileData.religion : '';
+    document.getElementById('nationality').value = safeProfileData.nationality !== 'N/A' ? safeProfileData.nationality : '';
+    document.getElementById('homeNumber').value = safeProfileData.home_number !== 'N/A' ? safeProfileData.home_number : '';
+    document.getElementById('Phone').value = safeProfileData.phone !== 'N/A' ? safeProfileData.phone : '';
+    document.getElementById('Email').value = safeProfileData.email !== 'N/A' ? safeProfileData.email : '';
+
+    await fetchAppointments();
+    await fetchHistory();
+
+    document.querySelector('.btn-outline-secondary').addEventListener('click', function () {
+      Swal.fire({
+        icon: 'info',
+        title: 'Coming Soon',
+        text: 'Photo upload functionality coming soon!',
+        confirmButtonColor: '#b994c0'
+      });
+    });
+
+  } catch (err) {
+    showError('An error occurred. Redirecting to login page: ' + err.message);
+    window.location.replace('pages-login.html');
+  }
+
+  document.getElementById('confirmLogout').addEventListener('click', async function() {
+    Swal.fire({
+      title: 'Are you sure?',
+      text: 'Do you want to logout?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#b994c0',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, logout'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await fetchCsrfToken();
+          const response = await fetch(`${BASE_URL}/auth/logout`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'CSRF-Token': csrfToken
+            },
+            credentials: 'include'
+          });
+          if (response.ok) {
+            clearSessionCookie();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('logoutModal'));
+            if (modal) modal.hide();
+            Swal.fire({
+              icon: 'success',
+              title: 'Logged Out',
+              text: 'You have been successfully logged out.',
+              confirmButtonColor: '#b994c0'
+            }).then(() => {
+              window.location.replace('index.html');
+            });
+          } else {
+            showError('Logout failed. Please try again.');
+          }
+        } catch (err) {
+          console.error('Logout error:', err);
+          showError('An error occurred during logout.');
+        }
+      }
+    });
+  });
+
+  document.querySelector('button[data-bs-target="#profile-history"]').addEventListener('shown.bs.tab', fetchHistory);
+  document.getElementById('load-more-history').addEventListener('click', loadMoreHistory);
+  document.getElementById('history-search').addEventListener('input', function() {
+    renderHistory(allHistory);
+  });
+});
+
+async function fetchAppointments() {
+  const tbody = document.getElementById('appointments-table');
+  tbody.innerHTML = '<tr><td colspan="5">Loading appointments...</td></tr>';
+  try {
+    const response = await fetch(`${BASE_URL}/api/appointments`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to fetch appointments');
+    }
+    const data = await response.json();
+    currentAppointments = Array.isArray(data.appointments) ? data.appointments : [];
+    renderAppointments();
+  } catch (err) {
+    showError('Failed to load appointments: ' + err.message);
+    document.getElementById('appointments-table').innerHTML = '<tr><td colspan="5">Error loading appointments.</td></tr>';
+  }
+}
+
+function renderAppointments() {
+  const tbody = document.getElementById('appointments-table');
+  const noAppointmentsDiv = document.getElementById('no-appointments');
+
+  if (currentAppointments.length === 0) {
+    tbody.innerHTML = '';
+    noAppointmentsDiv.style.display = 'block';
+    return;
+  }
+
+  noAppointmentsDiv.style.display = 'none';
+  tbody.innerHTML = '';
+
+  currentAppointments.forEach(appointment => {
+    const displayDate = appointment.rescheduled_at || appointment.appointment_date;
+    let statusText;
+    let statusClass;
+    let notesContent = appointment.notes || 'N/A';
+
+    if (appointment.pending_action) {
+      let actionText;
+      if (appointment.pending_action === 'confirm') {
+        actionText = 'confirm';
+      } else if (appointment.pending_action === 'reschedule') {
+        actionText = 'reschedule';
+      } else {
+        actionText = 'cancel';
+      }
+      statusText = `<small>(Pending ${actionText})</small>`;
+      statusClass = 'status-pending';
+      if (['cancel', 'reschedule'].includes(appointment.pending_action)) {
+        notesContent = `Reason: ${appointment.cancel_reason || 'Not specified'}`;
+      }
+    } else {
+      statusText = appointment.status;
+      statusClass = {
+        pending: 'status-pending',
+        confirmed: 'status-confirmed',
+        cancelled: 'status-cancelled',
+        completed: 'status-completed'
+      }[appointment.status.toLowerCase()] || '';
+    }
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${new Date(displayDate).toLocaleString()}</td>
+      <td>${appointment.services?.name || 'Unknown Service'}</td>
+      <td><span class="appointment-status ${statusClass}">${statusText}</span></td>
+      <td>${notesContent}</td>
+      <td>
+        ${['pending', 'confirmed', 'completed'].includes(appointment.status.toLowerCase()) ? `
+          <button class="btn btn-sm btn-warning edit-appointment me-1" data-id="${appointment.id}" title="Edit" 
+            ${appointment.pending_action ? 'disabled' : ''}>
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="btn btn-sm btn-danger cancel-appointment" data-id="${appointment.id}" title="Cancel"
+            ${appointment.pending_action ? 'disabled' : ''}>
+            <i class="fas fa-trash-alt"></i>
+          </button>
+        ` : '-'}
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  document.querySelectorAll('.edit-appointment').forEach(button => {
+    button.addEventListener('click', function () {
+      const appointmentId = this.getAttribute('data-id');
+      if (appointmentId && editModalControls) {
+        editModalControls.openEditModal(appointmentId);
+      } else {
+        showError('Error: No appointment ID found or edit modal not initialized');
+      }
+    });
+  });
+
+  document.querySelectorAll('.cancel-appointment').forEach(button => {
+    button.addEventListener('click', function() {
+      const appointmentId = this.getAttribute('data-id');
+      if (appointmentId && cancelModalControls) {
+        cancelModalControls.openCancelModal(appointmentId);
+      } else {
+        showError('Error: No appointment ID found or cancel modal not initialized');
+      }
+    });
+  });
+}
+
+async function fetchHistory() {
+  const timeline = document.getElementById('history-timeline');
+  timeline.innerHTML = '<p>Loading history...</p>';
+  try {
+    const response = await fetch(`${BASE_URL}/api/appointments?all=true`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to fetch history');
+    }
+    const data = await response.json();
+    allHistory = Array.isArray(data.appointments) ? data.appointments : [];
+    displayedHistoryCount = 0;
+    renderHistory(allHistory);
+  } catch (err) {
+    showError('Failed to load history: ' + err.message);
+    document.getElementById('history-timeline').innerHTML = '<p>Error loading history.</p>';
+    document.getElementById('no-history').style.display = 'none';
+  }
+}
+
+function renderHistory(history) {
+  const timeline = document.getElementById('history-timeline');
+  const noHistoryDiv = document.getElementById('no-history');
+  const loadMoreButton = document.getElementById('load-more-history');
+  const searchQuery = document.getElementById('history-search').value.trim().toLowerCase();
+
+  const filteredHistory = history.filter(appointment => {
+    const dateStr = new Date(appointment.appointment_date).toLocaleString().toLowerCase();
+    const serviceName = (appointment.services?.name || 'Unknown Service').toLowerCase();
+    const cancelReason = (appointment.cancel_reason || 'N/A').toLowerCase();
+    const rejectReason = (appointment.reject_reason || 'N/A').toLowerCase();
+    return dateStr.includes(searchQuery) || serviceName.includes(searchQuery) || 
+           cancelReason.includes(searchQuery) || rejectReason.includes(searchQuery);
+  });
+
+  if (filteredHistory.length === 0) {
+    timeline.innerHTML = '';
+    noHistoryDiv.style.display = 'block';
+    loadMoreButton.style.display = 'none';
+    return;
+  }
+
+  noHistoryDiv.style.display = 'none';
+  timeline.innerHTML = '';
+
+  const itemsToShow = filteredHistory.slice(0, Math.min(displayedHistoryCount + ITEMS_PER_LOAD, filteredHistory.length));
+  itemsToShow.forEach(appointment => {
+    const statusClass = {
+      confirmed: 'status-confirmed',
+      cancelled: 'status-cancelled',
+      completed: 'status-completed',
+      rejected: 'status-cancelled'
+    }[appointment.status.toLowerCase()] || '';
+
+    const timelineItem = document.createElement('div');
+    timelineItem.className = 'timeline-item';
+
+    let cancelReasonHtml = '';
+    if (appointment.status.toLowerCase() === 'cancelled') {
+      cancelReasonHtml = `<p><strong>Cancel Reason:</strong> ${appointment.cancel_reason || 'N/A'}</p>`;
+    }
+
+    let rejectReasonHtml = '';
+    if (appointment.status.toLowerCase() === 'rejected') {
+      rejectReasonHtml = `<p><strong>Reject Reason:</strong> ${appointment.reject_reason || 'N/A'}</p>`;
+    }
+
+    timelineItem.innerHTML = `
+      <div class="timeline-dot"></div>
+      <div class="timeline-content">
+        <h6>${new Date(appointment.appointment_date).toLocaleString()}</h6>
+        <p><strong>Service:</strong> ${appointment.services?.name || 'Unknown Service'}</p>
+        <p><strong>Status:</strong> <span class="appointment-status ${statusClass}">${appointment.status}</span></p>
+        ${cancelReasonHtml}
+        ${rejectReasonHtml}
+      </div>
+    `;
+    timeline.appendChild(timelineItem);
+  });
+
+  displayedHistoryCount = itemsToShow.length;
+  loadMoreButton.style.display = displayedHistoryCount < filteredHistory.length ? 'block' : 'none';
+}
+
+function loadMoreHistory() {
+  displayedHistoryCount += ITEMS_PER_LOAD;
+  renderHistory(allHistory);
+}
+
+async function saveProfile() {
+  const formData = new FormData(document.getElementById('profile-edit-form'));
+  const profileData = Object.fromEntries(formData);
+
+  try {
+    await fetchCsrfToken();
+    const response = await fetch(`${BASE_URL}/patients/profile`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        'CSRF-Token': csrfToken
+      },
+      body: JSON.stringify(profileData),
+      credentials: 'include'
+    });
+
+    if (response.ok) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Profile Updated',
+        text: 'Your profile has been updated successfully!',
+        confirmButtonColor: '#b994c0'
+      }).then(() => {
+        window.location.reload();
+      });
+    } else {
+      const errorData = await response.json();
+      showError(`Failed to update profile: ${errorData.message || 'Please try again.'}`);
+    }
+  } catch (err) {
+    showError('An error occurred while saving your profile: ' + err.message);
+  }
+}
+
+async function saveSettings() {
+  const formData = new FormData(document.getElementById('settings-form'));
+  const settings = Object.fromEntries(formData);
+
+  try {
+    await fetchCsrfToken();
+    const response = await fetch(`${BASE_URL}/patients/settings`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        'CSRF-Token': csrfToken
+      },
+      body: JSON.stringify(settings),
+      credentials: 'include'
+    });
+
+    if (response.ok) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Settings Saved',
+        text: 'Your settings have been saved successfully! Note: Some settings may not be fully implemented yet.',
+        confirmButtonColor: '#b994c0'
+      });
+    } else {
+      const errorData = await response.json();
+      showError(`Failed to save settings: ${errorData.message || 'Settings functionality is not fully implemented.'}`);
+    }
+  } catch (err) {
+    showError('An error occurred while saving settings: ' + err.message);
+  }
+}
+
+async function changePassword() {
+  const currentPassword = document.getElementById('currentPassword').value;
+  const newPassword = document.getElementById('newPassword').value;
+  const renewPassword = document.getElementById('renewPassword').value;
+
+  if (newPassword !== renewPassword) {
+    showError('New passwords do not match.');
+    return;
+  }
+
+  try {
+    if (!profileData || !profileData.email) {
+      throw new Error('Profile data not loaded. Please refresh the page.');
+    }
+    const email = profileData.email;
+
+    await fetchCsrfToken();
+    const otpRequestResponse = await fetch(`${BASE_URL}/api/otp/send`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'CSRF-Token': csrfToken
+      },
+      body: JSON.stringify({ email, purpose: 'password_change_user' }),
+      credentials: 'include',
+    });
+    if (!otpRequestResponse.ok) {
+      const errorData = await otpRequestResponse.json();
+      if (otpRequestResponse.status === 404) {
+        throw new Error('OTP endpoint not found. Check server configuration.');
+      } else if (otpRequestResponse.status === 401) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Session Expired',
+          text: 'Please log in again.',
+          confirmButtonColor: '#b994c0'
+        }).then(() => {
+          window.location.replace('pages-login.html');
+        });
+        return;
+      } else if (otpRequestResponse.status === 429) {
+        showError('Too many OTP requests. Please try again later.');
+        return;
+      }
+      throw new Error(errorData.message || 'Failed to request OTP');
+    }
+
+    const otpModal = new bootstrap.Modal(document.getElementById('otpModal'));
+    otpModal.show();
+
+    document.getElementById('verifyOtp').onclick = async function() {
+      const otp = document.getElementById('otpInput').value.trim();
+      if (!otp || otp.length !== 6) {
+        showError('Please enter a valid 6-digit OTP.');
+        return;
+      }
+
+      await fetchCsrfToken();
+      const verifyOtpResponse = await fetch(`${BASE_URL}/api/otp/verify`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ email, otp, purpose: 'password_change_user' }),
+        credentials: 'include',
+      });
+
+      if (!verifyOtpResponse.ok) {
+        const errorData = await verifyOtpResponse.json();
+        showError(errorData.message || 'Invalid OTP. Please try again.');
+        return;
+      }
+
+      await fetchCsrfToken();
+      const changePasswordResponse = await fetch(`${BASE_URL}/patients/change-password`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+        credentials: 'include',
+      });
+      if (changePasswordResponse.ok) {
+        clearSessionCookie();
+        Swal.fire({
+          icon: 'success',
+          title: 'Password Changed',
+          text: 'Password changed successfully! Please log in again.',
+          confirmButtonColor: '#b994c0'
+        }).then(() => {
+          otpModal.hide();
+          window.location.replace('pages-login.html');
+        });
+      } else {
+        const errorData = await changePasswordResponse.json();
+        if (changePasswordResponse.status === 401) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Session Expired',
+            text: 'Please log in again.',
+            confirmButtonColor: '#b994c0'
+          }).then(() => {
+            otpModal.hide();
+            window.location.replace('pages-login.html');
+          });
+          return;
+        }
+        if (errorData.error === 'invalid_password' && errorData.details) {
+          showError(`Password requirements not met:\n- ${errorData.details.join('\n- ')}`);
+        } else {
+          showError(errorData.message || 'Failed to change password. Please check your current password.');
+        }
+      }
+    };
+
+    document.getElementById('resendOtp').onclick = async function() {
+      await fetchCsrfToken();
+      const resendResponse = await fetch(`${BASE_URL}/api/otp/send`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ email, purpose: 'password_change_user' }),
+        credentials: 'include',
+      });
+      if (resendResponse.ok) {
+        Swal.fire({
+          icon: 'success',
+          title: 'OTP Sent',
+          text: 'A new OTP has been sent to your email.',
+          confirmButtonColor: '#b994c0'
+        });
+        document.getElementById('otpInput').value = '';
+      } else {
+        const errorData = await resendResponse.json();
+        if (resendResponse.status === 401) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Session Expired',
+            text: 'Please log in again.',
+            confirmButtonColor: '#b994c0'
+          }).then(() => {
+            otpModal.hide();
+            window.location.replace('pages-login.html');
+          });
+          return;
+        } else if (resendResponse.status === 429) {
+          showError('Too many OTP requests. Please try again later.');
+          return;
+        }
+        showError(errorData.message || 'Failed to resend OTP.');
+      }
+    };
+  } catch (err) {
+    showError('An error occurred during password change: ' + err.message);
+  }
+}
+</script>
+  <script src="assets/js/main.js"></script>
+  <script src="common.js"></script>
+  <script src="assets/js/see-more.js"></script>
+  <script src="assets/js/card-overlay.js"></script>
+</body>
+</html>

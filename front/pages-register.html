@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>Account Creation</title>
+  <meta content="Account creation for dental clinic" name="description">
+  <meta content="dental, patient, registration, account" name="keywords">
+
+  <!-- Favicons -->
+  <link href="assets/img/favicon.png" rel="icon">
+  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+  <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+  <!-- Template Main CSS File -->
+  <link href="assets/css/style.css" rel="stylesheet">
+
+  <!-- Additional modern styles -->
+  <style>
+    #loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      display: none;
+    }
+    #loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #b994c0;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @media (max-width: 768px) {
+      .card {
+        margin: 0 10px;
+      }
+      .col-lg-6.col-md-8 {
+        padding: 0;
+      }
+    }
+    .card {
+      border-radius: 12px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+      background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    }
+    .card-body {
+      padding: 30px;
+    }
+    .card-title {
+      font-weight: 700;
+      color: #333;
+    }
+    .text-center.small {
+      color: #666;
+    }
+    .form-label {
+      font-weight: 500;
+      color: #333;
+    }
+    .form-control {
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      transition: border-color 0.3s ease;
+      padding: 0.75rem;
+    }
+    .form-control:focus {
+      border-color: #b994c0;
+      box-shadow: 0 0 0 3px rgba(185, 148, 192, 0.1);
+      outline: none;
+    }
+    .is-invalid {
+      border: 2px solid #dc3545 !important;
+      background-color: #f8d7da;
+    }
+    .field-error {
+      color: #dc3545;
+      font-size: 0.85em;
+      margin-top: 0.25rem;
+    }
+    .section-divider {
+      background-color: #f8f9fa;
+      border-radius: 5px;
+      padding: 10px 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    .section-divider h5 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #333;
+    }
+    .form-text {
+      font-size: 0.8em;
+      color: #6c757d;
+    }
+    .btn-primary {
+      background-color: #b994c0 !important;
+      border-color: #b994c0 !important;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(185, 148, 192, 0.2);
+    }
+    .btn-primary:hover {
+      background-color: #a47ca8 !important;
+      border-color: #a47ca8 !important;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(185, 148, 192, 0.3);
+    }
+    .login-link {
+      margin-top: 15px;
+      text-align: center;
+    }
+    .login-link a {
+      display: inline-flex;
+      align-items: center;
+      color: #b994c0;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+    .login-link a:hover {
+      color: #a47ca8;
+      text-decoration: underline;
+    }
+    .login-link i {
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading-overlay">
+    <div id="loading-spinner"></div>
+  </div>
+
+  <main>
+    <div class="container">
+      <section class="section register min-vh-100 d-flex flex-column align-items-center justify-content-center py-4">
+        <div class="container">
+          <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-8 d-flex flex-column align-items-center justify-content-center">
+              <div class="d-flex justify-content-center py-4">
+                <a href="index.html" class="logo d-flex align-items-center w-auto">
+                  <img src="assets/img/logo.png" alt="">
+                  <span class="d-none d-lg-block">Balane-Saspa Dental Clinic</span>
+                </a>
+              </div><!-- End Logo -->
+
+              <div class="card mb-3">
+                <div class="card-body">
+                  <div class="pt-4 pb-2">
+                    <h5 class="card-title text-center pb-0 fs-4">Create Your Account</h5>
+                    <p class="text-center small">Step 1 of 2: Set up your login credentials</p>
+                  </div>
+
+                  <div id="errorMessage" class="alert alert-danger" style="display: none;"></div>
+
+                  <form id="accountForm" class="row g-3 needs-validation" novalidate>
+                    <!-- Account Information Section -->
+                    <div class="col-12 section-divider">
+                      <h5>Account Information</h5>
+                    </div>
+
+                    <div class="col-12">
+                      <label for="username" class="form-label">Username *</label>
+                      <input type="text" class="form-control" id="username" required>
+                      <div id="usernameError" class="field-error" style="display: none;"></div>
+                    </div>
+
+                    <div class="col-12">
+                      <label for="password" class="form-label">Password *</label>
+                      <input type="password" class="form-control" id="password" required>
+                      <div id="passwordError" class="field-error" style="display: none;"></div>
+                      <small class="form-text">Must be at least 8 characters, including uppercase, lowercase, numbers, and special characters.</small>
+                    </div>
+
+                    <div class="col-12">
+                      <label for="confirmPassword" class="form-label">Confirm Password *</label>
+                      <input type="password" class="form-control" id="confirmPassword" required>
+                      <div id="confirmPasswordError" class="field-error" style="display: none;"></div>
+                    </div>
+
+                    <div class="col-12 mt-4">
+                      <button class="btn btn-primary w-100" type="submit">Continue to Registration</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Back to Login Link -->
+              <div class="login-link">
+                <a href="pages-login.html">
+                  <i class="bi bi-arrow-left-circle"></i> Already have an account
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
+
+  <!-- Vendor JS Files -->
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Template Main JS File -->
+  <script src="assets/js/main.js"></script>
+
+  <!-- Form Handling Script -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("accountForm");
+    const errorMessage = document.getElementById("errorMessage");
+    const submitButton = form.querySelector("button[type='submit']");
+
+    if (!form) {
+      console.error("Form not found!");
+      return;
+    }
+
+    // Utility functions for loading overlay
+    const showLoading = () => {
+      document.getElementById("loading-overlay").style.display = "flex";
+      submitButton.disabled = true; // Disable button during submission
+    };
+    const hideLoading = () => {
+      document.getElementById("loading-overlay").style.display = "none";
+      submitButton.disabled = false; // Re-enable button
+    };
+
+    // SweetAlert2 for modern alerts
+    const showAlert = (title, text, icon = "info") => {
+      hideLoading(); // Hide loading before showing alert
+      return Swal.fire({
+        title,
+        text,
+        icon,
+        confirmButtonColor: "#b994c0",
+        confirmButtonText: "OK",
+        customClass: { popup: "swal2-modern" },
+      });
+    };
+
+    // Field-specific error display function
+    function showFieldError(fieldId, message) {
+      const errorElement = document.getElementById(`${fieldId}Error`);
+      if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.style.display = "block";
+      }
+      document.getElementById(fieldId).classList.add("is-invalid");
+    }
+
+    // Clear field error
+    function clearFieldError(fieldId) {
+      const errorElement = document.getElementById(`${fieldId}Error`);
+      if (errorElement) {
+        errorElement.textContent = "";
+        errorElement.style.display = "none";
+      }
+      document.getElementById(fieldId).classList.remove("is-invalid");
+    }
+
+    // Initialize all field error elements
+    const inputFields = form.querySelectorAll("input");
+    inputFields.forEach((field) => {
+      field.addEventListener("input", () => {
+        clearFieldError(field.id);
+        errorMessage.style.display = "none";
+      });
+    });
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      showLoading();
+
+      // Clear previous error messages and highlights
+      errorMessage.style.display = "none";
+      const inputs = form.querySelectorAll("input");
+      inputs.forEach((input) => input.classList.remove("is-invalid"));
+      const fieldErrors = document.querySelectorAll(".field-error");
+      fieldErrors.forEach((element) => {
+        element.textContent = "";
+        element.style.display = "none";
+      });
+
+      // Get input values
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const confirmPassword = document.getElementById("confirmPassword").value.trim();
+
+      let hasError = false;
+
+      // Validate required fields
+      if (!username) {
+        showFieldError("username", "Username is required");
+        hasError = true;
+      }
+      if (!password) {
+        showFieldError("password", "Password is required");
+        hasError = true;
+      }
+      if (!confirmPassword) {
+        showFieldError("confirmPassword", "Please confirm your password");
+        hasError = true;
+      }
+
+      // Password validation with requirements
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
+      if (password && !passwordRegex.test(password)) {
+        showFieldError(
+          "password",
+          "Password must be at least 8 characters and include uppercase, lowercase, numbers, and special characters"
+        );
+        hasError = true;
+      }
+
+      if (password && confirmPassword && password !== confirmPassword) {
+        showFieldError("confirmPassword", "Passwords do not match");
+        hasError = true;
+      }
+
+      if (hasError) {
+        hideLoading();
+        await showAlert("Validation Error", "Please correct the errors and try again.", "error");
+        return;
+      }
+
+      try {
+        console.log("Checking username:", username);
+
+        // Create a timeout promise
+        const timeoutPromise = new Promise((resolve, reject) => {
+          setTimeout(() => reject(new Error("Request timed out. Please check your internet connection and try again.")), 10000);
+        });
+
+        // Fetch request with timeout
+        const fetchPromise = fetch(`https://balane-saspa-dental-1.onrender.com/patients/check-username?username=${encodeURIComponent(username)}`);
+        const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (!response.ok) {
+          const text = await response.text();
+          console.error("Raw server response:", text);
+          try {
+            const errorData = JSON.parse(text);
+            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+          } catch (jsonError) {
+            throw new Error(`Server returned invalid response: ${text.substring(0, 50)}...`);
+          }
+        }
+
+        const result = await response.json();
+        console.log("Username check result:", result);
+
+        if (result.exists) {
+          showFieldError("username", "Username already exists.");
+          await showAlert("Username Taken", "Username already exists.", "error");
+          return;
+        }
+
+        // Store account data
+        const accountData = { username, password };
+        sessionStorage.setItem("accountData", JSON.stringify(accountData));
+
+        // Show success alert and wait for user confirmation
+        await showAlert("Success", "Account credentials validated. Proceeding to registration.", "success");
+
+        // Redirect after alert is closed
+        window.location.href = "pages-register2.html";
+      } catch (error) {
+        console.error("Error checking username:", error.message);
+        await showAlert("Error", error.message || "Failed to verify username. Please try again.", "error");
+      } finally {
+        hideLoading();
+      }
+    });
+  });
+</script>
+</body>
+</html>
