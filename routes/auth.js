@@ -108,6 +108,18 @@ const applyForgotPasswordRateLimiter = async (req, res, next) => {
   }
 };
 
+// CSRF token endpoint
+router.get('/csrf-token', (req, res) => {
+  try {
+    const csrfToken = req.csrfToken(); // Provided by csurf middleware
+    logger.info('CSRF token requested');
+    res.json({ csrfToken });
+  } catch (error) {
+    logger.error('CSRF token error:', error);
+    res.status(500).json({ error: 'server_error', message: 'Failed to generate CSRF token' });
+  }
+});
+
 // Login endpoint
 router.post('/login', applyLoginRateLimiter, async (req, res) => {
   const { identifier, password, remember } = req.body;
@@ -441,7 +453,7 @@ router.post('/verify-otp', async (req, res) => {
         .from('users')
         .select('id, email, username')
         .eq('username', identifier)
-        .single();
+      .single();
 
       if (userByUsername && !usernameError) {
         user = userByUsername;
@@ -637,6 +649,9 @@ router.post('/logout', async (req, res) => {
 // Error handling middleware
 router.use((err, req, res, next) => {
   logger.error('Route error:', { error: err.message, stack: err.stack, path: req.path });
+  if (err.code === 'EBADCSRFTOKEN') {
+    return res.status(403).json({ error: 'invalid_csrf_token', message: 'Invalid CSRF token' });
+  }
   res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
 });
 
