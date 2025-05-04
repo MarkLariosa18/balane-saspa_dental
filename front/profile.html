@@ -865,11 +865,19 @@ const SOCKET_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:3000' 
   : 'https://balane-saspa-dental-1.onrender.com';
 
-// Fetch CSRF token
+// Fetch CSRF token with timeout
 async function fetchCsrfToken() {
   try {
-    const response = await fetch(`${BASE_URL}/auth/csrf-token`, { credentials: 'include' });
-    if (!response.ok) throw new Error('Failed to fetch CSRF token');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    const response = await fetch(`${BASE_URL}/auth/csrf-token`, {
+      credentials: 'include',
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch CSRF token: ${response.status} ${response.statusText}`);
+    }
     const data = await response.json();
     csrfToken = data.csrfToken;
     return csrfToken;
@@ -1273,6 +1281,69 @@ function initializeMap() {
     .openPopup();
 }
 
+// Update UI with profile data or fallback
+function updateProfileUI(data) {
+  const safeProfileData = {
+    full_name: data.full_name || 'Not Available',
+    email: data.email || 'Not Available',
+    phone: data.phone || 'Not Available',
+    dob: data.dob ? new Date(data.dob).toISOString().split('T')[0] : 'Not Available',
+    gender: data.gender || 'Not Available',
+    address: data.address || 'Not Available',
+    religion: data.religion || 'Not Available',
+    nationality: data.nationality || 'Not Available',
+    home_number: data.home_number || 'Not Available'
+  };
+
+  // Update profile card
+  const profileNameEl = document.getElementById('profile-name');
+  const profileEmailEl = document.getElementById('profile-email');
+  const profilePhoneEl = document.getElementById('profile-phone');
+  if (profileNameEl) profileNameEl.textContent = safeProfileData.full_name;
+  if (profileEmailEl) profileEmailEl.textContent = safeProfileData.email;
+  if (profilePhoneEl) profilePhoneEl.textContent = safeProfileData.phone;
+
+  // Update overview tab
+  const overviewNameEl = document.getElementById('overview-name');
+  const overviewDobEl = document.getElementById('overview-dob');
+  const overviewGenderEl = document.getElementById('overview-gender');
+  const overviewAddressEl = document.getElementById('overview-address');
+  const overviewReligionEl = document.getElementById('overview-religion');
+  const overviewNationalityEl = document.getElementById('overview-nationality');
+  const overviewHomeNumberEl = document.getElementById('overview-homeNumber');
+  const overviewPhoneEl = document.getElementById('overview-phone');
+  const overviewEmailEl = document.getElementById('overview-email');
+  if (overviewNameEl) overviewNameEl.textContent = safeProfileData.full_name;
+  if (overviewDobEl) overviewDobEl.textContent = safeProfileData.dob !== 'Not Available' ? safeProfileData.dob : 'Not provided';
+  if (overviewGenderEl) overviewGenderEl.textContent = safeProfileData.gender;
+  if (overviewAddressEl) overviewAddressEl.textContent = safeProfileData.address;
+  if (overviewReligionEl) overviewReligionEl.textContent = safeProfileData.religion;
+  if (overviewNationalityEl) overviewNationalityEl.textContent = safeProfileData.nationality;
+  if (overviewHomeNumberEl) overviewHomeNumberEl.textContent = safeProfileData.home_number;
+  if (overviewPhoneEl) overviewPhoneEl.textContent = safeProfileData.phone;
+  if (overviewEmailEl) overviewEmailEl.textContent = safeProfileData.email;
+
+  // Update edit profile form
+  const fullNameInput = document.getElementById('fullName');
+  const dobInput = document.getElementById('dob');
+  const genderInput = document.getElementById('gender');
+  const addressInput = document.getElementById('Address');
+  const religionInput = document.getElementById('religion');
+  const nationalityInput = document.getElementById('nationality');
+  const homeNumberInput = document.getElementById('homeNumber');
+  const phoneInput = document.getElementById('Phone');
+  const emailInput = document.getElementById('Email');
+  if (fullNameInput) fullNameInput.value = safeProfileData.full_name !== 'Not Available' ? safeProfileData.full_name : '';
+  if (dobInput) dobInput.value = safeProfileData.dob !== 'Not Available' ? safeProfileData.dob : '';
+  if (genderInput) genderInput.value = safeProfileData.gender !== 'Not Available' ? safeProfileData.gender : 'other';
+  if (addressInput) addressInput.value = safeProfileData.address !== 'Not Available' ? safeProfileData.address : '';
+  if (religionInput) religionInput.value = safeProfileData.religion !== 'Not Available' ? safeProfileData.religion : '';
+  if (nationalityInput) nationalityInput.value = safeProfileData.nationality !== 'Not Available' ? safeProfileData.nationality : '';
+  if (homeNumberInput) homeNumberInput.value = safeProfileData.home_number !== 'Not Available' ? safeProfileData.home_number : '';
+  if (phoneInput) phoneInput.value = safeProfileData.phone !== 'Not Available' ? safeProfileData.phone : '';
+  if (emailInput) emailInput.value = safeProfileData.email !== 'Not Available' ? safeProfileData.email : '';
+}
+
 // DOMContentLoaded event listener
 document.addEventListener('DOMContentLoaded', async function() {
   try {
@@ -1282,10 +1353,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     initializeSocketIO();
     initializeMap();
 
-    const authResponse = await fetch(`${BASE_URL}/check-auth`, { credentials: 'include' });
+    // Check authentication
+    const authResponse = await fetch(`${BASE_URL}/check-auth`, {
+      credentials: 'include',
+      signal: AbortSignal.timeout(5000) // 5s timeout
+    });
     if (!authResponse.ok) {
-      const errorData = await authResponse.json();
-      throw new Error(errorData.message || 'Authentication check failed');
+      const errorData = await authResponse.json().catch(() => ({}));
+      throw new Error(errorData.message || `Authentication check failed: ${authResponse.status}`);
     }
     const authData = await authResponse.json();
     if (!authData.isLoggedIn) {
@@ -1300,126 +1375,133 @@ document.addEventListener('DOMContentLoaded', async function() {
       return;
     }
 
-    document.getElementById('account-link').style.display = 'none';
-    document.getElementById('profile-link').style.display = 'block';
+    // Update navigation
+    const accountLink = document.getElementById('account-link');
+    const profileLink = document.getElementById('profile-link');
+    if (accountLink) accountLink.style.display = 'none';
+    if (profileLink) profileLink.style.display = 'block';
     document.querySelectorAll('#navmenu a').forEach(link => link.classList.remove('active'));
-    document.querySelector('#profile-link a').classList.add('active');
+    const profileLinkAnchor = document.querySelector('#profile-link a');
+    if (profileLinkAnchor) profileLinkAnchor.classList.add('active');
 
-    const profileResponse = await fetch(`${BASE_URL}/patients/profile`, { credentials: 'include' });
+    // Fetch profile data
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    const profileResponse = await fetch(`${BASE_URL}/patients/profile`, {
+      credentials: 'include',
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
     if (!profileResponse.ok) {
-      const errorData = await profileResponse.json();
-      throw new Error(errorData.message || 'Failed to fetch profile');
+      const errorData = await profileResponse.json().catch(() => ({}));
+      console.error('Profile fetch error:', errorData);
+      throw new Error(errorData.message || `Failed to fetch profile: ${profileResponse.status}`);
     }
+
     profileData = await profileResponse.json();
+    console.log('Profile data received:', profileData);
 
-    // Handle null or undefined values
-    const safeProfileData = {
-      full_name: profileData.full_name || 'N/A',
-      email: profileData.email || 'N/A',
-      phone: profileData.phone || 'N/A',
-      dob: profileData.dob ? new Date(profileData.dob).toISOString().split('T')[0] : 'N/A',
-      gender: profileData.gender || 'N/A',
-      address: profileData.address || 'N/A',
-      religion: profileData.religion || 'N/A',
-      nationality: profileData.nationality || 'N/A',
-      home_number: profileData.home_number || 'N/A'
-    };
+    // Update UI with profile data
+    updateProfileUI(profileData);
 
-    document.getElementById('profile-name').textContent = safeProfileData.full_name;
-    document.getElementById('profile-email').textContent = safeProfileData.email;
-    document.getElementById('profile-phone').textContent = safeProfileData.phone;
-
-    document.getElementById('overview-name').textContent = safeProfileData.full_name;
-    document.getElementById('overview-dob').textContent = safeProfileData.dob !== 'N/A' ? safeProfileData.dob : 'Not provided';
-    document.getElementById('overview-gender').textContent = safeProfileData.gender;
-    document.getElementById('overview-address').textContent = safeProfileData.address;
-    document.getElementById('overview-religion').textContent = safeProfileData.religion;
-    document.getElementById('overview-nationality').textContent = safeProfileData.nationality;
-    document.getElementById('overview-homeNumber').textContent = safeProfileData.home_number;
-    document.getElementById('overview-phone').textContent = safeProfileData.phone;
-    document.getElementById('overview-email').textContent = safeProfileData.email;
-
-    document.getElementById('fullName').value = safeProfileData.full_name !== 'N/A' ? safeProfileData.full_name : '';
-    document.getElementById('dob').value = safeProfileData.dob !== 'N/A' ? safeProfileData.dob : '';
-    document.getElementById('gender').value = safeProfileData.gender !== 'N/A' ? safeProfileData.gender : 'other';
-    document.getElementById('Address').value = safeProfileData.address !== 'N/A' ? safeProfileData.address : '';
-    document.getElementById('religion').value = safeProfileData.religion !== 'N/A' ? safeProfileData.religion : '';
-    document.getElementById('nationality').value = safeProfileData.nationality !== 'N/A' ? safeProfileData.nationality : '';
-    document.getElementById('homeNumber').value = safeProfileData.home_number !== 'N/A' ? safeProfileData.home_number : '';
-    document.getElementById('Phone').value = safeProfileData.phone !== 'N/A' ? safeProfileData.phone : '';
-    document.getElementById('Email').value = safeProfileData.email !== 'N/A' ? safeProfileData.email : '';
-
+    // Fetch appointments and history
     await fetchAppointments();
     await fetchHistory();
 
-    document.querySelector('.btn-outline-secondary').addEventListener('click', function () {
-      Swal.fire({
-        icon: 'info',
-        title: 'Coming Soon',
-        text: 'Photo upload functionality coming soon!',
-        confirmButtonColor: '#b994c0'
+    // Add event listener for photo upload placeholder
+    const photoButton = document.querySelector('.btn-outline-secondary');
+    if (photoButton) {
+      photoButton.addEventListener('click', function () {
+        Swal.fire({
+          icon: 'info',
+          title: 'Coming Soon',
+          text: 'Photo upload functionality coming soon!',
+          confirmButtonColor: '#b994c0'
+        });
       });
-    });
+    }
 
   } catch (err) {
-    showError('An error occurred. Redirecting to login page: ' + err.message);
+    console.error('DOMContentLoaded error:', err);
+    showError(`Failed to load profile data: ${err.message}. Redirecting to login page.`);
+    
+    // Update UI with error state
+    updateProfileUI({});
+    
     setTimeout(() => {
       window.location.replace('pages-login.html');
-    }, 2000);
+    }, 3000);
   }
 
-  document.getElementById('confirmLogout').addEventListener('click', async function() {
-    Swal.fire({
-      title: 'Are you sure?',
-      text: 'Do you want to logout?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#b994c0',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Yes, logout'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          await fetchCsrfToken();
-          const response = await fetch(`${BASE_URL}/logout`, {
-            method: 'GET',
-            credentials: 'include'
-          });
-          if (response.ok) {
-            clearSessionCookie();
-            socket.disconnect();
-            const modal = bootstrap.Modal.getInstance(document.getElementById('logoutModal'));
-            if (modal) modal.hide();
-            Swal.fire({
-              icon: 'success',
-              title: 'Logged Out',
-              text: 'You have been successfully logged out.',
-              confirmButtonColor: '#b994c0'
-            }).then(() => {
-              window.location.replace('index.html');
+  // Logout handler
+  const confirmLogoutButton = document.getElementById('confirmLogout');
+  if (confirmLogoutButton) {
+    confirmLogoutButton.addEventListener('click', async function() {
+      Swal.fire({
+        title: 'Are you sure?',
+        text: 'Do you want to logout?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#b994c0',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, logout'
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          try {
+            await fetchCsrfToken();
+            const response = await fetch(`${BASE_URL}/logout`, {
+              method: 'GET',
+              credentials: 'include'
             });
-          } else {
-            showError('Logout failed. Please try again.');
+            if (response.ok) {
+              clearSessionCookie();
+              socket.disconnect();
+              const modal = bootstrap.Modal.getInstance(document.getElementById('logoutModal'));
+              if (modal) modal.hide();
+              Swal.fire({
+                icon: 'success',
+                title: 'Logged Out',
+                text: 'You have been successfully logged out.',
+                confirmButtonColor: '#b994c0'
+              }).then(() => {
+                window.location.replace('index.html');
+              });
+            } else {
+              showError('Logout failed. Please try again.');
+            }
+          } catch (err) {
+            console.error('Logout error:', err);
+            showError('An error occurred during logout.');
           }
-        } catch (err) {
-          console.error('Logout error:', err);
-          showError('An error occurred during logout.');
         }
-      }
+      });
     });
-  });
+  }
 
-  document.querySelector('button[data-bs-target="#profile-history"]').addEventListener('shown.bs.tab', fetchHistory);
-  document.getElementById('load-more-history').addEventListener('click', loadMoreHistory);
-  document.getElementById('history-search').addEventListener('input', function() {
-    renderHistory(allHistory);
-  });
+  // History tab and search handlers
+  const historyTabButton = document.querySelector('button[data-bs-target="#profile-history"]');
+  if (historyTabButton) {
+    historyTabButton.addEventListener('shown.bs.tab', fetchHistory);
+  }
+  const loadMoreButton = document.getElementById('load-more-history');
+  if (loadMoreButton) {
+    loadMoreButton.addEventListener('click', loadMoreHistory);
+  }
+  const historySearchInput = document.getElementById('history-search');
+  if (historySearchInput) {
+    historySearchInput.addEventListener('input', function() {
+      renderHistory(allHistory);
+    });
+  }
 });
 
 // Fetch appointments
 async function fetchAppointments() {
   const tbody = document.getElementById('appointments-table');
-  tbody.innerHTML = '<tr><td colspan="5">Loading appointments...</td></tr>';
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="5">Loading appointments...</td></tr>';
+  }
   try {
     const response = await fetch(`${BASE_URL}/api/appointments`, {
       method: 'GET',
@@ -1434,7 +1516,9 @@ async function fetchAppointments() {
     renderAppointments();
   } catch (err) {
     showError('Failed to load appointments: ' + err.message);
-    document.getElementById('appointments-table').innerHTML = '<tr><td colspan="5">Error loading appointments.</td></tr>';
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="5">Error loading appointments.</td></tr>';
+    }
   }
 }
 
@@ -1442,6 +1526,7 @@ async function fetchAppointments() {
 function renderAppointments() {
   const tbody = document.getElementById('appointments-table');
   const noAppointmentsDiv = document.getElementById('no-appointments');
+  if (!tbody || !noAppointmentsDiv) return;
 
   if (currentAppointments.length === 0) {
     tbody.innerHTML = '';
@@ -1530,7 +1615,9 @@ function renderAppointments() {
 // Fetch history
 async function fetchHistory() {
   const timeline = document.getElementById('history-timeline');
-  timeline.innerHTML = '<p>Loading history...</p>';
+  if (timeline) {
+    timeline.innerHTML = '<p>Loading history...</p>';
+  }
   try {
     const response = await fetch(`${BASE_URL}/api/appointments?all=true`, {
       method: 'GET',
@@ -1546,8 +1633,13 @@ async function fetchHistory() {
     renderHistory(allHistory);
   } catch (err) {
     showError('Failed to load history: ' + err.message);
-    document.getElementById('history-timeline').innerHTML = '<p>Error loading history.</p>';
-    document.getElementById('no-history').style.display = 'none';
+    if (timeline) {
+      timeline.innerHTML = '<p>Error loading history.</p>';
+    }
+    const noHistoryDiv = document.getElementById('no-history');
+    if (noHistoryDiv) {
+      noHistoryDiv.style.display = 'none';
+    }
   }
 }
 
@@ -1556,7 +1648,9 @@ function renderHistory(history) {
   const timeline = document.getElementById('history-timeline');
   const noHistoryDiv = document.getElementById('no-history');
   const loadMoreButton = document.getElementById('load-more-history');
-  const searchQuery = document.getElementById('history-search').value.trim().toLowerCase();
+  if (!timeline || !noHistoryDiv || !loadMoreButton) return;
+
+  const searchQuery = document.getElementById('history-search')?.value.trim().toLowerCase() || '';
 
   const filteredHistory = history.filter(appointment => {
     const dateStr = new Date(appointment.appointment_date).toLocaleString().toLowerCase();
