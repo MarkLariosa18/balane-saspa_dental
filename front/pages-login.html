@@ -16,8 +16,8 @@
   <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
 
   <!-- Vendor CSS Files -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <!-- SweetAlert2 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 
@@ -194,23 +194,12 @@
   <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
 
   <!-- Vendor JS Files -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <!-- SweetAlert2 JS -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <!-- SweetAlert2 Fallback -->
-  <script>
-    if (typeof Swal === 'undefined') {
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/sweetalert2@11';
-      script.async = true;
-      document.head.appendChild(script);
-      script.onload = () => console.log('SweetAlert2 fallback loaded');
-      script.onerror = () => console.error('SweetAlert2 fallback failed to load');
-    }
-  </script>
+  <script src="https://unpkg.com/sweetalert2@11"></script>
   <!-- Inline Script -->
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       // Debug: Check if SweetAlert2 is loaded
       console.log('SweetAlert2 loaded:', typeof Swal !== 'undefined');
       if (typeof Swal === 'undefined') {
@@ -260,24 +249,21 @@
 
       // Fetch CSRF token
       let csrfToken = null;
-      async function fetchCsrfToken() {
-        try {
-          const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
-            method: 'GET',
-            credentials: 'include'
-          });
-          const result = await response.json();
-          if (result.csrfToken) {
-            csrfToken = result.csrfToken;
-            console.log('CSRF Token fetched:', csrfToken);
-          } else {
-            throw new Error('No CSRF token received');
-          }
-        } catch (error) {
-          console.error('Failed to fetch CSRF token:', error);
-          showAlert('Error', 'Failed to initialize login. Please refresh the page.', 'error');
-          throw error;
+      try {
+        const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const result = await response.json();
+        if (result.csrfToken) {
+          csrfToken = result.csrfToken;
+        } else {
+          throw new Error('No CSRF token received');
         }
+      } catch (error) {
+        console.error('Failed to fetch CSRF token:', error);
+        await showAlert('Error', 'Failed to initialize login. Please refresh the page.', 'error');
+        return;
       }
 
       // Login attempt limiter
@@ -303,266 +289,254 @@
         return false;
       };
 
-      // Initialize
-      async function initialize() {
-        try {
-          await fetchCsrfToken();
+      // Attempt auto-login with remember token
+      try {
+        showLoading();
+        const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/auto-login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'CSRF-Token': csrfToken
+          },
+          credentials: 'include'
+        });
+        const result = await response.json();
 
-          // Attempt auto-login with remember token
-          try {
-            showLoading();
-            const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/auto-login', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'CSRF-Token': csrfToken
-              },
-              credentials: 'include'
-            });
-            const result = await response.json();
-
-            if (result.success) {
-              await showAlert('Auto-Login Successful', 'Redirecting to your dashboard...', 'success');
-              if (result.role === 'admin') {
-                window.location.href = '/admin/index.html';
-              } else {
-                window.location.href = '/profile.html';
-              }
-              return;
-            }
-          } catch (error) {
-            console.log('No valid remember token or server error:', error);
-          } finally {
-            hideLoading();
+        if (result.success) {
+          await showAlert('Auto-Login Successful', 'Redirecting to your dashboard...', 'success');
+          if (result.role === 'admin') {
+            window.location.href = '/admin/index.html';
+          } else {
+            window.location.href = '/profile.html';
           }
-
-          // Manual login form submission
-          form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-
-            if (checkLockout()) return;
-
-            const identifier = identifierField.value.trim();
-            const password = passwordField.value;
-            const remember = rememberMeCheckbox.checked;
-
-            if (!form.checkValidity()) {
-              form.classList.add('was-validated');
-              return;
-            }
-
-            try {
-              showLoading();
-              loginButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Logging in...';
-
-              const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/login', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'CSRF-Token': csrfToken
-                },
-                body: JSON.stringify({ identifier, password, remember }),
-                credentials: 'include'
-              });
-
-              const result = await response.json();
-
-              if (!response.ok) {
-                loginAttempts++;
-                localStorage.setItem('loginAttempts', loginAttempts);
-                if (loginAttempts >= MAX_ATTEMPTS) {
-                  lockoutUntil = Date.now() + LOCKOUT_TIME;
-                  localStorage.setItem('lockoutUntil', lockoutUntil);
-                  checkLockout();
-                  return;
-                }
-                if (result.error === 'invalid_csrf_token') {
-                  await showAlert('Error', 'Invalid session. Please refresh the page.', 'error');
-                } else {
-                  await showAlert('Login Failed', result.message || 'Invalid username/email or password', 'error');
-                }
-                loginButton.innerHTML = 'Login';
-                return;
-              }
-
-              if (result.success) {
-                localStorage.setItem('loginAttempts', 0);
-                localStorage.removeItem('lockoutUntil');
-                await showAlert('Login Successful', 'Redirecting to your dashboard...', 'success');
-                if (result.role === 'admin') {
-                  window.location.href = '/admin/index.html';
-                } else {
-                  window.location.href = '/profile.html';
-                }
-              }
-            } catch (error) {
-              console.error('Login error:', error);
-              loginAttempts++;
-              localStorage.setItem('loginAttempts', loginAttempts);
-              if (loginAttempts >= MAX_ATTEMPTS) {
-                lockoutUntil = Date.now() + LOCKOUT_TIME;
-                localStorage.setItem('lockoutUntil', lockoutUntil);
-                checkLockout();
-              }
-              await showAlert('Server Error', 'Failed to connect to server', 'error');
-              loginButton.innerHTML = 'Login';
-            } finally {
-              hideLoading();
-            }
-          });
-
-          // Forgot password functionality
-          forgotPasswordLink.addEventListener('click', async () => {
-            console.log('Forgot password link clicked'); // Debug
-            const { value: identifier } = await Swal.fire({
-              title: 'Forgot Password',
-              text: 'Enter your email or username to receive an OTP',
-              input: 'text',
-              inputPlaceholder: 'Email or Username',
-              showCancelButton: true,
-              confirmButtonColor: '#84548c',
-              cancelButtonColor: '#6c757d',
-              confirmButtonText: 'Send OTP',
-              inputValidator: (value) => {
-                if (!value) {
-                  return 'Please enter your email or username';
-                }
-                return null;
-              }
-            });
-
-            if (!identifier) return;
-
-            try {
-              showLoading();
-              const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/forgot-password', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'CSRF-Token': csrfToken
-                },
-                body: JSON.stringify({ identifier }),
-                credentials: 'include'
-              });
-
-              const result = await response.json();
-
-              if (!response.ok) {
-                if (result.error === 'invalid_csrf_token') {
-                  await showAlert('Error', 'Invalid session. Please refresh the page.', 'error');
-                } else {
-                  await showAlert('Error', result.message || 'Failed to send OTP', 'error');
-                }
-                return;
-              }
-
-              await showAlert('OTP Sent', 'An OTP has been sent to your email.', 'success');
-
-              const { value: otp } = await Swal.fire({
-                title: 'Enter OTP',
-                text: 'Check your email for the OTP',
-                input: 'text',
-                inputPlaceholder: '6-digit OTP',
-                showCancelButton: true,
-                confirmButtonColor: '#84548c',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Verify OTP',
-                inputValidator: (value) => {
-                  if (!value || value.length !== 6 || !/^\d{6}$/.test(value)) {
-                    return 'Please enter a valid 6-digit OTP';
-                  }
-                  return null;
-                }
-              });
-
-              if (!otp) return;
-
-              const verifyResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/verify-otp', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'CSRF-Token': csrfToken
-                },
-                body: JSON.stringify({ identifier, otp, purpose: 'password_reset' }),
-                credentials: 'include'
-              });
-
-              const verifyResult = await verifyResponse.json();
-
-              if (!verifyResponse.ok) {
-                if (verifyResult.error === 'invalid_csrf_token') {
-                  await showAlert('Error', 'Invalid session. Please refresh the page.', 'error');
-                } else {
-                  await showAlert('Error', verifyResult.message || 'Invalid OTP', 'error');
-                }
-                return;
-              }
-
-              const { value: passwords } = await Swal.fire({
-                title: 'Reset Password',
-                html: `
-                  <input type="password" id="newPassword" class="swal2-input" placeholder="New Password">
-                  <input type="password" id="confirmPassword" class="swal2-input" placeholder="Confirm Password">
-                `,
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonColor: '#84548c',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Reset Password',
-                preConfirm: () => {
-                  const newPassword = document.getElementById('newPassword').value;
-                  const confirmPassword = document.getElementById('confirmPassword').value;
-                  if (!newPassword || newPassword.length < 8 || newPassword.length > 100) {
-                    Swal.showValidationMessage('Password must be between 8 and 100 characters');
-                    return false;
-                  }
-                  if (newPassword !== confirmPassword) {
-                    Swal.showValidationMessage('Passwords do not match');
-                    return false;
-                  }
-                  return { newPassword };
-                }
-              });
-
-              if (!passwords) return;
-
-              const resetResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/reset-password', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'CSRF-Token': csrfToken
-                },
-                body: JSON.stringify({ identifier, otp, newPassword: passwords.newPassword }),
-                credentials: 'include'
-              });
-
-              const resetResult = await resetResponse.json();
-
-              if (!resetResponse.ok) {
-                if (resetResult.error === 'invalid_csrf_token') {
-                  await showAlert('Error', 'Invalid session. Please refresh the page.', 'error');
-                } else {
-                  await showAlert('Error', resetResult.message || 'Failed to reset password', 'error');
-                }
-                return;
-              }
-
-              await showAlert('Success', 'Your password has been reset. Please log in.', 'success');
-              window.location.reload();
-            } catch (error) {
-              console.error('Forgot password error:', error);
-              await showAlert('Server Error', 'Failed to connect to server', 'error');
-            } finally {
-              hideLoading();
-            }
-          });
-        } catch (error) {
-          console.error('Initialization error:', error);
+          return;
         }
+      } catch (error) {
+        console.log('No valid remember token or server error:', error);
+      } finally {
+        hideLoading();
       }
 
-      // Run initialization
-      initialize();
+      // Manual login form submission
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        if (checkLockout()) return;
+
+        const identifier = identifierField.value.trim();
+        const password = passwordField.value;
+        const remember = rememberMeCheckbox.checked;
+
+        if (!form.checkValidity()) {
+          form.classList.add('was-validated');
+          return;
+        }
+
+        try {
+          showLoading();
+          loginButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Logging in...';
+
+          const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ identifier, password, remember }),
+            credentials: 'include'
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            loginAttempts++;
+            localStorage.setItem('loginAttempts', loginAttempts);
+            if (loginAttempts >= MAX_ATTEMPTS) {
+              lockoutUntil = Date.now() + LOCKOUT_TIME;
+              localStorage.setItem('lockoutUntil', lockoutUntil);
+              checkLockout();
+              return;
+            }
+            if (result.error === 'invalid_csrf_token') {
+              await showAlert('Error', 'Invalid session. Please refresh the page.', 'error');
+            } else {
+              await showAlert('Login Failed', result.message || 'Invalid username/email or password', 'error');
+            }
+            loginButton.innerHTML = 'Login';
+            return;
+          }
+
+          if (result.success) {
+            localStorage.setItem('loginAttempts', 0);
+            localStorage.removeItem('lockoutUntil');
+            await showAlert('Login Successful', 'Redirecting to your dashboard...', 'success');
+            if (result.role === 'admin') {
+              window.location.href = '/admin/index.html';
+            } else {
+              window.location.href = '/profile.html';
+            }
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          loginAttempts++;
+          localStorage.setItem('loginAttempts', loginAttempts);
+          if (loginAttempts >= MAX_ATTEMPTS) {
+            lockoutUntil = Date.now() + LOCKOUT_TIME;
+            localStorage.setItem('lockoutUntil', lockoutUntil);
+            checkLockout();
+          }
+          await showAlert('Server Error', 'Failed to connect to server', 'error');
+          loginButton.innerHTML = 'Login';
+        } finally {
+          hideLoading();
+        }
+      });
+
+      // Forgot password functionality
+      forgotPasswordLink.addEventListener('click', async () => {
+        console.log('Forgot password link clicked'); // Debug
+        const { value: identifier } = await Swal.fire({
+          title: 'Forgot Password',
+          text: 'Enter your email or username to receive an OTP',
+          input: 'text',
+          inputPlaceholder: 'Email or Username',
+          showCancelButton: true,
+          confirmButtonColor: '#84548c',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: 'Send OTP',
+          inputValidator: (value) => {
+            if (!value) {
+              return 'Please enter your email or username';
+            }
+            return null;
+          }
+        });
+
+        if (!identifier) return;
+
+        try {
+          showLoading();
+          const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/forgot-password', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ identifier }),
+            credentials: 'include'
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            if (result.error === 'invalid_csrf_token') {
+              await showAlert('Error', 'Invalid session. Please refresh the page.', 'error');
+            } else {
+              await showAlert('Error', result.message || 'Failed to send OTP', 'error');
+            }
+            return;
+          }
+
+          await showAlert('OTP Sent', 'An OTP has been sent to your email.', 'success');
+
+          const { value: otp } = await Swal.fire({
+            title: 'Enter OTP',
+            text: 'Check your email for the OTP',
+            input: 'text',
+            inputPlaceholder: '6-digit OTP',
+            showCancelButton: true,
+            confirmButtonColor: '#84548c',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Verify OTP',
+            inputValidator: (value) => {
+              if (!value || value.length !== 6 || !/^\d{6}$/.test(value)) {
+                return 'Please enter a valid 6-digit OTP';
+              }
+              return null;
+            }
+          });
+
+          if (!otp) return;
+
+          const verifyResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/verify-otp', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ identifier, otp, purpose: 'password_reset' }),
+            credentials: 'include'
+          });
+
+          const verifyResult = await verifyResponse.json();
+
+          if (!verifyResponse.ok) {
+            if (verifyResult.error === 'invalid_csrf_token') {
+              await showAlert('Error', 'Invalid session. Please refresh the page.', 'error');
+            } else {
+              await showAlert('Error', verifyResult.message || 'Invalid OTP', 'error');
+            }
+            return;
+          }
+
+          const { value: passwords } = await Swal.fire({
+            title: 'Reset Password',
+            html: `
+              <input type="password" id="newPassword" class="swal2-input" placeholder="New Password">
+              <input type="password" id="confirmPassword" class="swal2-input" placeholder="Confirm Password">
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonColor: '#84548c',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Reset Password',
+            preConfirm: () => {
+              const newPassword = document.getElementById('newPassword').value;
+              const confirmPassword = document.getElementById('confirmPassword').value;
+              if (!newPassword || newPassword.length < 8 || newPassword.length > 100) {
+                Swal.showValidationMessage('Password must be between 8 and 100 characters');
+                return false;
+              }
+              if (newPassword !== confirmPassword) {
+                Swal.showValidationMessage('Passwords do not match');
+                return false;
+              }
+              return { newPassword };
+            }
+          });
+
+          if (!passwords) return;
+
+          const resetResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/reset-password', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'CSRF-Token': csrfToken
+            },
+            body: JSON.stringify({ identifier, otp, newPassword: passwords.newPassword }),
+            credentials: 'include'
+          });
+
+          const resetResult = await resetResponse.json();
+
+          if (!resetResponse.ok) {
+            if (resetResult.error === 'invalid_csrf_token') {
+              await showAlert('Error', 'Invalid session. Please refresh the page.', 'error');
+            } else {
+              await showAlert('Error', resetResult.message || 'Failed to reset password', 'error');
+            }
+            return;
+          }
+
+          await showAlert('Success', 'Your password has been reset. Please log in.', 'success');
+          window.location.reload();
+        } catch (error) {
+          console.error('Forgot password error:', error);
+          await showAlert('Server Error', 'Failed to connect to server', 'error');
+        } finally {
+          hideLoading();
+        }
+      });
     });
   </script>
 </body>
