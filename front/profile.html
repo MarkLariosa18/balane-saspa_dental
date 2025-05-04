@@ -846,7 +846,7 @@ const BASE_URL = window.location.hostname === 'localhost'
 
 async function fetchCsrfToken() {
   try {
-    const response = await fetch(`${BASE_URL}/csrf-token`, { credentials: 'include' });
+    const response = await fetch(`${BASE_URL}/auth/csrf-token`, { credentials: 'include' });
     if (!response.ok) throw new Error('Failed to fetch CSRF token');
     const data = await response.json();
     csrfToken = data.csrfToken;
