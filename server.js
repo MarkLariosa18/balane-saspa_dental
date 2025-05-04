@@ -156,7 +156,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       connectSrc: ["'self'", 'wss://balane-saspa-dental-1.onrender.com'],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdn.socket.io"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdn.socket.io", "https://code.jquery.com", "https://cdn.jsdelivr.net", "https://unpkg.com"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrcAttr: ["'unsafe-inline'"], // Temporary for debugging inline handlers
     },
