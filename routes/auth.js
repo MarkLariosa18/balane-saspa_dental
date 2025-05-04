@@ -129,12 +129,6 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
       logger.warn(`Login attempt with missing credentials: ${identifier || 'unknown'}`);
       return res.status(400).json({ error: 'bad_request', message: 'Username/email and password are required' });
     }
-    if (!validator.isLength(identifier, { min: 3, max: 50 })) {
-      return res.status(400).json({ error: 'bad_request', message: 'Username/email must be between 3 and 50 characters' });
-    }
-    if (!validator.isLength(password, { min: 8, max: 100 })) {
-      return res.status(400).json({ error: 'bad_request', message: 'Password must be between 8 and 100 characters' });
-    }
 
     let user = null;
     let role = null;
