@@ -865,6 +865,9 @@ const WS_URL = window.location.hostname === 'localhost'
   ? 'ws://localhost:3000' 
   : 'wss://balane-saspa-dental-1.onrender.com';
 
+// Toggle to disable Socket.IO for testing
+const ENABLE_SOCKET_IO = true;
+
 async function fetchCsrfToken() {
   try {
     console.log('Fetching CSRF token...');
@@ -898,6 +901,22 @@ function clearSessionCookie() {
 }
 
 function initializeWebSocket() {
+  if (!ENABLE_SOCKET_IO) {
+    console.log('Socket.IO disabled for testing');
+    return;
+  }
+
+  if (typeof io === 'undefined') {
+    console.error('Socket.IO library not loaded. Skipping WebSocket initialization.');
+    Swal.fire({
+      icon: 'warning',
+      title: 'WebSocket Error',
+      text: 'Real-time updates are unavailable. Please check the Socket.IO library.',
+      confirmButtonColor: '#b994c0'
+    });
+    return;
+  }
+
   console.log('Initializing Socket.IO with URL:', WS_URL);
   socket = io(WS_URL, {
     transports: ['websocket'],
@@ -939,32 +958,6 @@ function initializeWebSocket() {
   socket.on('disconnect', () => {
     console.log('Socket.IO disconnected');
   });
-
-  // Native WebSocket fallback (uncomment to use)
-  /*
-  console.log('Initializing WebSocket with URL:', WS_URL);
-  ws = new WebSocket(WS_URL);
-  ws.onopen = () => console.log('WebSocket connected');
-  ws.onmessage = async (event) => {
-    const data = JSON.parse(event.data);
-    console.log('WebSocket message:', data);
-    if (['reschedule_request', 'cancel_request', 'reschedule_response', 'cancel_response'].includes(data.type)) {
-      Swal.fire({
-        icon: 'info',
-        title: 'Appointment Update',
-        text: `Your appointment has been updated: ${data.message}`,
-        confirmButtonColor: '#b994c0'
-      });
-      await fetchAppointments();
-      await fetchHistory();
-    }
-  };
-  ws.onerror = (error) => console.error('WebSocket error:', error);
-  ws.onclose = () => {
-    console.log('WebSocket disconnected');
-    setTimeout(initializeWebSocket, 5000);
-  };
-  */
 }
 
 async function fetchAllBookedAppointments() {
@@ -1397,6 +1390,33 @@ document.addEventListener('DOMContentLoaded', async function() {
     await fetchAppointments();
     await fetchHistory();
 
+    // Bind saveProfile to the save button
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    if (saveProfileBtn) {
+      saveProfileBtn.addEventListener('click', async () => {
+        console.log('Save profile button clicked');
+        await saveProfile();
+      });
+      console.log('saveProfileBtn event listener added');
+    } else {
+      console.error('Save profile button (#saveProfileBtn) not found');
+      showError('Profile save button not found. Please check the HTML.');
+    }
+
+    // Bind form submission to prevent default and call saveProfile
+    const profileForm = document.getElementById('profile-edit-form');
+    if (profileForm) {
+      profileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        console.log('Profile form submitted');
+        await saveProfile();
+      });
+      console.log('profile-edit-form event listener added');
+    } else {
+      console.error('Profile form (#profile-edit-form) not found');
+      showError('Profile form not found. Please check the HTML.');
+    }
+
     document.querySelector('.btn-outline-secondary').addEventListener('click', function () {
       Swal.fire({
         icon: 'info',
@@ -1671,36 +1691,68 @@ function loadMoreHistory() {
 }
 
 async function saveProfile() {
-  const formData = new FormData(document.getElementById('profile-edit-form'));
+  const form = document.getElementById('profile-edit-form');
+  if (!form) {
+    console.error('Profile form not found');
+    showError('Profile form not found. Please check the HTML.');
+    return;
+  }
+
+  const formData = new FormData(form);
   const profileData = Object.fromEntries(formData);
+  console.log('Profile data to save:', profileData);
+
+  // Client-side validation
+  if (!profileData.full_name || profileData.full_name.trim().length < 2) {
+    showError('Full name is required and must be at least 2 characters.');
+    return;
+  }
+  if (!profileData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
+    showError('A valid email address is required.');
+    return;
+  }
+  if (profileData.dob && !/^\d{4}-\d{2}-\d{2}$/.test(profileData.dob)) {
+    showError('Date of birth must be in YYYY-MM-DD format.');
+    return;
+  }
+  if (profileData.phone && !/^\+?\d{7,15}$/.test(profileData.phone)) {
+    showError('Phone number must be between 7 and 15 digits.');
+    return;
+  }
 
   try {
+    console.log('Fetching CSRF token for saveProfile...');
     await fetchCsrfToken();
+    console.log('Sending PUT /patients/profile...');
     const response = await fetch(`${BASE_URL}/patients/profile`, {
       method: 'PUT',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'CSRF-Token': csrfToken
+        'CSRF-Token': csrfToken,
+        'Accept': 'application/json'
       },
       body: JSON.stringify(profileData),
       credentials: 'include'
     });
-
-    if (response.ok) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Profile Updated',
-        text: 'Your profile has been updated successfully!',
-        confirmButtonColor: '#b994c0'
-      }).then(() => {
-        window.location.reload();
-      });
-    } else {
+    console.log('Save profile status:', response.status);
+    if (!response.ok) {
       const errorData = await response.json();
-      showError(`Failed to update profile: ${errorData.message || 'Please try again.'}`);
+      console.error('Save profile error:', errorData);
+      throw new Error(errorData.message || `Failed to update profile (Status: ${response.status})`);
     }
+    const responseData = await response.json();
+    console.log('Save profile response:', responseData);
+    Swal.fire({
+      icon: 'success',
+      title: 'Profile Updated',
+      text: 'Your profile has been updated successfully!',
+      confirmButtonColor: '#b994c0'
+    }).then(() => {
+      window.location.reload();
+    });
   } catch (err) {
-    showError('An error occurred while saving your profile: ' + err.message);
+    console.error('Save profile error:', err);
+    showError('Failed to update profile: ' + err.message);
   }
 }
 
@@ -1774,7 +1826,7 @@ async function changePassword() {
     const otpModal = new bootstrap.Modal(document.getElementById('otpModal'));
     otpModal.show();
 
-    document.getElementById('verifyOtp').onclick = async function() {
+    document.getElementById('verifyOtp').addEventListener('click', async function() {
       const otp = document.getElementById('otpInput').value.trim();
       if (!otp || otp.length !== 6) {
         showError('Please enter a valid 6-digit OTP.');
@@ -1827,9 +1879,9 @@ async function changePassword() {
           showError(errorData.message || 'Failed to change password. Please check your current password.');
         }
       }
-    };
+    });
 
-    document.getElementById('resendOtp').onclick = async function() {
+    document.getElementById('resendOtp').addEventListener('click', async function() {
       await fetchCsrfToken();
       const resendResponse = await fetch(`${BASE_URL}/api/otp/send`, {
         method: 'POST',
@@ -1856,7 +1908,7 @@ async function changePassword() {
         }
         showError(errorData.message || 'Failed to resend OTP.');
       }
-    };
+    });
   } catch (err) {
     showError('An error occurred during password change: ' + err.message);
   }
