@@ -150,6 +150,10 @@ io.on('connection', (socket) => {
   });
 });
 
+app.get('/csrf-token', (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
+
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: {
@@ -334,9 +338,6 @@ const shutdown = () => {
   });
 };
 
-app.get('/csrf-token', (req, res) => {
-  res.json({ csrfToken: req.csrfToken() });
-});
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
