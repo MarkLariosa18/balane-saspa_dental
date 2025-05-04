@@ -22,6 +22,7 @@
   <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 
   <link href="assets/css/profile.css" rel="stylesheet">
 
@@ -317,6 +318,12 @@
       background: var(--primary-hover);
     }
 
+    #map {
+      height: 300px;
+      border-radius: var(--border-radius);
+      margin-top: 20px;
+    }
+
     @media (max-width: 768px) {
       .card {
         margin-bottom: 20px;
@@ -330,6 +337,10 @@
       .profile-pic-container {
         width: 100px;
         height: 100px;
+      }
+
+      #map {
+        height: 200px;
       }
     }
   </style>
@@ -800,6 +811,10 @@
             <p><strong>Monday - Saturday, 9AM to 4PM</strong></p>
           </div>
         </div>
+        <div class="col-lg-8 col-md-6">
+          <h4>Our Location</h4>
+          <div id="map"></div>
+        </div>
       </div>
     </div>
 
@@ -825,6 +840,8 @@
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 
 <script>
   AOS.init();
@@ -837,17 +854,18 @@ let editModalControls;
 let cancelModalControls;
 let allBookedAppointments = [];
 let currentAppointments = [];
-let ws;
+let socket;
 let csrfToken;
 
-// Base URLs using the original onrender.com endpoint
+// Base URLs for API and Socket.IO
 const BASE_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:3000' 
   : 'https://balane-saspa-dental-1.onrender.com';
-const WS_URL = window.location.hostname === 'localhost' 
-  ? 'ws://localhost:3000' 
-  : 'wss://balane-saspa-dental-1.onrender.com';
+const SOCKET_URL = window.location.hostname === 'localhost' 
+  ? 'http://localhost:3000' 
+  : 'https://balane-saspa-dental-1.onrender.com';
 
+// Fetch CSRF token
 async function fetchCsrfToken() {
   try {
     const response = await fetch(`${BASE_URL}/auth/csrf-token`, { credentials: 'include' });
@@ -867,34 +885,58 @@ async function fetchCsrfToken() {
   }
 }
 
+// Clear session cookie
 function clearSessionCookie() {
   document.cookie = 'connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
 }
 
-function initializeWebSocket() {
-  ws = new WebSocket(WS_URL);
-  ws.onopen = () => console.log('WebSocket connected');
-  ws.onmessage = async (event) => {
-    const data = JSON.parse(event.data);
-    console.log('WebSocket message:', data);
-    if (['reschedule_request', 'cancel_request', 'reschedule_response', 'cancel_response'].includes(data.type)) {
-      Swal.fire({
-        icon: 'info',
-        title: 'Appointment Update',
-        text: `Your appointment has been updated: ${data.message}`,
-        confirmButtonColor: '#b994c0'
-      });
-      await fetchAppointments();
-      await fetchHistory();
-    }
-  };
-  ws.onerror = (error) => console.error('WebSocket error:', error);
-  ws.onclose = () => {
-    console.log('WebSocket disconnected. Attempting to reconnect...');
-    setTimeout(initializeWebSocket, 5000);
-  };
+// Initialize Socket.IO
+function initializeSocketIO() {
+  socket = io(SOCKET_URL, {
+    withCredentials: true,
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 5000
+  });
+
+  socket.on('connect', () => {
+    console.log('Socket.IO connected:', socket.id);
+    socket.emit('join', { userId: profileData?.userId });
+  });
+
+  socket.on('welcome', (data) => {
+    console.log('Socket.IO welcome:', data);
+  });
+
+  socket.on('appointment_update', async (data) => {
+    console.log('Socket.IO appointment_update:', data);
+    Swal.fire({
+      icon: 'info',
+      title: 'Appointment Update',
+      text: `Your appointment has been updated: ${data.message}`,
+      confirmButtonColor: '#b994c0'
+    });
+    await fetchAppointments();
+    await fetchHistory();
+  });
+
+  socket.on('connect_error', (error) => {
+    console.error('Socket.IO connection error:', error);
+    Swal.fire({
+      icon: 'warning',
+      title: 'Connection Issue',
+      text: 'Unable to connect to real-time updates. Retrying...',
+      confirmButtonColor: '#b994c0'
+    });
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Socket.IO disconnected');
+  });
 }
 
+// Fetch all booked appointments
 async function fetchAllBookedAppointments() {
   try {
     const response = await fetch(`${BASE_URL}/api/appointments/booked`, { credentials: 'include' });
@@ -907,6 +949,7 @@ async function fetchAllBookedAppointments() {
   }
 }
 
+// Show error with SweetAlert2
 function showError(message) {
   Swal.fire({
     icon: 'error',
@@ -917,6 +960,7 @@ function showError(message) {
   console.error(message);
 }
 
+// Initialize reschedule date picker
 function initializeRescheduleDatePicker(bookedAppointments, currentAppointmentId) {
   const bookedTimes = (Array.isArray(bookedAppointments) ? bookedAppointments : [])
     .filter(appt => String(appt.id) !== String(currentAppointmentId))
@@ -981,7 +1025,7 @@ function initializeRescheduleDatePicker(bookedAppointments, currentAppointmentId
       const selectedDate = selectedDates[0];
       if (!selectedDate) return;
 
-      const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
       const timePicker = document.getElementById('timePickerBottom');
       const timeSlots = timePicker.querySelectorAll('.time-slot');
 
@@ -1024,6 +1068,7 @@ function initializeRescheduleDatePicker(bookedAppointments, currentAppointmentId
   return fp;
 }
 
+// Setup edit appointment modal
 function setupEditAppointmentModal() {
   const editModalElement = document.getElementById('editAppointmentModal');
   const editModal = new bootstrap.Modal(editModalElement);
@@ -1137,6 +1182,7 @@ function setupEditAppointmentModal() {
   return { openEditModal };
 }
 
+// Setup cancel appointment modal
 function setupCancelAppointmentModal() {
   const cancelModalElement = document.getElementById('cancelAppointmentModal');
   const cancelModal = new bootstrap.Modal(cancelModalElement, { backdrop: 'static', keyboard: false });
@@ -1216,12 +1262,25 @@ function setupCancelAppointmentModal() {
   return { openCancelModal };
 }
 
+// Initialize map
+function initializeMap() {
+  const map = L.map('map').setView([14.1126, 122.9550], 15); // Coordinates for Bagasbas Road, Daet
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  L.marker([14.1126, 122.9550]).addTo(map)
+    .bindPopup('Balane-Saspa Dental Clinic')
+    .openPopup();
+}
+
+// DOMContentLoaded event listener
 document.addEventListener('DOMContentLoaded', async function() {
   try {
     await fetchCsrfToken();
     editModalControls = setupEditAppointmentModal();
     cancelModalControls = setupCancelAppointmentModal();
-    initializeWebSocket();
+    initializeSocketIO();
+    initializeMap();
 
     const authResponse = await fetch(`${BASE_URL}/check-auth`, { credentials: 'include' });
     if (!authResponse.ok) {
@@ -1328,6 +1387,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           });
           if (response.ok) {
             clearSessionCookie();
+            socket.disconnect();
             const modal = bootstrap.Modal.getInstance(document.getElementById('logoutModal'));
             if (modal) modal.hide();
             Swal.fire({
@@ -1356,6 +1416,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   });
 });
 
+// Fetch appointments
 async function fetchAppointments() {
   const tbody = document.getElementById('appointments-table');
   tbody.innerHTML = '<tr><td colspan="5">Loading appointments...</td></tr>';
@@ -1377,6 +1438,7 @@ async function fetchAppointments() {
   }
 }
 
+// Render appointments
 function renderAppointments() {
   const tbody = document.getElementById('appointments-table');
   const noAppointmentsDiv = document.getElementById('no-appointments');
@@ -1465,6 +1527,7 @@ function renderAppointments() {
   });
 }
 
+// Fetch history
 async function fetchHistory() {
   const timeline = document.getElementById('history-timeline');
   timeline.innerHTML = '<p>Loading history...</p>';
@@ -1488,6 +1551,7 @@ async function fetchHistory() {
   }
 }
 
+// Render history
 function renderHistory(history) {
   const timeline = document.getElementById('history-timeline');
   const noHistoryDiv = document.getElementById('no-history');
@@ -1552,11 +1616,13 @@ function renderHistory(history) {
   loadMoreButton.style.display = displayedHistoryCount < filteredHistory.length ? 'block' : 'none';
 }
 
+// Load more history
 function loadMoreHistory() {
   displayedHistoryCount += ITEMS_PER_LOAD;
   renderHistory(allHistory);
 }
 
+// Save profile
 async function saveProfile() {
   const formData = new FormData(document.getElementById('profile-edit-form'));
   const profileData = Object.fromEntries(formData);
@@ -1591,6 +1657,7 @@ async function saveProfile() {
   }
 }
 
+// Save settings
 async function saveSettings() {
   const formData = new FormData(document.getElementById('settings-form'));
   const settings = Object.fromEntries(formData);
@@ -1623,6 +1690,7 @@ async function saveSettings() {
   }
 }
 
+// Change password
 async function changePassword() {
   const currentPassword = document.getElementById('currentPassword').value;
   const newPassword = document.getElementById('newPassword').value;
@@ -1681,7 +1749,7 @@ async function changePassword() {
 
       if (!verifyOtpResponse.ok) {
         const errorData = await verifyOtpResponse.json();
-        showError(errorData.message || 'Invalid OTP. Please try again.');
+        showError(errorData.message || 'Invalid or expired OTP.');
         return;
       }
 
@@ -1695,57 +1763,56 @@ async function changePassword() {
         body: JSON.stringify({ currentPassword, newPassword }),
         credentials: 'include'
       });
-      if (changePasswordResponse.ok) {
-        clearSessionCookie();
-        Swal.fire({
-          icon: 'success',
-          title: 'Password Changed',
-          text: 'Password changed successfully! Please log in again.',
-          confirmButtonColor: '#b994c0'
-        }).then(() => {
-          otpModal.hide();
-          window.location.replace('pages-login.html');
-        });
-      } else {
+
+      if (!changePasswordResponse.ok) {
         const errorData = await changePasswordResponse.json();
-        if (errorData.error === 'invalid_password' && errorData.details) {
-          showError(`Password requirements not met:\n- ${errorData.details.join('\n- ')}`);
-        } else {
-          showError(errorData.message || 'Failed to change password. Please check your current password.');
-        }
+        throw new Error(errorData.message || 'Failed to change password');
       }
+
+      otpModal.hide();
+      Swal.fire({
+        icon: 'success',
+        title: 'Password Changed',
+        text: 'Your password has been changed successfully!',
+        confirmButtonColor: '#b994c0'
+      }).then(() => {
+        window.location.reload();
+      });
     };
 
     document.getElementById('resendOtp').onclick = async function() {
-      await fetchCsrfToken();
-      const resendResponse = await fetch(`${BASE_URL}/api/otp/send`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'CSRF-Token': csrfToken
-        },
-        body: JSON.stringify({ email, purpose: 'password_change_user' }),
-        credentials: 'include'
-      });
-      if (resendResponse.ok) {
+      try {
+        await fetchCsrfToken();
+        const resendResponse = await fetch(`${BASE_URL}/api/otp/send`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'CSRF-Token': csrfToken
+          },
+          body: JSON.stringify({ email, purpose: 'password_change_user' }),
+          credentials: 'include'
+        });
+        if (!resendResponse.ok) {
+          const errorData = await resendResponse.json();
+          if (resendResponse.status === 429) {
+            showError('Too many OTP requests. Please try again later.');
+            return;
+          }
+          throw new Error(errorData.message || 'Failed to resend OTP');
+        }
         Swal.fire({
           icon: 'success',
-          title: 'OTP Sent',
+          title: 'OTP Resent',
           text: 'A new OTP has been sent to your email.',
           confirmButtonColor: '#b994c0'
         });
-        document.getElementById('otpInput').value = '';
-      } else {
-        const errorData = await resendResponse.json();
-        if (resendResponse.status === 429) {
-          showError('Too many OTP requests. Please try again later.');
-          return;
-        }
-        showError(errorData.message || 'Failed to resend OTP.');
+      } catch (err) {
+        showError('Failed to resend OTP: ' + err.message);
       }
     };
+
   } catch (err) {
-    showError('An error occurred during password change: ' + err.message);
+    showError('An error occurred while changing password: ' + err.message);
   }
 }
 </script>
