@@ -254,6 +254,7 @@ app.use('/api/appointments', appointmentRoutes.router || appointmentRoutes);
 app.use('/api/services', serviceRoutes.router || serviceRoutes);
 app.use('/auth', authRoutes);
 
+
 // Check auth status
 app.get('/check-auth', checkAuthLimiter, (req, res) => {
   if (req.session && req.session.isLoggedIn && req.session.userId) {
