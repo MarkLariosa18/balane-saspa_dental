@@ -155,16 +155,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      connectSrc: [
-        "'self'",
-        process.env.FRONTEND_URL,
-        'wss://balane-saspa-dental-1.onrender.com',
-        'https://balane-saspa-dental-1.onrender.com'
-      ],
+      connectSrc: ["'self'", process.env.FRONTEND_URL, 'wss://balane-saspa-dental-1.onrender.com'],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
     },
   },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 app.use(compression());
 app.use(cors({

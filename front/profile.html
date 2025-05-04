@@ -844,7 +844,6 @@
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
 <script>
- 
  AOS.init();
 
 let profileData;
@@ -868,10 +867,19 @@ const WS_URL = window.location.hostname === 'localhost'
 
 async function fetchCsrfToken() {
   try {
-    const response = await fetch(`${BASE_URL}/auth/csrf-token`, { credentials: 'include' });
-    if (!response.ok) throw new Error('Failed to fetch CSRF token');
+    console.log('Fetching CSRF token...');
+    const response = await fetch(`${BASE_URL}/auth/csrf-token`, {
+      credentials: 'include',
+      headers: { 'Accept': 'application/json' }
+    });
+    console.log('CSRF response status:', response.status);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to fetch CSRF token');
+    }
     const data = await response.json();
     csrfToken = data.csrfToken;
+    console.log('CSRF token fetched:', csrfToken);
     return csrfToken;
   } catch (err) {
     console.error('Error fetching CSRF token:', err);
@@ -890,12 +898,16 @@ function clearSessionCookie() {
 }
 
 function initializeWebSocket() {
+  console.log('Initializing Socket.IO with URL:', WS_URL);
   socket = io(WS_URL, {
     transports: ['websocket'],
     reconnection: true,
-    reconnectionAttempts: 5,
+    reconnectionAttempts: 3,
     reconnectionDelay: 5000,
-    withCredentials: true
+    withCredentials: true,
+    extraHeaders: {
+      Cookie: document.cookie // Ensure connect.sid is sent
+    }
   });
 
   socket.on('connect', () => {
@@ -903,7 +915,7 @@ function initializeWebSocket() {
   });
 
   socket.on('appointmentUpdate', (data) => {
-    console.log('Socket.IO message:', data);
+    console.log('Socket.IO appointmentUpdate:', data);
     if (['reschedule_request', 'cancel_request', 'reschedule_response', 'cancel_response'].includes(data.type)) {
       Swal.fire({
         icon: 'info',
@@ -917,20 +929,59 @@ function initializeWebSocket() {
   });
 
   socket.on('connect_error', (error) => {
-    console.error('Socket.IO connection error:', error.message);
+    console.error('Socket.IO connect error:', error.message);
+  });
+
+  socket.on('error', (error) => {
+    console.error('Socket.IO error:', error);
   });
 
   socket.on('disconnect', () => {
-    console.log('Socket.IO disconnected. Attempting to reconnect...');
+    console.log('Socket.IO disconnected');
   });
+
+  // Native WebSocket fallback (uncomment to use)
+  /*
+  console.log('Initializing WebSocket with URL:', WS_URL);
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => console.log('WebSocket connected');
+  ws.onmessage = async (event) => {
+    const data = JSON.parse(event.data);
+    console.log('WebSocket message:', data);
+    if (['reschedule_request', 'cancel_request', 'reschedule_response', 'cancel_response'].includes(data.type)) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Appointment Update',
+        text: `Your appointment has been updated: ${data.message}`,
+        confirmButtonColor: '#b994c0'
+      });
+      await fetchAppointments();
+      await fetchHistory();
+    }
+  };
+  ws.onerror = (error) => console.error('WebSocket error:', error);
+  ws.onclose = () => {
+    console.log('WebSocket disconnected');
+    setTimeout(initializeWebSocket, 5000);
+  };
+  */
 }
 
 async function fetchAllBookedAppointments() {
   try {
-    const response = await fetch(`${BASE_URL}/api/appointments/booked`, { credentials: 'include' });
-    if (!response.ok) throw new Error('Failed to fetch all appointments');
+    console.log('Fetching all booked appointments...');
+    const response = await fetch(`${BASE_URL}/api/appointments/booked`, {
+      credentials: 'include',
+      headers: { 'Accept': 'application/json' }
+    });
+    console.log('Booked appointments status:', response.status);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to fetch all appointments');
+    }
     const data = await response.json();
     allBookedAppointments = Array.isArray(data.appointments) ? data.appointments : [];
+    console.log('Booked appointments:', allBookedAppointments);
   } catch (err) {
     console.error('Error fetching all appointments:', err);
     allBookedAppointments = [];
@@ -1011,7 +1062,7 @@ function initializeRescheduleDatePicker(bookedAppointments, currentAppointmentId
       const selectedDate = selectedDates[0];
       if (!selectedDate) return;
 
-      const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
       const timePicker = document.getElementById('timePickerBottom');
       const timeSlots = timePicker.querySelectorAll('.time-slot');
 
@@ -1248,18 +1299,30 @@ function setupCancelAppointmentModal() {
 
 document.addEventListener('DOMContentLoaded', async function() {
   try {
+    console.log('DOMContentLoaded started');
+    console.log('BASE_URL:', BASE_URL);
+    console.log('WS_URL:', WS_URL);
+    console.log('Cookies:', document.cookie);
+
     await fetchCsrfToken();
     editModalControls = setupEditAppointmentModal();
     cancelModalControls = setupCancelAppointmentModal();
-    initializeWebSocket();
 
-    const authResponse = await fetch(`${BASE_URL}/check-auth`, { credentials: 'include' });
+    console.log('Fetching /check-auth...');
+    const authResponse = await fetch(`${BASE_URL}/check-auth`, {
+      credentials: 'include',
+      headers: { 'Accept': 'application/json' }
+    });
+    console.log('Check-auth status:', authResponse.status);
     if (!authResponse.ok) {
       const errorData = await authResponse.json();
+      console.error('Check-auth error:', errorData);
       throw new Error(errorData.message || 'Authentication check failed');
     }
     const authData = await authResponse.json();
+    console.log('Check-auth data:', authData);
     if (!authData.isLoggedIn) {
+      console.log('Not logged in, redirecting...');
       Swal.fire({
         icon: 'warning',
         title: 'Session Expired',
@@ -1271,17 +1334,28 @@ document.addEventListener('DOMContentLoaded', async function() {
       return;
     }
 
+    console.log('Fetching /patients/profile...');
+    const profileResponse = await fetch(`${BASE_URL}/patients/profile`, {
+      credentials: 'include',
+      headers: { 'Accept': 'application/json' }
+    });
+    console.log('Profile status:', profileResponse.status);
+    if (!profileResponse.ok) {
+      const errorData = await profileResponse.json();
+      console.error('Profile error:', errorData);
+      throw new Error(errorData.message || 'Failed to fetch profile');
+    }
+    profileData = await profileResponse.json();
+    console.log('Profile data:', profileData);
+
+    // Initialize Socket.IO after successful fetches
+    console.log('Initializing Socket.IO...');
+    setTimeout(initializeWebSocket, 1000);
+
     document.getElementById('account-link').style.display = 'none';
     document.getElementById('profile-link').style.display = 'block';
     document.querySelectorAll('#navmenu a').forEach(link => link.classList.remove('active'));
     document.querySelector('#profile-link a').classList.add('active');
-
-    const profileResponse = await fetch(`${BASE_URL}/patients/profile`, { credentials: 'include' });
-    if (!profileResponse.ok) {
-      const errorData = await profileResponse.json();
-      throw new Error(errorData.message || 'Failed to fetch profile');
-    }
-    profileData = await profileResponse.json();
 
     // Handle null or undefined values
     const safeProfileData = {
@@ -1333,6 +1407,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
 
   } catch (err) {
+    console.error('DOMContentLoaded error:', err);
     showError('An error occurred. Redirecting to login page: ' + err.message);
     setTimeout(() => {
       window.location.replace('pages-login.html');
@@ -1390,16 +1465,20 @@ async function fetchAppointments() {
   const tbody = document.getElementById('appointments-table');
   tbody.innerHTML = '<tr><td colspan="5">Loading appointments...</td></tr>';
   try {
+    console.log('Fetching appointments...');
     const response = await fetch(`${BASE_URL}/api/appointments`, {
       method: 'GET',
-      credentials: 'include'
+      credentials: 'include',
+      headers: { 'Accept': 'application/json' }
     });
+    console.log('Appointments status:', response.status);
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Failed to fetch appointments');
     }
     const data = await response.json();
     currentAppointments = Array.isArray(data.appointments) ? data.appointments : [];
+    console.log('Appointments data:', currentAppointments);
     renderAppointments();
   } catch (err) {
     showError('Failed to load appointments: ' + err.message);
@@ -1499,16 +1578,20 @@ async function fetchHistory() {
   const timeline = document.getElementById('history-timeline');
   timeline.innerHTML = '<p>Loading history...</p>';
   try {
+    console.log('Fetching history...');
     const response = await fetch(`${BASE_URL}/api/appointments?all=true`, {
       method: 'GET',
-      credentials: 'include'
+      credentials: 'include',
+      headers: { 'Accept': 'application/json' }
     });
+    console.log('History status:', response.status);
     if (!response.ok) {
       const errorData = await response.json();
       throw new Error(errorData.message || 'Failed to fetch history');
     }
     const data = await response.json();
     allHistory = Array.isArray(data.appointments) ? data.appointments : [];
+    console.log('History data:', allHistory);
     displayedHistoryCount = 0;
     renderHistory(allHistory);
   } catch (err) {
