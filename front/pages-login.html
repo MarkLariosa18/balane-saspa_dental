@@ -18,8 +18,14 @@
   <!-- Vendor CSS Files -->
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-  <!-- SweetAlert2 CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+
+  <!-- SweetAlert2 CSS (Embedded) -->
+  <style>
+    /* SweetAlert2 CSS */
+    /* Replace this comment with the content of sweetalert2.min.css from https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.min.css */
+    .swal2-container { z-index: 9999; }
+    .swal2-modern { border-radius: 15px; }
+  </style>
 
   <!-- Custom CSS -->
   <style>
@@ -195,15 +201,20 @@
 
   <!-- Vendor JS Files -->
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <!-- SweetAlert2 JS -->
-  <script src="https://unpkg.com/sweetalert2@11"></script>
+
+  <!-- SweetAlert2 JS (Embedded) -->
+  <script>
+    /* SweetAlert2 JS */
+    /* Replace this comment with the content of sweetalert2.min.js from https://cdn.jsdelivr.net/npm/sweetalert2@11.12.4/dist/sweetalert2.min.js */
+  </script>
+
   <!-- Inline Script -->
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       // Debug: Check if SweetAlert2 is loaded
       console.log('SweetAlert2 loaded:', typeof Swal !== 'undefined');
       if (typeof Swal === 'undefined') {
-        alert('Error: SweetAlert2 failed to load. Please check your internet connection or try refreshing the page.');
+        alert('Error: SweetAlert2 failed to load. Please check the embedded script or refresh the page.');
         return;
       }
 
