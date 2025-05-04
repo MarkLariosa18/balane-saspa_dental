@@ -886,12 +886,7 @@ async function fetchCsrfToken() {
     return csrfToken;
   } catch (err) {
     console.error('Error fetching CSRF token:', err);
-    Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: 'Failed to initialize security token. Please refresh the page.',
-      confirmButtonColor: '#b994c0'
-    });
+    showError('Failed to initialize security token. Please refresh the page.');
     throw err;
   }
 }
@@ -908,12 +903,7 @@ function initializeWebSocket() {
 
   if (typeof io === 'undefined') {
     console.error('Socket.IO library not loaded. Skipping WebSocket initialization.');
-    Swal.fire({
-      icon: 'warning',
-      title: 'WebSocket Error',
-      text: 'Real-time updates are unavailable. Please check the Socket.IO library.',
-      confirmButtonColor: '#b994c0'
-    });
+    showError('Real-time updates are unavailable. Please check the Socket.IO library.');
     return;
   }
 
@@ -936,12 +926,7 @@ function initializeWebSocket() {
   socket.on('appointmentUpdate', (data) => {
     console.log('Socket.IO appointmentUpdate:', data);
     if (['reschedule_request', 'cancel_request', 'reschedule_response', 'cancel_response'].includes(data.type)) {
-      Swal.fire({
-        icon: 'info',
-        title: 'Appointment Update',
-        text: `Your appointment has been updated: ${data.message}`,
-        confirmButtonColor: '#b994c0'
-      });
+      showSuccess(`Appointment Update: ${data.message}`);
       fetchAppointments();
       fetchHistory();
     }
@@ -982,13 +967,30 @@ async function fetchAllBookedAppointments() {
 }
 
 function showError(message) {
-  Swal.fire({
-    icon: 'error',
-    title: 'Error',
-    text: message,
-    confirmButtonColor: '#b994c0'
-  });
   console.error(message);
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: message,
+      confirmButtonColor: '#b994c0'
+    });
+  } else {
+    alert(`Error: ${message}`);
+  }
+}
+
+function showSuccess(message) {
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      icon: 'success',
+      title: 'Success',
+      text: message,
+      confirmButtonColor: '#b994c0'
+    });
+  } else {
+    alert(`Success: ${message}`);
+  }
 }
 
 function initializeRescheduleDatePicker(bookedAppointments, currentAppointmentId) {
@@ -1085,12 +1087,7 @@ function initializeRescheduleDatePicker(bookedAppointments, currentAppointmentId
         firstAvailable.click();
       } else if (!firstAvailable) {
         instance.clear();
-        Swal.fire({
-          icon: 'warning',
-          title: 'No Availability',
-          text: 'No available times for this date.',
-          confirmButtonColor: '#b994c0'
-        });
+        showError('No available times for this date.');
       }
     }
   });
@@ -1197,12 +1194,7 @@ function setupEditAppointmentModal() {
       editModal.hide();
       renderAppointments();
       await fetchHistory();
-      Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: 'Reschedule request submitted successfully! Awaiting admin approval.',
-        confirmButtonColor: '#b994c0'
-      });
+      showSuccess('Reschedule request submitted successfully! Awaiting admin approval.');
     } catch (err) {
       showError('Failed to request reschedule: ' + err.message);
     }
@@ -1276,12 +1268,7 @@ function setupCancelAppointmentModal() {
       cancelModal.hide();
       renderAppointments();
       await fetchHistory();
-      Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: 'Cancellation request submitted successfully! Awaiting admin approval.',
-        confirmButtonColor: '#b994c0'
-      });
+      showSuccess('Cancellation request submitted successfully! Awaiting admin approval.');
     } catch (err) {
       showError('Failed to cancel appointment: ' + err.message);
     }
@@ -1316,14 +1303,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('Check-auth data:', authData);
     if (!authData.isLoggedIn) {
       console.log('Not logged in, redirecting...');
-      Swal.fire({
-        icon: 'warning',
-        title: 'Session Expired',
-        text: 'You are not logged in. Redirecting to login page.',
-        confirmButtonColor: '#b994c0'
-      }).then(() => {
+      showError('You are not logged in. Redirecting to login page.');
+      setTimeout(() => {
         window.location.replace('pages-login.html');
-      });
+      }, 2000);
       return;
     }
 
@@ -1390,20 +1373,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     await fetchAppointments();
     await fetchHistory();
 
-    // Bind saveProfile to the save button
-    const saveProfileBtn = document.getElementById('saveProfileBtn');
-    if (saveProfileBtn) {
-      saveProfileBtn.addEventListener('click', async () => {
-        console.log('Save profile button clicked');
+    // Bind saveProfile using event delegation to handle dynamic buttons
+    document.body.addEventListener('click', async (e) => {
+      if (e.target.matches('#saveProfileBtn, #save-changes, #saveChanges, [data-action="save-profile"]')) {
+        console.log('Save profile button clicked:', e.target.id || e.target.dataset.action);
+        e.preventDefault();
         await saveProfile();
-      });
-      console.log('saveProfileBtn event listener added');
-    } else {
-      console.error('Save profile button (#saveProfileBtn) not found');
-      showError('Profile save button not found. Please check the HTML.');
-    }
+      }
+    });
 
-    // Bind form submission to prevent default and call saveProfile
+    // Bind form submission
     const profileForm = document.getElementById('profile-edit-form');
     if (profileForm) {
       profileForm.addEventListener('submit', async (e) => {
@@ -1418,12 +1397,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     document.querySelector('.btn-outline-secondary').addEventListener('click', function () {
-      Swal.fire({
-        icon: 'info',
-        title: 'Coming Soon',
-        text: 'Photo upload functionality coming soon!',
-        confirmButtonColor: '#b994c0'
-      });
+      showSuccess('Photo upload functionality coming soon!');
     });
 
   } catch (err) {
@@ -1435,44 +1409,50 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   document.getElementById('confirmLogout').addEventListener('click', async function() {
-    Swal.fire({
-      title: 'Are you sure?',
-      text: 'Do you want to logout?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#b994c0',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Yes, logout'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          await fetchCsrfToken();
-          const response = await fetch(`${BASE_URL}/logout`, {
-            method: 'GET',
-            credentials: 'include'
-          });
-          if (response.ok) {
-            clearSessionCookie();
-            const modal = bootstrap.Modal.getInstance(document.getElementById('logoutModal'));
-            if (modal) modal.hide();
-            Swal.fire({
-              icon: 'success',
-              title: 'Logged Out',
-              text: 'You have been successfully logged out.',
-              confirmButtonColor: '#b994c0'
-            }).then(() => {
-              window.location.replace('index.html');
-            });
-          } else {
-            showError('Logout failed. Please try again.');
-          }
-        } catch (err) {
-          console.error('Logout error:', err);
-          showError('An error occurred during logout.');
+    if (typeof Swal !== 'undefined') {
+      Swal.fire({
+        title: 'Are you sure?',
+        text: 'Do you want to logout?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#b994c0',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, logout'
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          await performLogout();
         }
+      });
+    } else {
+      if (confirm('Are you sure you want to logout?')) {
+        await performLogout();
       }
-    });
+    }
   });
+
+  async function performLogout() {
+    try {
+      await fetchCsrfToken();
+      const response = await fetch(`${BASE_URL}/logout`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        clearSessionCookie();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('logoutModal'));
+        if (modal) modal.hide();
+        showSuccess('You have been successfully logged out.');
+        setTimeout(() => {
+          window.location.replace('index.html');
+        }, 1000);
+      } else {
+        showError('Logout failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+      showError('An error occurred during logout.');
+    }
+  }
 
   document.querySelector('button[data-bs-target="#profile-history"]').addEventListener('shown.bs.tab', fetchHistory);
   document.getElementById('load-more-history').addEventListener('click', loadMoreHistory);
@@ -1742,14 +1722,10 @@ async function saveProfile() {
     }
     const responseData = await response.json();
     console.log('Save profile response:', responseData);
-    Swal.fire({
-      icon: 'success',
-      title: 'Profile Updated',
-      text: 'Your profile has been updated successfully!',
-      confirmButtonColor: '#b994c0'
-    }).then(() => {
+    showSuccess('Your profile has been updated successfully!');
+    setTimeout(() => {
       window.location.reload();
-    });
+    }, 1000);
   } catch (err) {
     console.error('Save profile error:', err);
     showError('Failed to update profile: ' + err.message);
@@ -1773,12 +1749,7 @@ async function saveSettings() {
     });
 
     if (response.ok) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Settings Saved',
-        text: 'Your settings have been saved successfully! Note: Some settings may not be fully implemented yet.',
-        confirmButtonColor: '#b994c0'
-      });
+      showSuccess('Your settings have been saved successfully! Note: Some settings may not be fully implemented yet.');
     } else {
       const errorData = await response.json();
       showError(`Failed to save settings: ${errorData.message || 'Settings functionality is not fully implemented.'}`);
@@ -1862,15 +1833,11 @@ async function changePassword() {
       });
       if (changePasswordResponse.ok) {
         clearSessionCookie();
-        Swal.fire({
-          icon: 'success',
-          title: 'Password Changed',
-          text: 'Password changed successfully! Please log in again.',
-          confirmButtonColor: '#b994c0'
-        }).then(() => {
-          otpModal.hide();
+        showSuccess('Password changed successfully! Please log in again.');
+        otpModal.hide();
+        setTimeout(() => {
           window.location.replace('pages-login.html');
-        });
+        }, 1000);
       } else {
         const errorData = await changePasswordResponse.json();
         if (errorData.error === 'invalid_password' && errorData.details) {
@@ -1879,7 +1846,7 @@ async function changePassword() {
           showError(errorData.message || 'Failed to change password. Please check your current password.');
         }
       }
-    });
+    }, { once: true });
 
     document.getElementById('resendOtp').addEventListener('click', async function() {
       await fetchCsrfToken();
@@ -1893,12 +1860,7 @@ async function changePassword() {
         credentials: 'include'
       });
       if (resendResponse.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'OTP Sent',
-          text: 'A new OTP has been sent to your email.',
-          confirmButtonColor: '#b994c0'
-        });
+        showSuccess('A new OTP has been sent to your email.');
         document.getElementById('otpInput').value = '';
       } else {
         const errorData = await resendResponse.json();
@@ -1908,7 +1870,7 @@ async function changePassword() {
         }
         showError(errorData.message || 'Failed to resend OTP.');
       }
-    });
+    }, { once: true });
   } catch (err) {
     showError('An error occurred during password change: ' + err.message);
   }

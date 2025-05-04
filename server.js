@@ -155,9 +155,10 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      connectSrc: ["'self'", process.env.FRONTEND_URL, 'wss://balane-saspa-dental-1.onrender.com'],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      connectSrc: ["'self'", 'wss://balane-saspa-dental-1.onrender.com'],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdn.socket.io"],
       styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrcAttr: ["'unsafe-inline'"], // Temporary for debugging inline handlers
     },
   },
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
