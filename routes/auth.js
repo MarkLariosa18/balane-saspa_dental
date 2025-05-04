@@ -152,6 +152,7 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
       table = 'admin';
     } else {
       // Check users table (username or email)
+      // Query by username first
       let userQuery = supabase
         .from('users')
         .select('id, username, email, password')
@@ -167,10 +168,12 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
         }
         user = userByUsername;
       } else {
+        // Query by email in patients table, joining with users
         const { data: userByEmail, error: userEmailError } = await supabase
           .from('users')
-          .select('id, username, email, password')
-          .eq('email', identifier)
+          .select('users.id, users.username, users.email, users.password, patients.email as patient_email')
+          .join('patients', 'users.id', 'patients.id')
+          .eq('patients.email', identifier)
           .single();
 
         if (userByEmail && !userEmailError) {
@@ -362,23 +365,27 @@ router.post('/forgot-password', applyForgotPasswordRateLimiter, async (req, res)
     let user = null;
     let table = 'users';
 
-    const { data: userByEmail, error: emailError } = await supabase
+    // Check by username in users table
+    const { data: userByUsername, error: usernameError } = await supabase
       .from('users')
-      .select('id, email, username')
-      .eq('email', identifier)
+      .select('id, username, email')
+      .eq('username', identifier)
       .single();
 
-    if (userByEmail && !emailError) {
-      user = userByEmail;
+    if (userByUsername && !usernameError) {
+      user = userByUsername;
     } else {
-      const { data: userByUsername, error: usernameError } = await supabase
+      // Check by email in patients table, joining with users
+      const { data: userByEmail, error: emailError } = await supabase
         .from('users')
-        .select('id, email, username')
-        .eq('username', identifier)
+        .select('users.id, users.username, users.email, patients.email as patient_email')
+        .join('patients', 'users.id', 'patients.id')
+        .eq('patients.email', identifier)
         .single();
 
-      if (userByUsername && !usernameError) {
-        user = userByUsername;
+      if (userByEmail && !emailError) {
+        user = userByEmail;
+        user.email = userByEmail.patient_email; // Use email from patients table
       }
     }
 
@@ -434,23 +441,27 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     let user = null;
-    const { data: userByEmail, error: emailError } = await supabase
+
+    // Check by username in users table
+    const { data: userByUsername, error: usernameError } = await supabase
       .from('users')
-      .select('id, email, username')
-      .eq('email', identifier)
+      .select('id, username, email')
+      .eq('username', identifier)
       .single();
 
-    if (userByEmail && !emailError) {
-      user = userByEmail;
+    if (userByUsername && !usernameError) {
+      user = userByUsername;
     } else {
-      const { data: userByUsername, error: usernameError } = await supabase
+      // Check by email in patients table, joining with users
+      const { data: userByEmail, error: emailError } = await supabase
         .from('users')
-        .select('id, email, username')
-        .eq('username', identifier)
-      .single();
+        .select('users.id, users.username, users.email, patients.email as patient_email')
+        .join('patients', 'users.id', 'patients.id')
+        .eq('patients.email', identifier)
+        .single();
 
-      if (userByUsername && !usernameError) {
-        user = userByUsername;
+      if (userByEmail && !emailError) {
+        user = userByEmail;
       }
     }
 
@@ -473,96 +484,6 @@ router.post('/verify-otp', async (req, res) => {
     res.json({ success: true, message: 'OTP verified' });
   } catch (error) {
     logger.error('OTP verification error:', error);
-    res.status(500).json({ error: 'server_error', message: 'Server error' });
-  }
-});
-
-// Reset password endpoint
-router.post('/reset-password', async (req, res) => {
-  const { identifier, otp, newPassword } = req.body;
-
-  try {
-    if (!identifier || !otp || !newPassword) {
-      logger.warn('Password reset attempt with missing fields');
-      return res.status(400).json({ error: 'bad_request', message: 'Identifier, OTP, and new password are required' });
-    }
-    if (!/^\d{6}$/.test(otp)) {
-      logger.warn('Invalid OTP format');
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid OTP format' });
-    }
-    if (!validator.isLength(newPassword, { min: 8, max: 100 })) {
-      return res.status(400).json({ error: 'bad_request', message: 'Password must be between 8 and 100 characters' });
-    }
-
-    let user = null;
-    let table = 'users';
-
-    const { data: userByEmail, error: emailError } = await supabase
-      .from('users')
-      .select('id, email, username')
-      .eq('email', identifier)
-      .single();
-
-    if (userByEmail && !emailError) {
-      user = userByEmail;
-    } else {
-      const { data: userByUsername, error: usernameError } = await supabase
-        .from('users')
-        .select('id, email, username')
-        .eq('username', identifier)
-        .single();
-
-      if (userByUsername && !usernameError) {
-        user = userByUsername;
-      }
-    }
-
-    if (!user) {
-      logger.warn(`Password reset attempt for non-existent user: ${identifier}`);
-      return res.status(404).json({ error: 'not_found', message: 'User not found' });
-    }
-
-    const otpKey = `otp:${user.id}:password_reset`;
-    const storedOtp = await redis.get(otpKey);
-
-    if (!storedOtp || storedOtp !== otp) {
-      logger.warn(`Invalid OTP for password reset: userId ${user.id}`);
-      return res.status(400).json({ error: 'invalid_otp', message: 'Invalid or expired OTP' });
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    const { error: updateError } = await supabase
-      .from(table)
-      .update({ password: hashedPassword, remember_token: null })
-      .eq('id', user.id);
-
-    if (updateError) {
-      logger.error(`Failed to update password for userId ${user.id}:`, updateError);
-      throw updateError;
-    }
-
-    await redis.del(otpKey);
-
-    if (req.session) {
-      await new Promise((resolve, reject) => {
-        req.session.destroy((err) => {
-          if (err) {
-            logger.error('Session destroy error during password reset:', err);
-            reject(err);
-            return;
-          }
-          res.clearCookie('connect.sid', { path: '/', sameSite: 'strict' });
-          resolve();
-        });
-      });
-    }
-    res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
-
-    logger.info(`Password reset successful for userId ${user.id}`);
-    res.json({ success: true, message: 'Password reset successful' });
-  } catch (error) {
-    logger.error('Password reset error:', error);
     res.status(500).json({ error: 'server_error', message: 'Server error' });
   }
 });
