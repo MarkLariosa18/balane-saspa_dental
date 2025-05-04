@@ -246,14 +246,25 @@ const isAuthenticated = (req, res, next) => {
 
 app.use(isAuthenticated);
 
+// Import routes
+const patientRoutes = require('./routes/patients');
+const userRoutes = require('./routes/users');
+const appointmentRoutes = require('./routes/appointments');
+const serviceRoutes = require('./routes/services');
+const otpRoutes = require('./routes/otp'); // Fixed import
+const authRoutes = require('./routes/auth');
+
 // API Routes
-app.use('/api', otpRoutes);
+if (otpRoutes) {
+  app.use('/api', otpRoutes);
+} else {
+  console.warn('OTP routes not available; skipping /api mounting');
+}
 app.use('/patients', patientRoutes.router || patientRoutes);
 app.use('/users', userRoutes.router || userRoutes);
 app.use('/api/appointments', appointmentRoutes.router || appointmentRoutes);
 app.use('/api/services', serviceRoutes.router || serviceRoutes);
 app.use('/auth', authRoutes);
-
 
 // Check auth status
 app.get('/check-auth', checkAuthLimiter, (req, res) => {
