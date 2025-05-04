@@ -844,7 +844,7 @@
   <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
 
 <script>
-  AOS.init();
+ AOS.init();
 
 let profileData;
 let allHistory = [];
@@ -854,10 +854,10 @@ let editModalControls;
 let cancelModalControls;
 let allBookedAppointments = [];
 let currentAppointments = [];
-let ws;
+let socket;
 let csrfToken;
 
-// Base URLs using the original onrender.com endpoint
+// Base URLs
 const BASE_URL = window.location.hostname === 'localhost' 
   ? 'http://localhost:3000' 
   : 'https://balane-saspa-dental-1.onrender.com';
@@ -868,13 +868,13 @@ const WS_URL = window.location.hostname === 'localhost'
 async function fetchCsrfToken() {
   try {
     const response = await fetch(`${BASE_URL}/auth/csrf-token`, { credentials: 'include' });
-    if (!response.ok) throw new Error('Failed to fetch CSRF token');
     const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to fetch CSRF token');
     csrfToken = data.csrfToken;
     return csrfToken;
   } catch (err) {
     console.error('Error fetching CSRF token:', err);
-    Swal.fire({
+    await Swal.fire({
       icon: 'error',
       title: 'Error',
       text: 'Failed to initialize security token. Please refresh the page.',
@@ -889,13 +889,21 @@ function clearSessionCookie() {
 }
 
 function initializeWebSocket() {
-  ws = new WebSocket(WS_URL);
-  ws.onopen = () => console.log('WebSocket connected');
-  ws.onmessage = async (event) => {
-    const data = JSON.parse(event.data);
-    console.log('WebSocket message:', data);
+  socket = io(WS_URL, {
+    transports: ['websocket'],
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000
+  });
+
+  socket.on('connect', () => {
+    console.log('Socket.IO connected');
+  });
+
+  socket.on('appointment_update', async (data) => {
+    console.log('Socket.IO message:', data);
     if (['reschedule_request', 'cancel_request', 'reschedule_response', 'cancel_response'].includes(data.type)) {
-      Swal.fire({
+      await Swal.fire({
         icon: 'info',
         title: 'Appointment Update',
         text: `Your appointment has been updated: ${data.message}`,
@@ -904,12 +912,15 @@ function initializeWebSocket() {
       await fetchAppointments();
       await fetchHistory();
     }
-  };
-  ws.onerror = (error) => console.error('WebSocket error:', error);
-  ws.onclose = () => {
-    console.log('WebSocket disconnected. Attempting to reconnect...');
-    setTimeout(initializeWebSocket, 5000);
-  };
+  });
+
+  socket.on('connect_error', (error) => {
+    console.error('Socket.IO connection error:', error);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Socket.IO disconnected');
+  });
 }
 
 async function fetchAllBookedAppointments() {
@@ -924,8 +935,8 @@ async function fetchAllBookedAppointments() {
   }
 }
 
-function showError(message) {
-  Swal.fire({
+async function showError(message) {
+  await Swal.fire({
     icon: 'error',
     title: 'Error',
     text: message,
@@ -939,11 +950,7 @@ function initializeRescheduleDatePicker(bookedAppointments, currentAppointmentId
     .filter(appt => String(appt.id) !== String(currentAppointmentId))
     .map(appt => {
       const date = new Date(appt.appointment_date);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hour = String(date.getHours()).padStart(2, '0');
-      return `${year}-${month}-${day} ${hour}:00`;
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
     });
 
   const fp = flatpickr('#editDate', {
@@ -994,11 +1001,11 @@ function initializeRescheduleDatePicker(bookedAppointments, currentAppointmentId
         instance.config.onChange.forEach(fn => fn.call(instance, selectedDates, dateStr, instance));
       }
     },
-    onChange: (selectedDates, dateStr, instance) => {
+    onChange: async (selectedDates, dateStr, instance) => {
       const selectedDate = selectedDates[0];
       if (!selectedDate) return;
 
-      const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
       const timePicker = document.getElementById('timePickerBottom');
       const timeSlots = timePicker.querySelectorAll('.time-slot');
 
@@ -1028,7 +1035,7 @@ function initializeRescheduleDatePicker(bookedAppointments, currentAppointmentId
         firstAvailable.click();
       } else if (!firstAvailable) {
         instance.clear();
-        Swal.fire({
+        await Swal.fire({
           icon: 'warning',
           title: 'No Availability',
           text: 'No available times for this date.',
@@ -1074,23 +1081,23 @@ function setupEditAppointmentModal() {
     const reason = document.getElementById('editReason').value.trim();
 
     if (status === 'cancelled') {
-      showError('Cannot reschedule cancelled appointments.');
+      await showError('Cannot reschedule cancelled appointments.');
       editModal.hide();
       return;
     }
 
     const selectedDate = fpInstance.selectedDates[0];
     if (!selectedDate) {
-      showError('Please select a date and time.');
+      await showError('Please select a date and time.');
       return;
     }
 
     if (!reason) {
-      showError('Please provide a reason for rescheduling.');
+      await showError('Please provide a reason for rescheduling.');
       return;
     }
     if (reason.length < 5) {
-      showError('Rescheduling reason must be at least 5 characters long.');
+      await showError('Rescheduling reason must be at least 5 characters long.');
       return;
     }
 
@@ -1140,14 +1147,14 @@ function setupEditAppointmentModal() {
       editModal.hide();
       renderAppointments();
       await fetchHistory();
-      Swal.fire({
+      await Swal.fire({
         icon: 'success',
         title: 'Success',
         text: 'Reschedule request submitted successfully! Awaiting admin approval.',
         confirmButtonColor: '#b994c0'
       });
     } catch (err) {
-      showError('Failed to request reschedule: ' + err.message);
+      await showError('Failed to request reschedule: ' + err.message);
     }
   });
 
@@ -1181,11 +1188,11 @@ function setupCancelAppointmentModal() {
     const cancelReason = document.getElementById('cancelReason').value.trim();
 
     if (!cancelReason) {
-      showError('Please provide a reason for cancellation.');
+      await showError('Please provide a reason for cancellation.');
       return;
     }
     if (cancelReason.length < 5) {
-      showError('Cancellation reason must be at least 5 characters long.');
+      await showError('Cancellation reason must be at least 5 characters long.');
       return;
     }
 
@@ -1219,14 +1226,14 @@ function setupCancelAppointmentModal() {
       cancelModal.hide();
       renderAppointments();
       await fetchHistory();
-      Swal.fire({
+      await Swal.fire({
         icon: 'success',
         title: 'Success',
         text: 'Cancellation request submitted successfully! Awaiting admin approval.',
         confirmButtonColor: '#b994c0'
       });
     } catch (err) {
-      showError('Failed to cancel appointment: ' + err.message);
+      await showError('Failed to cancel appointment: ' + err.message);
     }
   });
 
@@ -1247,14 +1254,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     const authData = await authResponse.json();
     if (!authData.isLoggedIn) {
-      Swal.fire({
+      await Swal.fire({
         icon: 'warning',
         title: 'Session Expired',
         text: 'You are not logged in. Redirecting to login page.',
         confirmButtonColor: '#b994c0'
-      }).then(() => {
-        window.location.replace('pages-login.html');
       });
+      window.location.replace('pages-login.html');
       return;
     }
 
@@ -1270,7 +1276,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     profileData = await profileResponse.json();
 
-    // Handle null or undefined values
     const safeProfileData = {
       full_name: profileData.full_name || 'N/A',
       email: profileData.email || 'N/A',
@@ -1310,8 +1315,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     await fetchAppointments();
     await fetchHistory();
 
-    document.querySelector('.btn-outline-secondary').addEventListener('click', function () {
-      Swal.fire({
+    document.querySelector('.btn-outline-secondary').addEventListener('click', async function () {
+      await Swal.fire({
         icon: 'info',
         title: 'Coming Soon',
         text: 'Photo upload functionality coming soon!',
@@ -1320,14 +1325,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
 
   } catch (err) {
-    showError('An error occurred. Redirecting to login page: ' + err.message);
+    await showError('An error occurred. Redirecting to login page: ' + err.message);
     setTimeout(() => {
       window.location.replace('pages-login.html');
     }, 2000);
   }
 
   document.getElementById('confirmLogout').addEventListener('click', async function() {
-    Swal.fire({
+    const result = await Swal.fire({
       title: 'Are you sure?',
       text: 'Do you want to logout?',
       icon: 'question',
@@ -1335,35 +1340,34 @@ document.addEventListener('DOMContentLoaded', async function() {
       confirmButtonColor: '#b994c0',
       cancelButtonColor: '#6c757d',
       confirmButtonText: 'Yes, logout'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          await fetchCsrfToken();
-          const response = await fetch(`${BASE_URL}/logout`, {
-            method: 'GET',
-            credentials: 'include'
-          });
-          if (response.ok) {
-            clearSessionCookie();
-            const modal = bootstrap.Modal.getInstance(document.getElementById('logoutModal'));
-            if (modal) modal.hide();
-            Swal.fire({
-              icon: 'success',
-              title: 'Logged Out',
-              text: 'You have been successfully logged out.',
-              confirmButtonColor: '#b994c0'
-            }).then(() => {
-              window.location.replace('index.html');
-            });
-          } else {
-            showError('Logout failed. Please try again.');
-          }
-        } catch (err) {
-          console.error('Logout error:', err);
-          showError('An error occurred during logout.');
-        }
-      }
     });
+
+    if (result.isConfirmed) {
+      try {
+        await fetchCsrfToken();
+        const response = await fetch(`${BASE_URL}/logout`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+        if (response.ok) {
+          clearSessionCookie();
+          const modal = bootstrap.Modal.getInstance(document.getElementById('logoutModal'));
+          if (modal) modal.hide();
+          await Swal.fire({
+            icon: 'success',
+            title: 'Logged Out',
+            text: 'You have been successfully logged out.',
+            confirmButtonColor: '#b994c0'
+          });
+          window.location.replace('index.html');
+        } else {
+          await showError('Logout failed. Please try again.');
+        }
+      } catch (err) {
+        console.error('Logout error:', err);
+        await showError('An error occurred during logout.');
+      }
+    }
   });
 
   document.querySelector('button[data-bs-target="#profile-history"]').addEventListener('shown.bs.tab', fetchHistory);
@@ -1389,7 +1393,7 @@ async function fetchAppointments() {
     currentAppointments = Array.isArray(data.appointments) ? data.appointments : [];
     renderAppointments();
   } catch (err) {
-    showError('Failed to load appointments: ' + err.message);
+    await showError('Failed to load appointments: ' + err.message);
     document.getElementById('appointments-table').innerHTML = '<tr><td colspan="5">Error loading appointments.</td></tr>';
   }
 }
@@ -1414,14 +1418,8 @@ function renderAppointments() {
     let notesContent = appointment.notes || 'N/A';
 
     if (appointment.pending_action) {
-      let actionText;
-      if (appointment.pending_action === 'confirm') {
-        actionText = 'confirm';
-      } else if (appointment.pending_action === 'reschedule') {
-        actionText = 'reschedule';
-      } else {
-        actionText = 'cancel';
-      }
+      let actionText = appointment.pending_action === 'confirm' ? 'confirm' : 
+                      appointment.pending_action === 'reschedule' ? 'reschedule' : 'cancel';
       statusText = `<small>(Pending ${actionText})</small>`;
       statusClass = 'status-pending';
       if (['cancel', 'reschedule'].includes(appointment.pending_action)) {
@@ -1499,7 +1497,7 @@ async function fetchHistory() {
     displayedHistoryCount = 0;
     renderHistory(allHistory);
   } catch (err) {
-    showError('Failed to load history: ' + err.message);
+    await showError('Failed to load history: ' + err.message);
     document.getElementById('history-timeline').innerHTML = '<p>Error loading history.</p>';
     document.getElementById('no-history').style.display = 'none';
   }
@@ -1542,15 +1540,12 @@ function renderHistory(history) {
     const timelineItem = document.createElement('div');
     timelineItem.className = 'timeline-item';
 
-    let cancelReasonHtml = '';
-    if (appointment.status.toLowerCase() === 'cancelled') {
-      cancelReasonHtml = `<p><strong>Cancel Reason:</strong> ${appointment.cancel_reason || 'N/A'}</p>`;
-    }
-
-    let rejectReasonHtml = '';
-    if (appointment.status.toLowerCase() === 'rejected') {
-      rejectReasonHtml = `<p><strong>Reject Reason:</strong> ${appointment.reject_reason || 'N/A'}</p>`;
-    }
+    let cancelReasonHtml = appointment.status.toLowerCase() === 'cancelled' 
+      ? `<p><strong>Cancel Reason:</strong> ${appointment.cancel_reason || 'N/A'}</p>` 
+      : '';
+    let rejectReasonHtml = appointment.status.toLowerCase() === 'rejected' 
+      ? `<p><strong>Reject Reason:</strong> ${appointment.reject_reason || 'N/A'}</p>` 
+      : '';
 
     timelineItem.innerHTML = `
       <div class="timeline-dot"></div>
@@ -1591,20 +1586,19 @@ async function saveProfile() {
     });
 
     if (response.ok) {
-      Swal.fire({
+      await Swal.fire({
         icon: 'success',
         title: 'Profile Updated',
         text: 'Your profile has been updated successfully!',
         confirmButtonColor: '#b994c0'
-      }).then(() => {
-        window.location.reload();
       });
+      window.location.reload();
     } else {
       const errorData = await response.json();
-      showError(`Failed to update profile: ${errorData.message || 'Please try again.'}`);
+      await showError(`Failed to update profile: ${errorData.message || 'Please try again.'}`);
     }
   } catch (err) {
-    showError('An error occurred while saving your profile: ' + err.message);
+    await showError('An error occurred while saving your profile: ' + err.message);
   }
 }
 
@@ -1625,7 +1619,7 @@ async function saveSettings() {
     });
 
     if (response.ok) {
-      Swal.fire({
+      await Swal.fire({
         icon: 'success',
         title: 'Settings Saved',
         text: 'Your settings have been saved successfully! Note: Some settings may not be fully implemented yet.',
@@ -1633,10 +1627,10 @@ async function saveSettings() {
       });
     } else {
       const errorData = await response.json();
-      showError(`Failed to save settings: ${errorData.message || 'Settings functionality is not fully implemented.'}`);
+      await showError(`Failed to save settings: ${errorData.message || 'Settings functionality is not fully implemented.'}`);
     }
   } catch (err) {
-    showError('An error occurred while saving settings: ' + err.message);
+    await showError('An error occurred while saving settings: ' + err.message);
   }
 }
 
@@ -1646,7 +1640,7 @@ async function changePassword() {
   const renewPassword = document.getElementById('renewPassword').value;
 
   if (newPassword !== renewPassword) {
-    showError('New passwords do not match.');
+    await showError('New passwords do not match.');
     return;
   }
 
@@ -1669,7 +1663,7 @@ async function changePassword() {
     if (!otpRequestResponse.ok) {
       const errorData = await otpRequestResponse.json();
       if (otpRequestResponse.status === 429) {
-        showError('Too many OTP requests. Please try again later.');
+        await showError('Too many OTP requests. Please try again later.');
         return;
       }
       throw new Error(errorData.message || 'Failed to request OTP');
@@ -1681,7 +1675,7 @@ async function changePassword() {
     document.getElementById('verifyOtp').onclick = async function() {
       const otp = document.getElementById('otpInput').value.trim();
       if (!otp || otp.length !== 6) {
-        showError('Please enter a valid 6-digit OTP.');
+        await showError('Please enter a valid 6-digit OTP.');
         return;
       }
 
@@ -1698,7 +1692,7 @@ async function changePassword() {
 
       if (!verifyOtpResponse.ok) {
         const errorData = await verifyOtpResponse.json();
-        showError(errorData.message || 'Invalid OTP. Please try again.');
+        await showError(errorData.message || 'Invalid OTP. Please try again.');
         return;
       }
 
@@ -1714,21 +1708,20 @@ async function changePassword() {
       });
       if (changePasswordResponse.ok) {
         clearSessionCookie();
-        Swal.fire({
+        await Swal.fire({
           icon: 'success',
           title: 'Password Changed',
           text: 'Password changed successfully! Please log in again.',
           confirmButtonColor: '#b994c0'
-        }).then(() => {
-          otpModal.hide();
-          window.location.replace('pages-login.html');
         });
+        otpModal.hide();
+        window.location.replace('pages-login.html');
       } else {
         const errorData = await changePasswordResponse.json();
         if (errorData.error === 'invalid_password' && errorData.details) {
-          showError(`Password requirements not met:\n- ${errorData.details.join('\n- ')}`);
+          await showError(`Password requirements not met:\n- ${errorData.details.join('\n- ')}`);
         } else {
-          showError(errorData.message || 'Failed to change password. Please check your current password.');
+          await showError(errorData.message || 'Failed to change password. Please check your current password.');
         }
       }
     };
@@ -1745,7 +1738,7 @@ async function changePassword() {
         credentials: 'include'
       });
       if (resendResponse.ok) {
-        Swal.fire({
+        await Swal.fire({
           icon: 'success',
           title: 'OTP Sent',
           text: 'A new OTP has been sent to your email.',
@@ -1755,14 +1748,14 @@ async function changePassword() {
       } else {
         const errorData = await resendResponse.json();
         if (resendResponse.status === 429) {
-          showError('Too many OTP requests. Please try again later.');
+          await showError('Too many OTP requests. Please try again later.');
           return;
         }
-        showError(errorData.message || 'Failed to resend OTP.');
+        await showError(errorData.message || 'Failed to resend OTP.');
       }
     };
   } catch (err) {
-    showError('An error occurred during password change: ' + err.message);
+    await showError('An error occurred during password change: ' + err.message);
   }
 }
 </script>
