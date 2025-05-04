@@ -40,17 +40,6 @@ const redis = new Redis(process.env.REDIS_URL, {
   maxRetriesPerRequest: 10,
 });
 
-// Log Redis connection events
-redis.on('error', (err) => {
-  logger.error('Redis error:', {
-    message: err.message,
-    stack: err.stack
-  });
-});
-redis.on('connect', () => {
-  logger.info('Connected to Redis');
-});
-
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
@@ -126,12 +115,7 @@ router.get('/csrf-token', (req, res) => {
     logger.info('CSRF token requested');
     res.json({ csrfToken });
   } catch (error) {
-    logger.error('CSRF token error:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-      details: error.details || 'No additional details'
-    });
+    logger.error('CSRF token error:', error);
     res.status(500).json({ error: 'server_error', message: 'Failed to generate CSRF token' });
   }
 });
@@ -146,126 +130,82 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
       return res.status(400).json({ error: 'bad_request', message: 'Username/email and password are required' });
     }
 
-    // Normalize identifier: trim and convert email to lowercase
-    const normalizedIdentifier = identifier.trim();
-    const isEmail = normalizedIdentifier.includes('@');
-    const queryIdentifier = isEmail ? normalizedIdentifier.toLowerCase() : normalizedIdentifier;
-
-    // Validate email format if identifier looks like an email
-    if (isEmail && !validator.isEmail(queryIdentifier)) {
-      logger.warn(`Invalid email format: ${queryIdentifier}`);
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid email format' });
-    }
-
     let user = null;
     let role = null;
     let table = null;
 
     // Check admin table (username only)
-    logger.debug(`Querying admin table for username: ${queryIdentifier}`);
     const { data: adminByUsername, error: adminError } = await supabase
       .from('admin')
       .select('id, username, password')
-      .eq('username', queryIdentifier)
-      .maybeSingle();
+      .eq('username', identifier)
+      .single();
 
-    if (adminError) {
-      logger.error('Admin query error:', {
-        message: adminError.message,
-        code: adminError.code,
-        stack: adminError.stack
-      });
-    }
-
-    if (adminByUsername) {
-      logger.debug(`Admin found: ${adminByUsername.username}`);
+    if (adminByUsername && !adminError) {
       const passwordMatch = await bcrypt.compare(password, adminByUsername.password);
       if (!passwordMatch) {
-        logger.warn(`Failed login attempt for admin: ${queryIdentifier}`);
+        logger.warn(`Failed login attempt for admin: ${identifier}`);
         return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
       }
       user = adminByUsername;
       role = 'admin';
       table = 'admin';
     } else {
-      // Check users table (username or email)
-      // Query by username first
-      logger.debug(`Querying users table for username: ${queryIdentifier}`);
+      // Check users table (username or email via patients table)
+      // First, try username in users table
       const { data: userByUsername, error: userUsernameError } = await supabase
         .from('users')
-        .select('id, username, email, password')
-        .eq('username', queryIdentifier)
-        .maybeSingle();
+        .select('id, username, password')
+        .eq('username', identifier)
+        .single();
 
-      if (userUsernameError) {
-        logger.error('User username query error:', {
-          message: userUsernameError.message,
-          code: userUsernameError.code,
-          stack: userUsernameError.stack
-        });
-      }
-
-      if (userByUsername) {
-        logger.debug(`User found by username: ${userByUsername.username}`);
+      if (userByUsername && !userUsernameError) {
         const passwordMatch = await bcrypt.compare(password, userByUsername.password);
         if (!passwordMatch) {
-          logger.warn(`Failed login attempt for user: ${queryIdentifier}`);
+          logger.warn(`Failed login attempt for user: ${identifier}`);
           return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
         }
-        user = userByUsername;
-      } else if (isEmail) {
-        // Query by email in patients table
-        logger.debug(`Querying patients table for email: ${queryIdentifier}`);
-        const { data: patient, error: patientError } = await supabase
+        // Verify the user is a patient
+        const { data: patientData, error: patientError } = await supabase
           .from('patients')
           .select('id, email')
-          .eq('email', queryIdentifier)
-          .maybeSingle();
+          .eq('id', userByUsername.id)
+          .single();
 
-        if (patientError) {
-          logger.error('Patient email query error:', {
-            message: patientError.message,
-            code: patientError.code,
-            stack: patientError.stack
-          });
+        if (!patientData || patientError) {
+          logger.warn(`Login attempt for non-patient user: ${identifier}`);
+          return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
         }
+        user = { ...userByUsername, email: patientData.email };
+      } else if (validator.isEmail(identifier)) {
+        // If identifier is an email, query patients table and join with users
+        const { data: patientByEmail, error: patientEmailError } = await supabase
+          .from('patients')
+          .select('id, email')
+          .eq('email', identifier)
+          .single();
 
-        if (patient) {
-          logger.debug(`Patient found with email: ${patient.email}, id: ${patient.id}`);
-          // Fetch user by ID from users table
+        if (patientByEmail && !patientEmailError) {
+          // Fetch corresponding user from users table
           const { data: userById, error: userIdError } = await supabase
             .from('users')
-            .select('id, username, email, password')
-            .eq('id', patient.id)
-            .maybeSingle();
+            .select('id, username, password')
+            .eq('id', patientByEmail.id)
+            .single();
 
-          if (userIdError) {
-            logger.error('User ID query error:', {
-              message: userIdError.message,
-              code: userIdError.code,
-              stack: userIdError.stack
-            });
-          }
-
-          if (userById) {
-            logger.debug(`User found by ID: ${userById.username}`);
+          if (userById && !userIdError) {
             const passwordMatch = await bcrypt.compare(password, userById.password);
             if (!passwordMatch) {
-              logger.warn(`Failed login attempt for user: ${queryIdentifier}`);
+              logger.warn(`Failed login attempt for user: ${identifier}`);
               return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
             }
-            user = userById;
-            user.patient_email = patient.email; // Attach patient email
-          } else {
-            logger.warn(`No user found in users table for patient ID: ${patient.id}`);
+            user = { ...userById, email: patientByEmail.email };
           }
-        } else {
-          logger.debug(`No patient found for email: ${queryIdentifier}`);
         }
       }
 
       if (!user) {
-        logger.warn(`No user found for identifier: ${queryIdentifier}`);
+        logger.warn(`Failed login attempt for user: ${identifier}`);
         return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
       }
       role = 'patient';
@@ -282,14 +222,7 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
         .update({ remember_token: rememberToken })
         .eq('id', user.id);
 
-      if (tokenError) {
-        logger.error('Error updating remember token:', {
-          message: tokenError.message,
-          code: tokenError.code,
-          stack: tokenError.stack
-        });
-        throw tokenError;
-      }
+      if (tokenError) throw tokenError;
 
       req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
       res.cookie('remember_token', rememberToken, {
@@ -306,27 +239,133 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
         .update({ remember_token: null })
         .eq('id', user.id);
 
-      if (clearTokenError) {
-        logger.error('Error clearing remember token:', {
-          message: clearTokenError.message,
-          code: clearTokenError.code,
-          stack: clearTokenError.stack
-        });
-        throw clearTokenError;
-      }
+      if (clearTokenError) throw clearTokenError;
       res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
     }
 
-    logger.info(`Successful login for ${role}: ${queryIdentifier} (userId: ${user.id})`);
+    logger.info(`Successful login for ${role}: ${identifier} (userId: ${user.id})`);
     res.json({ success: true, message: 'Login successful', role, remember: !!remember });
   } catch (error) {
-    logger.error('Login error:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-      details: error.details || 'No additional details',
-      identifier: normalizedIdentifier || 'unknown'
-    });
+    logger.error('Login error:', error);
+    res.status(500).json({ error: 'server_error', message: 'Server error' });
+  }
+});
+
+// Check authentication status
+router.get('/check-auth', async (req, res) => {
+  try {
+    if (!req.session.isLoggedIn || !req.session.userId) {
+      logger.info('Unauthenticated session check');
+      return res.status(401).json({ isLoggedIn: false, error: 'unauthorized' });
+    }
+
+    const userId = req.session.userId;
+
+    const { data: adminData, error: adminError } = await supabase
+      .from('admin')
+      .select('id')
+      .eq('id', userId)
+      .single();
+
+    if (adminData && !adminError) {
+      logger.info(`Auth check: Admin userId ${userId}`);
+      return res.status(200).json({ isLoggedIn: true, userId, role: 'admin' });
+    }
+
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id, username')
+      .eq('id', userId)
+      .single();
+
+    if (userData && !userError) {
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('id', userId)
+        .single();
+
+      if (patientData && !patientError) {
+        logger.info(`Auth check: Patient userId ${userId}`);
+        return res.status(200).json({ isLoggedIn: true, userId, role: 'patient' });
+      }
+
+      logger.info(`Auth check: Non-patient userId ${userId}`);
+      return res.status(200).json({ isLoggedIn: true, userId, role: 'user' });
+    }
+
+    logger.warn(`Auth check failed: UserId ${userId} not found`);
+    return res.status(401).json({ isLoggedIn: false, error: 'unauthorized', message: 'User not found' });
+  } catch (error) {
+    logger.error('Error checking auth:', error);
+    res.status(500).json({ isLoggedIn: false, error: 'server_error', message: 'Server error' });
+  }
+});
+
+// Auto-login with remember token
+router.post('/auto-login', async (req, res) => {
+  const rememberToken = req.cookies?.remember_token;
+
+  if (!rememberToken || !validator.isHexadecimal(rememberToken) || rememberToken.length !== 64) {
+    logger.warn('Auto-login attempt with invalid or missing remember token');
+    res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
+    return res.status(401).json({ error: 'unauthorized', message: 'No valid remember token found' });
+  }
+
+  try {
+    let user = null;
+    let role = null;
+    let table = null;
+
+    const { data: admin, error: adminError } = await supabase
+      .from('admin')
+      .select('id')
+      .eq('remember_token', rememberToken)
+      .single();
+
+    if (admin && !adminError) {
+      user = admin;
+      role = 'admin';
+      table = 'admin';
+    } else {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('remember_token', rememberToken)
+        .single();
+
+      if (userError || !userData) {
+        logger.warn('Auto-login failed: Invalid remember token');
+        res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
+        return res.status(401).json({ error: 'unauthorized', message: 'Invalid remember token' });
+      }
+
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .select('id')
+        .eq('id', userData.id)
+        .single();
+
+      if (patientError || !patientData) {
+        logger.warn('Auto-login failed: User is not a patient');
+        res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
+        return res.status(401).json({ error: 'unauthorized', message: 'Invalid remember token' });
+      }
+
+      user = userData;
+      role = 'patient';
+      table = 'users';
+    }
+
+    req.session.isLoggedIn = true;
+    req.session.userId = user.id;
+    req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+
+    logger.info(`Successful auto-login for ${role}: userId ${user.id}`);
+    res.json({ success: true, message: 'Auto-login successful', role });
+  } catch (error) {
+    logger.error('Auto-login error:', error);
+    res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
     res.status(500).json({ error: 'server_error', message: 'Server error' });
   }
 });
@@ -341,87 +380,53 @@ router.post('/forgot-password', applyForgotPasswordRateLimiter, async (req, res)
       return res.status(400).json({ error: 'bad_request', message: 'Email or username is required' });
     }
 
-    // Normalize identifier: trim and convert email to lowercase
-    const normalizedIdentifier = identifier.trim();
-    const isEmail = normalizedIdentifier.includes('@');
-    const queryIdentifier = isEmail ? normalizedIdentifier.toLowerCase() : normalizedIdentifier;
-
-    // Validate email format if identifier looks like an email
-    if (isEmail && !validator.isEmail(queryIdentifier)) {
-      logger.warn(`Invalid email format: ${queryIdentifier}`);
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid email format' });
-    }
-
     let user = null;
     let table = 'users';
 
-    // Check by username in users table
-    logger.debug(`Querying users table for username: ${queryIdentifier}`);
-    const { data: userByUsername, error: usernameError } = await supabase
-      .from('users')
-      .select('id, username, email')
-      .eq('username', queryIdentifier)
-      .maybeSingle();
-
-    if (usernameError) {
-      logger.error('User username query error:', {
-        message: usernameError.message,
-        code: usernameError.code,
-        stack: usernameError.stack
-      });
-    }
-
-    if (userByUsername) {
-      logger.debug(`User found by username: ${userByUsername.username}`);
-      user = userByUsername;
-    } else if (isEmail) {
-      // Check by email in patients table
-      logger.debug(`Querying patients table for email: ${queryIdentifier}`);
-      const { data: patient, error: patientError } = await supabase
+    // Check if identifier is an email (query patients table)
+    if (validator.isEmail(identifier)) {
+      const { data: patientByEmail, error: patientEmailError } = await supabase
         .from('patients')
         .select('id, email')
-        .eq('email', queryIdentifier)
-        .maybeSingle();
+        .eq('email', identifier)
+        .single();
 
-      if (patientError) {
-        logger.error('Patient email query error:', {
-          message: patientError.message,
-          code: patientError.code,
-          stack: patientError.stack
-        });
-      }
-
-      if (patient) {
-        logger.debug(`Patient found with email: ${patient.email}, id: ${patient.id}`);
-        // Fetch user by ID from users table
+      if (patientByEmail && !patientEmailError) {
+        // Fetch corresponding user from users table
         const { data: userById, error: userIdError } = await supabase
           .from('users')
-          .select('id, username, email')
-          .eq('id', patient.id)
-          .maybeSingle();
+          .select('id, username')
+          .eq('id', patientByEmail.id)
+          .single();
 
-        if (userIdError) {
-          logger.error('User ID query error:', {
-            message: userIdError.message,
-            code: userIdError.code,
-            stack: userIdError.stack
-          });
+        if (userById && !userIdError) {
+          user = { ...userById, email: patientByEmail.email };
         }
+      }
+    } else {
+      // Assume identifier is a username (query users table)
+      const { data: userByUsername, error: userUsernameError } = await supabase
+        .from('users')
+        .select('id, username')
+        .eq('username', identifier)
+        .single();
 
-        if (userById) {
-          logger.debug(`User found by ID: ${userById.username}`);
-          user = userById;
-          user.email = patient.email; // Use email from patients table
-        } else {
-          logger.warn(`No user found in users table for patient ID: ${patient.id}`);
+      if (userByUsername && !userUsernameError) {
+        // Fetch email from patients table
+        const { data: patientById, error: patientIdError } = await supabase
+          .from('patients')
+          .select('id, email')
+          .eq('id', userByUsername.id)
+          .single();
+
+        if (patientById && !patientIdError) {
+          user = { ...userByUsername, email: patientById.email };
         }
-      } else {
-        logger.debug(`No patient found for email: ${queryIdentifier}`);
       }
     }
 
     if (!user) {
-      logger.warn(`Forgot password attempt for non-existent user: ${queryIdentifier}`);
+      logger.warn(`Forgot password attempt for non-existent user: ${identifier}`);
       return res.status(404).json({ error: 'not_found', message: 'User not found' });
     }
 
@@ -448,13 +453,7 @@ router.post('/forgot-password', applyForgotPasswordRateLimiter, async (req, res)
     logger.info(`OTP sent for password reset: userId ${user.id}, email ${user.email}`);
     res.json({ success: true, message: 'OTP sent to your email' });
   } catch (error) {
-    logger.error('Forgot password error:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-      details: error.details || 'No additional details',
-      identifier: normalizedIdentifier || 'unknown'
-    });
+    logger.error('Forgot password error:', error);
     res.status(500).json({ error: 'server_error', message: 'Server error' });
   }
 });
@@ -477,86 +476,50 @@ router.post('/verify-otp', async (req, res) => {
       return res.status(400).json({ error: 'bad_request', message: 'Invalid OTP purpose' });
     }
 
-    // Normalize identifier: trim and convert email to lowercase
-    const normalizedIdentifier = identifier.trim();
-    const isEmail = normalizedIdentifier.includes('@');
-    const queryIdentifier = isEmail ? normalizedIdentifier.toLowerCase() : normalizedIdentifier;
-
-    // Validate email format if identifier looks like an email
-    if (isEmail && !validator.isEmail(queryIdentifier)) {
-      logger.warn(`Invalid email format: ${queryIdentifier}`);
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid email format' });
-    }
-
     let user = null;
 
-    // Check by username in users table
-    logger.debug(`Querying users table for username: ${queryIdentifier}`);
-    const { data: userByUsername, error: usernameError } = await supabase
-      .from('users')
-      .select('id, username, email')
-      .eq('username', queryIdentifier)
-      .maybeSingle();
-
-    if (usernameError) {
-      logger.error('User username query error:', {
-        message: usernameError.message,
-        code: usernameError.code,
-        stack: usernameError.stack
-      });
-    }
-
-    if (userByUsername) {
-      logger.debug(`User found by username: ${userByUsername.username}`);
-      user = userByUsername;
-    } else if (isEmail) {
-      // Check by email in patients table
-      logger.debug(`Querying patients table for email: ${queryIdentifier}`);
-      const { data: patient, error: patientError } = await supabase
+    // Check if identifier is an email
+    if (validator.isEmail(identifier)) {
+      const { data: patientByEmail, error: patientEmailError } = await supabase
         .from('patients')
         .select('id, email')
-        .eq('email', queryIdentifier)
-        .maybeSingle();
+        .eq('email', identifier)
+        .single();
 
-      if (patientError) {
-        logger.error('Patient email query error:', {
-          message: patientError.message,
-          code: patientError.code,
-          stack: patientError.stack
-        });
-      }
-
-      if (patient) {
-        logger.debug(`Patient found with email: ${patient.email}, id: ${patient.id}`);
-        // Fetch user by ID from users table
+      if (patientByEmail && !patientEmailError) {
         const { data: userById, error: userIdError } = await supabase
           .from('users')
-          .select('id, username, email')
-          .eq('id', patient.id)
-          .maybeSingle();
+          .select('id, username')
+          .eq('id', patientByEmail.id)
+          .single();
 
-        if (userIdError) {
-          logger.error('User ID query error:', {
-            message: userIdError.message,
-            code: userIdError.code,
-            stack: userIdError.stack
-          });
+        if (userById && !userIdError) {
+          user = { ...userById, email: patientByEmail.email };
         }
+      }
+    } else {
+      // Assume identifier is a username
+      const { data: userByUsername, error: userUsernameError } = await supabase
+        .from('users')
+        .select('id, username')
+        .eq('username', identifier)
+        .single();
 
-        if (userById) {
-          logger.debug(`User found by ID: ${userById.username}`);
-          user = userById;
-          user.email = patient.email; // Use email from patients table
-        } else {
-          logger.warn(`No user found in users table for patient ID: ${patient.id}`);
+      if (userByUsername && !userUsernameError) {
+        const { data: patientById, error: patientIdError } = await supabase
+          .from('patients')
+          .select('id, email')
+          .eq('id', userByUsername.id)
+          .single();
+
+        if (patientById && !patientIdError) {
+          user = { ...userByUsername, email: patientById.email };
         }
-      } else {
-        logger.debug(`No patient found for email: ${queryIdentifier}`);
       }
     }
 
     if (!user) {
-      logger.warn(`OTP verification attempt for non-existent user: ${queryIdentifier}`);
+      logger.warn(`OTP verification attempt for non-existent user: ${identifier}`);
       return res.status(404).json({ error: 'not_found', message: 'User not found' });
     }
 
@@ -573,13 +536,7 @@ router.post('/verify-otp', async (req, res) => {
     logger.info(`OTP verified for userId ${user.id}`);
     res.json({ success: true, message: 'OTP verified' });
   } catch (error) {
-    logger.error('OTP verification error:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-      details: error.details || 'No additional details',
-      identifier: identifier || 'unknown'
-    });
+    logger.error('OTP verification error:', error);
     res.status(500).json({ error: 'server_error', message: 'Server error' });
   }
 });
@@ -598,91 +555,54 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'bad_request', message: 'Invalid OTP format' });
     }
     if (!validator.isLength(newPassword, { min: 8, max: 100 })) {
-      logger.warn('Invalid password length');
       return res.status(400).json({ error: 'bad_request', message: 'Password must be between 8 and 100 characters' });
-    }
-
-    // Normalize identifier: trim and convert email to lowercase
-    const normalizedIdentifier = identifier.trim();
-    const isEmail = normalizedIdentifier.includes('@');
-    const queryIdentifier = isEmail ? normalizedIdentifier.toLowerCase() : normalizedIdentifier;
-
-    // Validate email format if identifier looks like an email
-    if (isEmail && !validator.isEmail(queryIdentifier)) {
-      logger.warn(`Invalid email format: ${queryIdentifier}`);
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid email format' });
     }
 
     let user = null;
     let table = 'users';
 
-    // Check by username in users table
-    logger.debug(`Querying users table for username: ${queryIdentifier}`);
-    const { data: userByUsername, error: usernameError } = await supabase
-      .from('users')
-      .select('id, username, email')
-      .eq('username', queryIdentifier)
-      .maybeSingle();
-
-    if (usernameError) {
-      logger.error('User username query error:', {
-        message: usernameError.message,
-        code: usernameError.code,
-        stack: usernameError.stack
-      });
-    }
-
-    if (userByUsername) {
-      logger.debug(`User found by username: ${userByUsername.username}`);
-      user = userByUsername;
-    } else if (isEmail) {
-      // Check by email in patients table
-      logger.debug(`Querying patients table for email: ${queryIdentifier}`);
-      const { data: patient, error: patientError } = await supabase
+    // Check if identifier is an email
+    if (validator.isEmail(identifier)) {
+      const { data: patientByEmail, error: patientEmailError } = await supabase
         .from('patients')
         .select('id, email')
-        .eq('email', queryIdentifier)
-        .maybeSingle();
+        .eq('email', identifier)
+        .single();
 
-      if (patientError) {
-        logger.error('Patient email query error:', {
-          message: patientError.message,
-          code: patientError.code,
-          stack: patientError.stack
-        });
-      }
-
-      if (patient) {
-        logger.debug(`Patient found with email: ${patient.email}, id: ${patient.id}`);
-        // Fetch user by ID from users table
+      if (patientByEmail && !patientEmailError) {
         const { data: userById, error: userIdError } = await supabase
           .from('users')
-          .select('id, username, email')
-          .eq('id', patient.id)
-          .maybeSingle();
+          .select('id, username')
+          .eq('id', patientByEmail.id)
+          .single();
 
-        if (userIdError) {
-          logger.error('User ID query error:', {
-            message: userIdError.message,
-            code: userIdError.code,
-            stack: userIdError.stack
-          });
+        if (userById && !userIdError) {
+          user = { ...userById, email: patientByEmail.email };
         }
+      }
+    } else {
+      // Assume identifier is a username
+      const { data: userByUsername, error: userUsernameError } = await supabase
+        .from('users')
+        .select('id, username')
+        .eq('username', identifier)
+        .single();
 
-        if (userById) {
-          logger.debug(`User found by ID: ${userById.username}`);
-          user = userById;
-          user.email = patient.email; // Use email from patients table
-        } else {
-          logger.warn(`No user found in users table for patient ID: ${patient.id}`);
+      if (userByUsername && !userUsernameError) {
+        const { data: patientById, error: patientIdError } = await supabase
+          .from('patients')
+          .select('id, email')
+          .eq('id', userByUsername.id)
+          .single();
+
+        if (patientById && !patientIdError) {
+          user = { ...userByUsername, email: patientById.email };
         }
-      } else {
-        logger.debug(`No patient found for email: ${queryIdentifier}`);
       }
     }
 
     if (!user) {
-      logger.warn(`Password reset attempt for non-existent user: ${queryIdentifier}`);
+      logger.warn(`Password reset attempt for non-existent user: ${identifier}`);
       return res.status(404).json({ error: 'not_found', message: 'User not found' });
     }
 
@@ -702,11 +622,7 @@ router.post('/reset-password', async (req, res) => {
       .eq('id', user.id);
 
     if (updateError) {
-      logger.error('Error updating password:', {
-        message: updateError.message,
-        code: updateError.code,
-        stack: updateError.stack
-      });
+      logger.error(`Failed to update password for userId ${user.id}:`, updateError);
       throw updateError;
     }
 
@@ -716,10 +632,7 @@ router.post('/reset-password', async (req, res) => {
       await new Promise((resolve, reject) => {
         req.session.destroy((err) => {
           if (err) {
-            logger.error('Session destroy error during password reset:', {
-              message: err.message,
-              stack: err.stack
-            });
+            logger.error('Session destroy error during password reset:', err);
             reject(err);
             return;
           }
@@ -733,195 +646,7 @@ router.post('/reset-password', async (req, res) => {
     logger.info(`Password reset successful for userId ${user.id}`);
     res.json({ success: true, message: 'Password reset successful' });
   } catch (error) {
-    logger.error('Password reset error:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-      details: error.details || 'No additional details',
-      identifier: identifier || 'unknown'
-    });
-    res.status(500).json({ error: 'server_error', message: 'Server error' });
-  }
-});
-
-// Check authentication status
-router.get('/check-auth', async (req, res) => {
-  try {
-    if (!req.session.isLoggedIn || !req.session.userId) {
-      logger.info('Unauthenticated session check');
-      return res.status(401).json({ isLoggedIn: false, error: 'unauthorized' });
-    }
-
-    const userId = req.session.userId;
-
-    logger.debug(`Checking auth for userId: ${userId}`);
-    const { data: adminData, error: adminError } = await supabase
-      .from('admin')
-      .select('id')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (adminError) {
-      logger.error('Admin auth query error:', {
-        message: adminError.message,
-        code: adminError.code,
-        stack: adminError.stack
-      });
-    }
-
-    if (adminData) {
-      logger.info(`Auth check: Admin userId ${userId}`);
-      return res.status(200).json({ isLoggedIn: true, userId, role: 'admin' });
-    }
-
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id, username')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (userError) {
-      logger.error('User auth query error:', {
-        message: userError.message,
-        code: userError.code,
-        stack: userError.stack
-      });
-    }
-
-    if (userData) {
-      const { data: patientData, error: patientError } = await supabase
-        .from('patients')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle();
-
-      if (patientError) {
-        logger.error('Patient auth query error:', {
-          message: patientError.message,
-          code: patientError.code,
-          stack: patientError.stack
-        });
-      }
-
-      if (patientData) {
-        logger.info(`Auth check: Patient userId ${userId}`);
-        return res.status(200).json({ isLoggedIn: true, userId, role: 'patient' });
-      }
-
-      logger.info(`Auth check: Non-patient userId ${userId}`);
-      return res.status(200).json({ isLoggedIn: true, userId, role: 'user' });
-    }
-
-    logger.warn(`Auth check failed: UserId ${userId} not found`);
-    return res.status(401).json({ isLoggedIn: false, error: 'unauthorized', message: 'User not found' });
-  } catch (error) {
-    logger.error('Error checking auth:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-      details: error.details || 'No additional details',
-      userId: req.session.userId || 'unknown'
-    });
-    res.status(500).json({ isLoggedIn: false, error: 'server_error', message: 'Server error' });
-  }
-});
-
-// Auto-login with remember token
-router.post('/auto-login', async (req, res) => {
-  const rememberToken = req.cookies?.remember_token;
-
-  if (!rememberToken || !validator.isHexadecimal(rememberToken) || rememberToken.length !== 64) {
-    logger.warn('Auto-login attempt with invalid or missing remember token');
-    res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
-    return res.status(401).json({ error: 'unauthorized', message: 'No valid remember token found' });
-  }
-
-  try {
-    let user = null;
-    let role = null;
-    let table = null;
-
-    logger.debug(`Checking admin table for remember_token: ${rememberToken}`);
-    const { data: admin, error: adminError } = await supabase
-      .from('admin')
-      .select('id')
-      .eq('remember_token', rememberToken)
-      .maybeSingle();
-
-    if (adminError) {
-      logger.error('Admin remember token query error:', {
-        message: adminError.message,
-        code: adminError.code,
-        stack: adminError.stack
-      });
-    }
-
-    if (admin) {
-      user = admin;
-      role = 'admin';
-      table = 'admin';
-    } else {
-      logger.debug(`Checking users table for remember_token: ${rememberToken}`);
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('remember_token', rememberToken)
-        .maybeSingle();
-
-      if (userError) {
-        logger.error('User remember token query error:', {
-          message: userError.message,
-          code: userError.code,
-          stack: userError.stack
-        });
-      }
-
-      if (!userData) {
-        logger.warn('Auto-login failed: Invalid remember token');
-        res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
-        return res.status(401).json({ error: 'unauthorized', message: 'Invalid remember token' });
-      }
-
-      logger.debug(`Checking patients table for userId: ${userData.id}`);
-      const { data: patientData, error: patientError } = await supabase
-        .from('patients')
-        .select('id')
-        .eq('id', userData.id)
-        .maybeSingle();
-
-      if (patientError) {
-        logger.error('Patient remember token query error:', {
-          message: patientError.message,
-          code: patientError.code,
-          stack: patientError.stack
-        });
-      }
-
-      if (!patientData) {
-        logger.warn('Auto-login failed: User is not a patient');
-        res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
-        return res.status(401).json({ error: 'unauthorized', message: 'Invalid remember token' });
-      }
-
-      user = userData;
-      role = 'patient';
-      table = 'users';
-    }
-
-    req.session.isLoggedIn = true;
-    req.session.userId = user.id;
-    req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
-
-    logger.info(`Successful auto-login for ${role}: userId ${user.id}`);
-    res.json({ success: true, message: 'Auto-login successful', role });
-  } catch (error) {
-    logger.error('Auto-login error:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-      details: error.details || 'No additional details'
-    });
-    res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
+    logger.error('Password reset error:', error);
     res.status(500).json({ error: 'server_error', message: 'Server error' });
   }
 });
@@ -932,56 +657,29 @@ router.post('/logout', async (req, res) => {
     const userId = req.session.userId;
 
     let table = null;
-    logger.debug(`Checking admin table for userId: ${userId}`);
     const { data: adminData, error: adminError } = await supabase
       .from('admin')
       .select('id')
       .eq('id', userId)
-      .maybeSingle();
+      .single();
 
-    if (adminError) {
-      logger.error('Admin logout query error:', {
-        message: adminError.message,
-        code: adminError.code,
-        stack: adminError.stack
-      });
-    }
-
-    if (adminData) {
+    if (adminData && !adminError) {
       table = 'admin';
     } else {
-      logger.debug(`Checking users table for userId: ${userId}`);
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
         .eq('id', userId)
-        .maybeSingle();
+        .single();
 
-      if (userError) {
-        logger.error('User logout query error:', {
-          message: userError.message,
-          code: userError.code,
-          stack: userError.stack
-        });
-      }
-
-      if (userData) {
-        logger.debug(`Checking patients table for userId: ${userId}`);
+      if (userData && !userError) {
         const { data: patientData, error: patientError } = await supabase
           .from('patients')
           .select('id')
           .eq('id', userId)
-          .maybeSingle();
+          .single();
 
-        if (patientError) {
-          logger.error('Patient logout query error:', {
-            message: patientError.message,
-            code: patientError.code,
-            stack: patientError.stack
-          });
-        }
-
-        if (patientData) {
+        if (patientData && !patientError) {
           table = 'users';
         }
       }
@@ -994,11 +692,7 @@ router.post('/logout', async (req, res) => {
         .eq('id', userId);
 
       if (error) {
-        logger.error('Supabase update error during logout:', {
-          message: error.message,
-          code: error.code,
-          stack: error.stack
-        });
+        logger.error('Supabase update error during logout:', error);
         throw new Error('Failed to clear remember token');
       }
     }
@@ -1010,10 +704,7 @@ router.post('/logout', async (req, res) => {
       }
       req.session.destroy((err) => {
         if (err) {
-          logger.error('Session destroy error during logout:', {
-            message: err.message,
-            stack: err.stack
-          });
+          logger.error('Session destroy error during logout:', err);
           reject(err);
           return;
         }
@@ -1026,13 +717,7 @@ router.post('/logout', async (req, res) => {
     logger.info(`Successful logout for userId: ${userId || 'unknown'}`);
     res.status(200).json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
-    logger.error('Logout error:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack,
-      details: error.details || 'No additional details',
-      userId: req.session.userId || 'unknown'
-    });
+    logger.error('Logout error:', error);
     res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
     res.clearCookie('connect.sid', { path: '/', sameSite: 'strict' });
     res.status(500).json({ error: 'server_error', message: 'Logout failed' });
@@ -1041,12 +726,7 @@ router.post('/logout', async (req, res) => {
 
 // Error handling middleware
 router.use((err, req, res, next) => {
-  logger.error('Route error:', {
-    error: err.message,
-    code: err.code,
-    stack: err.stack,
-    path: req.path
-  });
+  logger.error('Route error:', { error: err.message, stack: err.stack, path: req.path });
   if (err.code === 'EBADCSRFTOKEN') {
     return res.status(403).json({ error: 'invalid_csrf_token', message: 'Invalid CSRF token' });
   }
