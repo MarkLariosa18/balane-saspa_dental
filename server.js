@@ -4,8 +4,8 @@ const dotenv = require('dotenv');
 const morgan = require('morgan');
 const path = require('path');
 const session = require('express-session');
-const SessionRedisStore = require('connect-redis').default;
-const RateLimitRedisStore = require('rate-limit-redis');
+const SessionRedisStore = require('connect-redis').default; // For session store
+const RateLimitRedisStore = require('rate-limit-redis'); // For rate limiter
 const Redis = require('ioredis');
 const cookieParser = require('cookie-parser');
 const { createServer } = require('http');
@@ -29,14 +29,23 @@ requiredEnvVars.forEach((varName) => {
   }
 });
 
-// Initialize Redis
+
+// Import routes and their Socket.IO handlers
+const patientRoutes = require('./routes/patients');
+const userRoutes = require('./routes/users');
+const appointmentRoutes = require('./routes/appointments');
+const serviceRoutes = require('./routes/services');
+const { otpRoutes } = require('./routes/otp');
+const authRoutes = require('./routes/auth');
+
+// Initialize Redis with enhanced configuration
 const redis = new Redis(process.env.REDIS_URL, {
   retryStrategy: (times) => Math.min(times * 50, 2000),
   maxRetriesPerRequest: 10,
 });
 
 redis.ping().then((result) => {
-  console.log('Redis ping:', result);
+  console.log('Redis ping:', result); // Should log 'PONG'
 }).catch((err) => {
   console.error('Redis connection error:', err);
 });
@@ -45,10 +54,10 @@ redis.ping().then((result) => {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Create HTTP server
+// Create HTTP server for Express and Socket.IO
 const server = createServer(app);
 
-// Initialize Socket.IO
+// Initialize Socket.IO server with enhanced security
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
@@ -63,20 +72,22 @@ const io = new Server(server, {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'CSRF-Token'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   },
   pingTimeout: 20000,
   pingInterval: 25000,
   maxHttpBufferSize: 1e6,
 });
 
+// Share Socket.IO instance with routes
 app.set('socketio', io);
 
-// Rate limiters
+// Rate limiters with Redis store
+// Rate limiters with Redis store
 const createRateLimiter = (prefix, windowMs, max, message) =>
   rateLimit({
-    store: new RateLimitRedisStore.default({
-      sendCommand: (...args) => redis.call(...args),
+    store: new RateLimitRedisStore({
+      redisClient: redis, // Use redisClient for rate-limit-redis v4.2.0
       prefix: `ratelimit:${prefix}`,
     }),
     windowMs,
@@ -86,10 +97,10 @@ const createRateLimiter = (prefix, windowMs, max, message) =>
     legacyHeaders: false,
   });
 
-const checkAuthLimiter = createRateLimiter('rl:check-auth:', 15 * 60 * 1000, 100, 'Too many auth checks.');
-const checkUsernameLimiter = createRateLimiter('rl:check-username:', 60 * 60 * 1000, 50, 'Too many username checks.');
-const logoutLimiter = createRateLimiter('rl:logout:', 15 * 60 * 1000, 50, 'Too many logout attempts.');
-const staticFileLimiter = createRateLimiter('rl:static:', 15 * 60 * 1000, 1000, 'Too many requests for static files.');
+const checkAuthLimiter = createRateLimiter('rl:check-auth:', 15 * 60 * 1000, 100, 'Too many auth checks. Try again later.');
+const checkUsernameLimiter = createRateLimiter('rl:check-username:', 60 * 60 * 1000, 50, 'Too many username checks. Try again later.');
+const logoutLimiter = createRateLimiter('rl:logout:', 15 * 60 * 1000, 50, 'Too many logout attempts. Try again later.');
+const staticFileLimiter = createRateLimiter('rl:static:', 15 * 60 * 1000, 1000, 'Too many requests for static files. Try again later.');
 
 // Session configuration
 const sessionMiddleware = session({
@@ -106,10 +117,12 @@ const sessionMiddleware = session({
   rolling: true,
 });
 
+// Socket.IO session middleware
 io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
 });
 
+// Socket.IO authentication middleware
 io.use((socket, next) => {
   const session = socket.request.session;
   if (!session || !session.isLoggedIn || !session.userId) {
@@ -119,6 +132,7 @@ io.use((socket, next) => {
   next();
 });
 
+// Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log(`New Socket.IO client connected: ${socket.id}, userId: ${socket.userId}`);
   socket.join(`user:${socket.userId}`);
@@ -134,13 +148,17 @@ io.on('connection', (socket) => {
   });
 });
 
+app.get('/csrf-token', (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
+
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       connectSrc: ["'self'", process.env.FRONTEND_URL, 'wss://balane-saspa-dental-1.onrender.com'],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
     },
   },
@@ -160,7 +178,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'CSRF-Token'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
@@ -169,59 +187,28 @@ app.use(morgan('combined', {
 }));
 app.use(sessionMiddleware);
 app.use(cookieParser());
-app.use(csurf({
-  cookie: {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-  },
-}));
+app.use(csurf({ cookie: true }));
 
-// Static files
-app.use(staticFileLimiter, express.static(path.join(__dirname, 'front'), {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.js')) {
-      res.setHeader('Content-Type', 'text/javascript');
-    }
-  },
-}));
-app.use('/admin', staticFileLimiter, express.static(path.join(__dirname, 'front', 'admin'), {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.js')) {
-      res.setHeader('Content-Type', 'text/javascript');
-    }
-  },
-}));
-app.use('/assets', staticFileLimiter, express.static(path.join(__dirname, 'assets'), {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.js')) {
-      res.setHeader('Content-Type', 'text/javascript');
-    }
-  },
-}));
+// Serve static files with rate limiting
+app.use(staticFileLimiter, express.static(path.join(__dirname, 'front')));
+app.use('/admin', staticFileLimiter, express.static(path.join(__dirname, 'front', 'admin')));
+app.use('/assets', staticFileLimiter, express.static(path.join(__dirname, 'assets')));
 
-// CSRF token endpoint
-app.get('/csrf-token', (req, res) => {
-  try {
-    res.json({ csrfToken: req.csrfToken() });
-  } catch (error) {
-    console.error('Error generating CSRF token:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to generate CSRF token' });
-  }
-});
-
-// Ping endpoint
+// Ping endpoint to keep server active
 app.get('/ping', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Authentication middleware
+// Middleware to check authentication
 const isAuthenticated = (req, res, next) => {
   const publicPaths = [
-    '/', '/index.html', '/pages-login.html', '/check-auth', '/check-username', '/logout', '/ping', '/csrf-token',
+    '/', '/index.html', '/pages-login.html', '/check-auth', '/check-username', '/logout', '/ping',
   ];
   const publicApiPaths = [
-    '/api', '/auth', '/services', '/patients',
+    '/api', // OTP routes
+    '/auth', // Authentication routes
+    '/services', // Service routes
+    '/patients', // Patient registration
   ];
 
   if (
@@ -244,29 +231,18 @@ const isAuthenticated = (req, res, next) => {
   next();
 };
 
+// Apply authentication middleware
 app.use(isAuthenticated);
 
-// Import routes
-const patientRoutes = require('./routes/patients');
-const userRoutes = require('./routes/users');
-const appointmentRoutes = require('./routes/appointments');
-const serviceRoutes = require('./routes/services');
-const otpRoutes = require('./routes/otp'); // Fixed import
-const authRoutes = require('./routes/auth');
-
 // API Routes
-if (otpRoutes) {
-  app.use('/api', otpRoutes);
-} else {
-  console.warn('OTP routes not available; skipping /api mounting');
-}
+app.use('/api', otpRoutes);
 app.use('/patients', patientRoutes.router || patientRoutes);
 app.use('/users', userRoutes.router || userRoutes);
 app.use('/api/appointments', appointmentRoutes.router || appointmentRoutes);
 app.use('/api/services', serviceRoutes.router || serviceRoutes);
 app.use('/auth', authRoutes);
 
-// Check auth status
+// Check auth status endpoint
 app.get('/check-auth', checkAuthLimiter, (req, res) => {
   if (req.session && req.session.isLoggedIn && req.session.userId) {
     res.json({
@@ -279,7 +255,7 @@ app.get('/check-auth', checkAuthLimiter, (req, res) => {
   }
 });
 
-// Protected routes
+// Protected routes for HTML pages
 app.get('/profile.html', staticFileLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, 'front', 'profile.html'));
 });
@@ -292,7 +268,7 @@ app.get('/admin/index.html', staticFileLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, 'front', 'admin', 'index.html'));
 });
 
-// Logout
+// Logout route
 app.get('/logout', logoutLimiter, (req, res) => {
   req.session.destroy((err) => {
     if (err) {
@@ -304,7 +280,7 @@ app.get('/logout', logoutLimiter, (req, res) => {
   });
 });
 
-// Username check
+// Username checking endpoint
 app.get('/check-username', checkUsernameLimiter, async (req, res) => {
   const { username } = req.query;
   if (!username) {
@@ -319,7 +295,7 @@ app.get('/check-username', checkUsernameLimiter, async (req, res) => {
   }
 });
 
-// Error handling
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err.stack);
   if (err.code === 'EBADCSRFTOKEN') {
@@ -328,12 +304,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
 });
 
-// Root route
+// Serve the main HTML file for the root route
 app.get('/', staticFileLimiter, (req, res) => {
   res.sendFile(path.join(__dirname, 'front', 'index.html'));
 });
 
-// HTML file requests
+// Handle other HTML file requests in 'front'
 app.get('/*.html', staticFileLimiter, (req, res) => {
   const filePath = path.join(__dirname, 'front', req.path);
   res.sendFile(filePath, (err) => {
@@ -343,7 +319,7 @@ app.get('/*.html', staticFileLimiter, (req, res) => {
   });
 });
 
-// Catch-all 404
+// Catch-all 404 handler
 app.use((req, res) => {
   console.log(`Route not found: ${req.method} ${req.path}`);
   res.status(404).json({ error: 'not_found', message: `Cannot ${req.method} ${req.path}` });
@@ -363,16 +339,17 @@ const shutdown = () => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-// Periodic cleanup
+// Periodic cleanup task
 setInterval(async () => {
   try {
     console.log('Running periodic cleanup:', new Date().toISOString());
+    // Add cleanup logic (e.g., remove expired sessions)
   } catch (error) {
     console.error('Cleanup error:', error);
   }
 }, 24 * 60 * 60 * 1000);
 
-// Keep-alive ping
+// Schedule ping every 14 minutes to prevent spin-down
 cron.schedule('*/14 * * * *', async () => {
   try {
     const response = await axios.get('https://balane-saspa-dental-1.onrender.com/ping');
