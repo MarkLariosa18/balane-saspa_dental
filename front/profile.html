@@ -894,7 +894,8 @@ function initializeWebSocket() {
     transports: ['websocket'],
     reconnection: true,
     reconnectionAttempts: 5,
-    reconnectionDelay: 5000
+    reconnectionDelay: 5000,
+    withCredentials: true
   });
 
   socket.on('connect', () => {
@@ -916,7 +917,7 @@ function initializeWebSocket() {
   });
 
   socket.on('connect_error', (error) => {
-    console.error('Socket.IO connection error:', error);
+    console.error('Socket.IO connection error:', error.message);
   });
 
   socket.on('disconnect', () => {

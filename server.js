@@ -111,9 +111,9 @@ const sessionMiddleware = session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'strict',
     maxAge: 60 * 60 * 1000,
   },
   rolling: true,
@@ -155,12 +155,16 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      connectSrc: ["'self'", process.env.FRONTEND_URL, 'wss://balane-saspa-dental-1.onrender.com'],
+      connectSrc: [
+        "'self'",
+        process.env.FRONTEND_URL,
+        'wss://balane-saspa-dental-1.onrender.com',
+        'https://balane-saspa-dental-1.onrender.com'
+      ],
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
     },
   },
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
 app.use(compression());
 app.use(cors({
