@@ -1683,10 +1683,6 @@ async function saveProfile() {
   console.log('Profile data to save:', profileData);
 
   // Client-side validation
-  if (!profileData.full_name || profileData.full_name.trim().length < 2) {
-    showError('Full name is required and must be at least 2 characters.');
-    return;
-  }
   if (!profileData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
     showError('A valid email address is required.');
     return;
