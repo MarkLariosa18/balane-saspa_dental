@@ -29,6 +29,9 @@ requiredEnvVars.forEach((varName) => {
   }
 });
 
+console.log('RateLimitRedisStore:', RateLimitRedisStore);
+console.log('Typeof RateLimitRedisStore:', typeof RateLimitRedisStore);
+console.log('RateLimitRedisStore prototype:', RateLimitRedisStore && RateLimitRedisStore.prototype);
 
 // Import routes and their Socket.IO handlers
 const patientRoutes = require('./routes/patients');
@@ -83,11 +86,10 @@ const io = new Server(server, {
 app.set('socketio', io);
 
 // Rate limiters with Redis store
-// Rate limiters with Redis store
 const createRateLimiter = (prefix, windowMs, max, message) =>
   rateLimit({
-    store: new RateLimitRedisStore({
-      redisClient: redis, // Use redisClient for rate-limit-redis v4.2.0
+    store: new RateLimitRedisStore.default({
+      sendCommand: (...args) => redis.call(...args), // Use ioredis call method
       prefix: `ratelimit:${prefix}`,
     }),
     windowMs,
@@ -146,10 +148,6 @@ io.on('connection', (socket) => {
   socket.on('error', (error) => {
     console.error(`Socket.IO error for ${socket.id}:`, error);
   });
-});
-
-app.get('/csrf-token', (req, res) => {
-  res.json({ csrfToken: req.csrfToken() });
 });
 
 // Middleware
@@ -335,6 +333,10 @@ const shutdown = () => {
     });
   });
 };
+
+app.get('/csrf-token', (req, res) => {
+  res.json({ csrfToken: req.csrfToken() });
+});
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
