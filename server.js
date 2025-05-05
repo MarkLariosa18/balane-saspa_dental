@@ -155,7 +155,12 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        connectSrc: ["'self'", 'wss://balane-saspa-dental-1.onrender.com', 'https://formsubmit.co'],
+        connectSrc: [
+          "'self'",
+          'wss://balane-saspa-dental-1.onrender.com',
+          'https://formsubmit.co',
+          'https://balane-saspa-dental-1.onrender.com'
+        ],
         scriptSrc: [
           "'self'",
           "'unsafe-inline'", // Allows inline event handlers and inline scripts
