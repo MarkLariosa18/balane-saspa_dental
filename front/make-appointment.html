@@ -330,9 +330,15 @@
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
 <script>
   AOS.init();
+
+  // Base URL for API and Socket.IO
+  const BASE_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000' 
+    : 'https://balane-saspa-dental-1.onrender.com';
 
   // Utility functions
   const showLoading = () => {
@@ -361,7 +367,7 @@
 
   const tryAutoLogin = async () => {
     try {
-      const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/auto-login', {
+      const response = await fetch(`${BASE_URL}/auth/auto-login`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -376,7 +382,7 @@
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('https://balane-saspa-dental-1.onrender.com/check-auth', {
+      const response = await fetch(`${BASE_URL}/check-auth`, {
         credentials: 'include'
       });
       if (!response.ok) throw new Error(`Failed to check auth: ${response.statusText}`);
@@ -389,7 +395,7 @@
 
   const fetchCsrfToken = async () => {
     try {
-      const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
+      const response = await fetch(`${BASE_URL}/csrf-token`, {
         credentials: 'include'
       });
       if (!response.ok) throw new Error(`Failed to fetch CSRF token: ${response.statusText}`);
@@ -403,7 +409,7 @@
 
   const fetchServices = async () => {
     try {
-      const response = await fetch('https://balane-saspa-dental-1.onrender.com/api/services/all', {
+      const response = await fetch(`${BASE_URL}/api/services/all`, {
         credentials: 'include'
       });
       if (!response.ok) {
@@ -420,7 +426,7 @@
 
   const fetchUserAppointments = async () => {
     try {
-      const response = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments', {
+      const response = await fetch(`${BASE_URL}/api/appointments`, {
         credentials: 'include'
       });
       if (!response.ok) {
@@ -437,7 +443,7 @@
 
   const fetchBookedAppointments = async () => {
     try {
-      const response = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/booked?ts=${Date.now()}`, {
+      const response = await fetch(`${BASE_URL}/api/appointments/booked?ts=${Date.now()}`, {
         credentials: 'include',
         cache: 'no-store'
       });
@@ -485,22 +491,49 @@
   };
 
   const initializeWebSocket = (onUpdate) => {
-    const wsUrl = 'wss://balane-saspa-dental-1.onrender.com';
-    const ws = new WebSocket(wsUrl);
-    ws.onopen = () => console.log('WebSocket connected');
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'appointment_update') {
-        console.log('Received WebSocket update:', data.appointments);
-        onUpdate(data.appointments);
+    const socket = io(BASE_URL, {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 5000
+    });
+
+    socket.on('connect', () => {
+      console.log(`Socket.IO connected: ${socket.id}`);
+      socket.emit('join', { userId: socket.auth?.userId });
+    });
+
+    socket.on('welcome', (data) => {
+      console.log('Socket.IO welcome:', data);
+    });
+
+    socket.on('appointment_update', (data) => {
+      console.log('Received Socket.IO appointment update:', data.appointments);
+      onUpdate(data.appagements);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error.message);
+      if (error.message === 'Unauthorized') {
+        showAlert('Session Expired', 'Please log in again.', 'error').then(() => {
+          window.location.replace('pages-login.html');
+        });
       }
-    };
-    ws.onclose = () => {
-      console.log('WebSocket disconnected. Reconnecting...');
-      setTimeout(() => initializeWebSocket(onUpdate), 5000);
-    };
-    ws.onerror = (error) => console.error('WebSocket error:', error);
-    return ws;
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log(`Socket.IO disconnected: ${reason}`);
+      if (reason === 'io server disconnect') {
+        socket.connect();
+      }
+    });
+
+    socket.on('error', (error) => {
+      console.error('Socket.IO error:', error);
+    });
+
+    return socket;
   };
 
   let flatpickrInstance = null;
@@ -743,10 +776,12 @@
       const bookedAppointments = await fetchBookedAppointments();
       initializeDatePicker(bookedAppointments);
 
-      initializeWebSocket((updatedAppointments) => {
+      const socket = initializeWebSocket((updatedAppointments) => {
         console.log('Updating date picker with new appointments:', updatedAppointments);
         updateDatePicker(updatedAppointments);
       });
+
+      socket.auth = { userId: authData.userId };
 
       document.getElementById('appointment-form').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -773,7 +808,7 @@
         const isoAppointmentDate = convertToISO(appointmentDate);
 
         try {
-          const response = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments', {
+          const response = await fetch(`${BASE_URL}/api/appointments`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -795,7 +830,7 @@
             return;
           }
 
-          if (response.status === 403 && response.statusText.includes('CSRF')) {
+          if (response.status === 403) {
             hideLoading();
             await showAlert('Security Error', 'Invalid CSRF token. Please refresh the page and try again.', 'error');
             return;
