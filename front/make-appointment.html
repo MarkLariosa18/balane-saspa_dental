@@ -154,9 +154,8 @@
       border-color: #84548c;
       box-shadow: 0 0 0 3px rgba(111, 66, 193, 0.1);
     }
-   
     .book-appointment-btn {
-      background-color: #84548c!important;
+      background-color: #84548c !important;
       border-color: #6f42c1 !important;
       padding: 12px 24px;
       border-radius: 8px;
@@ -249,6 +248,7 @@
             <div class="appointment-container">
               <div id="appointment-restriction-message" class="alert alert-warning"></div>
               <form id="appointment-form" class="php-email-form">
+                <input type="hidden" name="_csrf" id="csrf-token">
                 <div class="row gy-4">
                   <div class="col-md-12">
                     <div class="row">
@@ -387,6 +387,20 @@
     }
   };
 
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error(`Failed to fetch CSRF token: ${response.statusText}`);
+      const data = await response.json();
+      return data.csrfToken;
+    } catch (err) {
+      console.error('Error fetching CSRF token:', err);
+      throw err;
+    }
+  };
+
   const fetchServices = async () => {
     try {
       const response = await fetch('https://balane-saspa-dental-1.onrender.com/api/services/all', {
@@ -471,7 +485,8 @@
   };
 
   const initializeWebSocket = (onUpdate) => {
-    const ws = new WebSocket('wss://balane-saspa-dental-1.onrender.com/ws');
+    const wsUrl = 'wss://balane-saspa-dental-1.onrender.com';
+    const ws = new WebSocket(wsUrl);
     ws.onopen = () => console.log('WebSocket connected');
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -712,6 +727,9 @@
         return;
       }
 
+      const csrfToken = await fetchCsrfToken();
+      document.getElementById('csrf-token').value = csrfToken;
+
       const services = await fetchServices();
       populateServices(services);
 
@@ -737,14 +755,17 @@
         const serviceId = document.getElementById('service').value;
         const appointmentDate = document.getElementById('appointment-date').value;
         const notes = document.getElementById('notes').value;
+        const csrfToken = document.getElementById('csrf-token').value;
 
         if (!serviceId || !appointmentDate) {
+          hideLoading();
           await showAlert('Incomplete Form', 'Please fill in all required fields.', 'warning');
           return;
         }
 
         const dateValidationError = validateAppointmentDate(appointmentDate, bookedAppointments);
         if (dateValidationError) {
+          hideLoading();
           await showAlert('Invalid Date', dateValidationError, 'warning');
           return;
         }
@@ -755,7 +776,10 @@
           const response = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments', {
             method: 'POST',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'CSRF-Token': csrfToken
+            },
             body: JSON.stringify({
               user_id: authData.userId,
               appointment_date: isoAppointmentDate,
@@ -765,8 +789,15 @@
           });
 
           if (response.status === 401) {
+            hideLoading();
             await showAlert('Session Expired', 'Please log in again.', 'error');
             window.location.replace('pages-login.html');
+            return;
+          }
+
+          if (response.status === 403 && response.statusText.includes('CSRF')) {
+            hideLoading();
+            await showAlert('Security Error', 'Invalid CSRF token. Please refresh the page and try again.', 'error');
             return;
           }
 
@@ -776,6 +807,7 @@
           }
 
           const result = await response.json();
+          hideLoading();
           await showAlert('Success', result.message, 'success');
 
           const authCheck = await checkAuth();
@@ -787,14 +819,14 @@
           }
         } catch (err) {
           console.error('Error booking appointment:', err);
+          hideLoading();
           await showAlert('Error', 'Failed to book appointment: ' + err.message, 'error');
         }
       });
     } catch (err) {
       console.error('Error initializing page:', err);
-      await showAlert('Error', err.message || 'An error occurred while loading the page. Please try again later.', 'error');
-    } finally {
       hideLoading();
+      await showAlert('Error', err.message || 'An error occurred while loading the page. Please try again later.', 'error');
     }
   });
 </script>
