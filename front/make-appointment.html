@@ -866,12 +866,12 @@
 
         const serviceId = document.getElementById('service').value;
         const appointmentDate = document.getElementById('appointment-date').value;
-        const notes = document.getElementById('notes').value;
+        const notes = document.getElementById('notes').value.trim();
         const csrfToken = document.getElementById('csrf-token').value;
 
         if (!serviceId || !appointmentDate) {
           hideLoading();
-          await showAlert('Incomplete Form', 'Please fill in all required fields.', 'warning');
+          await showAlert('Incomplete Form', 'Please select a service and appointment date.', 'warning');
           return;
         }
 
@@ -885,7 +885,7 @@
         const isoAppointmentDate = convertToISO(appointmentDate);
 
         try {
-          const response = await fetch(`${BASE_URL}/api/appointments`, {
+          const response = await withTimeout(fetch(`${BASE_URL}/api/appointments`, {
             method: 'POST',
             credentials: 'include',
             headers: {
@@ -896,9 +896,11 @@
               user_id: authData.userId,
               appointment_date: isoAppointmentDate,
               service_id: serviceId,
-              notes: notes,
+              notes: notes || null,
             }),
-          });
+          }));
+
+          const responseData = await response.json();
 
           if (response.status === 401) {
             hideLoading();
@@ -914,13 +916,12 @@
           }
 
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to book appointment');
+            console.error('Server response:', responseData);
+            throw new Error(responseData.message || 'Failed to book appointment');
           }
 
-          const result = await response.json();
           hideLoading();
-          await showAlert('Success', result.message, 'success');
+          await showAlert('Success', responseData.message || 'Appointment booked successfully!', 'success');
 
           const authCheck = await checkAuth();
           if (authCheck.isLoggedIn) {
@@ -932,7 +933,7 @@
         } catch (err) {
           console.error('Error booking appointment:', err);
           hideLoading();
-          await showAlert('Error', 'Failed to book appointment: ' + err.message, 'error');
+          await showAlert('Error', `Failed to book appointment: ${err.message}`, 'error');
         }
       });
 
