@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Fetch CSRF token
   async function fetchCsrfToken() {
     try {
-      const response = await fetch('/api/csrf-token', {
+      const response = await fetch('/auth/csrf-token', {
         method: 'GET',
         credentials: 'include',
       });
