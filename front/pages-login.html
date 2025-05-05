@@ -150,11 +150,11 @@
 
                   <form id="loginForm" class="row g-3 needs-validation" novalidate>
                     <div class="col-12">
-                      <label for="yourIdentifier" class="form-label">Username or Email</label>
+                      <label for="yourIdentifier" class="form-label">Username </label>
                       <div class="input-group has-validation">
                         <span class="input-group-text" id="inputGroupPrepend"><i class="bi bi-person"></i></span>
                         <input type="text" name="identifier" class="form-control" id="yourIdentifier" required>
-                        <div class="invalid-feedback">Please enter your username or email.</div>
+                        <div class="invalid-feedback">Please enter your username .</div>
                       </div>
                     </div>
 
@@ -367,7 +367,7 @@
             if (result.error === 'invalid_csrf_token') {
               await showAlert('Error', 'Invalid session. Please refresh the page.', 'error');
             } else {
-              await showAlert('Login Failed', result.message || 'Invalid username/email or password', 'error');
+              await showAlert('Login Failed', result.message || 'Invalid username or password', 'error');
             }
             loginButton.innerHTML = 'Login';
             return;
