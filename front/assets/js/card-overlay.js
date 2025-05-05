@@ -8,11 +8,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Create container for image and text
   const contentContainer = document.createElement('div');
-  contentContainer.className = 'bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 md:mx-0 flex flex-col md:flex-row overflow-hidden transform transition-transform duration-300 scale-95';
+  contentContainer.className = 'bg-white rounded-2xl shadow-lg w-full max-w-4xl mx-4 md:mx-0 flex flex-col md:flex-row overflow-hidden transform transition-transform duration-300 scale-95';
 
   // Create image container
   const imageContainer = document.createElement('div');
-  imageContainer.className = 'md:w-1/2 flex items-center justify-center p-6 bg-gray-50';
+  imageContainer.className = 'md:w-1/2 flex items-center justify-center p-6 bg-gray-100';
 
   // Create image element
   const overlayImg = document.createElement('img');
@@ -23,14 +23,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Create text panel
   const textPanel = document.createElement('div');
-  textPanel.className = 'md:w-1/2 p-8 flex flex-col justify-between bg-white';
+  textPanel.className = 'md:w-1/2 p-6 md:p-8 flex flex-col justify-between bg-white';
 
   // Create title and description elements
   const panelTitle = document.createElement('h2');
-  panelTitle.className = 'text-2xl md:text-3xl font-bold text-gray-800 mb-4';
+  panelTitle.className = 'text-2xl md:text-3xl font-bold text-gray-800 mb-4 font-poppins';
 
   const panelDescription = document.createElement('p');
-  panelDescription.className = 'text-gray-600 text-base md:text-lg leading-relaxed mb-6';
+  panelDescription.className = 'text-gray-600 text-base md:text-lg leading-relaxed mb-6 font-poppins';
 
   // Append elements to the panel
   textPanel.appendChild(panelTitle);
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Create close button
   const closeBtn = document.createElement('button');
   closeBtn.innerHTML = '×';
-  closeBtn.className = 'absolute top-4 right-4 text-white text-3xl font-bold bg-gray-800 bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-75 transition-colors duration-200 focus:outline-none';
+  closeBtn.className = 'absolute top-4 right-4 text-white text-2xl font-bold bg-primary bg-opacity-80 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-100 transition-colors duration-200 focus:outline-none';
 
   // Build the overlay
   overlay.appendChild(contentContainer);
@@ -131,12 +131,12 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Initial consultation</li>
             <li>Follow-up sessions</li>
             <li>Online consultation</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p class="mb-2">Book your appointment by calling (+63) 920 797 6690 or emailing dmdannsaspa@yahoo.com</p>
             <p>Available Schedule: Monday - Saturday, 11AM to 4PM</p>
           </div>
@@ -149,12 +149,12 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Light</li>
             <li>Moderate</li>
             <li>Heavy</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>The procedure typically includes scaling, polishing, and sometimes fluoride treatment to protect the teeth from decay.</p>
           </div>
         `;
@@ -166,12 +166,12 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Small</li>
             <li>Medium</li>
             <li>Large</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>Temporary fillings are usually made from soft materials like zinc oxide eugenol, glass ionomer, or composite resin.</p>
           </div>
         `;
@@ -183,13 +183,13 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Small</li>
             <li>Medium</li>
             <li>Large</li>
             <li>Anterior</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>It is designed to blend naturally with the surrounding tooth structure, making it a popular choice for both front and back teeth.</p>
           </div>
         `;
@@ -201,13 +201,13 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Deciduous ant/post</li>
             <li>Anterior</li>
             <li>Posterior</li>
             <li>Canine</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>A surgical extraction may involve stitches to help the gums heal properly. It is usually done under local anesthesia or sedation for comfort.</p>
           </div>
         `;
@@ -219,11 +219,11 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Mesio/Distoangular</li>
             <li>Upright Position</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>One of the most common special cases in oral surgery is the extraction of impacted wisdom teeth, which may be positioned abnormally, requiring advanced surgical techniques.</p>
           </div>
         `;
@@ -235,14 +235,14 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Removable Partial Ordinary Acrylic/Stayplate</li>
             <li>1-2 units plastic</li>
             <li>3-4 units plastic</li>
             <li>5 or more units plastic</li>
             <li>Wire clasps</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>Replacing missing teeth and restoring damaged oral structures to improve a patient’s ability to chew, speak, and smile.</p>
           </div>
         `;
@@ -254,11 +254,11 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Unilateral</li>
             <li>Bilateral</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>Casted metal dentures are stronger and thinner compared to acrylic-only dentures and provide better support and fit due to their rigid structure.</p>
           </div>
         `;
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Plastic with or without metal backing</li>
             <li>Porcelain fused to metal</li>
             <li>Tilite</li>
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <li>Anterior</li>
             <li>Posterior</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>Primarily made of tooth-colored material (such as porcelain or ceramic).</p>
           </div>
         `;
@@ -292,11 +292,11 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Anterior</li>
             <li>Posterior</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>They are a minimally invasive solution for improving tooth color, shape, and alignment with little to no enamel removal.</p>
           </div>
         `;
@@ -308,11 +308,11 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Anterior</li>
             <li>Posterior</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>Commonly used in cosmetic dentistry to enhance smiles by addressing imperfections such as discoloration, chips, gaps, and minor misalignment.</p>
           </div>
         `;
@@ -324,12 +324,12 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Plastic new ace</li>
             <li>New ace px</li>
             <li>Bioform</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>Made from acrylic resin, metal, or a combination of both and are supported by the gums and underlying bone.</p>
           </div>
         `;
@@ -341,12 +341,12 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Unilateral</li>
             <li>Bilateral</li>
             <li>Anteropostero</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>It is made from biocompatible, lightweight, and flexible thermoplastic resin, offering improved comfort and aesthetics.</p>
           </div>
         `;
@@ -358,11 +358,11 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Up/down</li>
             <li>Up/down w/ pontic</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>Retainers help prevent teeth from shifting back to their original position.</p>
           </div>
         `;
@@ -374,13 +374,13 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Rebasing u/l</li>
             <li>Relining u/l</li>
             <li>Crack denture</li>
             <li>Crown recementation</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>It can involve rebasing, relining, repairing cracks, or recementing crowns on dentures.</p>
           </div>
         `;
@@ -392,11 +392,11 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Anterior</li>
             <li>Posterior</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>It is commonly used in restorative dentistry to reinforce weak teeth after a root canal treatment (RCT).</p>
           </div>
         `;
@@ -408,11 +408,11 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Mono rooted</li>
             <li>Multi rooted/canal</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>The procedure involves removing the infected pulp, cleaning and disinfecting the root canals, filling with biocompatible material, and sealing the tooth.</p>
           </div>
         `;
@@ -424,13 +424,13 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>OP and Fluoride</li>
             <li>Pulpotomy</li>
             <li>Stainless steel crown</li>
             <li>Strip off crown</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>It focuses on preventive care, early detection, and treatment of dental issues in children.</p>
           </div>
         `;
@@ -442,33 +442,17 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo = document.createElement('div');
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
             <li>Premolar</li>
             <li>Molar</li>
           </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
             <p>It acts as a barrier against food particles and bacteria, reducing the risk of tooth decay.</p>
           </div>
         `;
         panelElement.appendChild(additionalInfo);
         break;
 
-      case "Orthodontic":
-        description = "Focuses on diagnosing, preventing, and correcting misaligned teeth and jaw problems.";
-        additionalInfo = document.createElement('div');
-        additionalInfo.className = 'mt-4';
-        additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
-            <li>Conventional</li>
-            <li>Self-ligating</li>
-            <li>Depends on severity of the case</li>
-          </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
-            <p>Orthodontic treatments help improve dental function, aesthetics, and overall oral health by using braces, aligners, and other corrective devices.</p>
-          </div>
-        `;
-        panelElement.appendChild(additionalInfo);
-        break;
 
       case "Imelda":
         description = "Professional cleaning procedure to remove plaque and tartar. Available in light, moderate, and heavy treatments depending on your needs.";
@@ -482,18 +466,33 @@ document.addEventListener('DOMContentLoaded', function () {
     descriptionElement.textContent = description;
   }
 
-  // Add Tailwind CSS CDN and custom styles
-  const tailwindScript = document.createElement('script');
-  tailwindScript.src = 'https://cdn.tailwindcss.com';
-  document.head.appendChild(tailwindScript);
-
+  // Add custom styles to ensure consistency with index.html
   const style = document.createElement('style');
   style.textContent = `
+    :root {
+      --primary: #007bff;
+      --accent: #0056b3;
+      --light: #ffffff;
+      --text: #333333;
+    }
     .image-overlay {
       opacity: 0;
+      font-family: 'Poppins', sans-serif;
     }
     .image-overlay.show {
       opacity: 1;
+    }
+    .bg-primary {
+      background-color: var(--primary);
+    }
+    .text-primary {
+      color: var(--primary);
+    }
+    .border-primary {
+      border-color: var(--primary);
+    }
+    .font-poppins {
+      font-family: 'Poppins', sans-serif;
     }
     @media (max-width: 768px) {
       .image-overlay .bg-white {
