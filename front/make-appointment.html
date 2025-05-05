@@ -931,6 +931,13 @@
             return;
           }
 
+          if (response.status === 500) {
+            console.error('Server error:', responseData);
+            hideLoading();
+            await showAlert('Server Error', responseData.message || 'An unexpected error occurred on the server. Please try again later.', 'error');
+            return;
+          }
+
           if (!response.ok) {
             console.error('Server response:', responseData);
             throw new Error(responseData.message || 'Failed to book appointment');
