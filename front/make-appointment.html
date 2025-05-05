@@ -883,6 +883,14 @@
         }
 
         const isoAppointmentDate = convertToISO(appointmentDate);
+        const payload = {
+          user_id: authData.userId,
+          appointment_date: isoAppointmentDate,
+          service_id: serviceId,
+          notes: notes || null,
+        };
+
+        console.log('Sending appointment request:', payload);
 
         try {
           const response = await withTimeout(fetch(`${BASE_URL}/api/appointments`, {
@@ -892,12 +900,7 @@
               'Content-Type': 'application/json',
               'CSRF-Token': csrfToken
             },
-            body: JSON.stringify({
-              user_id: authData.userId,
-              appointment_date: isoAppointmentDate,
-              service_id: serviceId,
-              notes: notes || null,
-            }),
+            body: JSON.stringify(payload),
           }));
 
           const responseData = await response.json();
