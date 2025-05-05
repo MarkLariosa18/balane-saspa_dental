@@ -7,12 +7,9 @@ const RateLimitRedisStore = require('rate-limit-redis');
 const rateLimit = require('express-rate-limit');
 const validator = require('validator');
 const helmet = require('helmet');
-const winston = require('winston');
+const winston = require('winston'); // Added for structured logging
 const sanitizeHtml = require('sanitize-html');
 const axios = require('axios');
-const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
-const recaptchaVerifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${req.body['g-recaptcha-response']}`;
-const recaptchaResult = await axios.post(recaptchaVerifyUrl);
 
 require('dotenv').config();
 
@@ -20,7 +17,7 @@ require('dotenv').config();
 const router = express.Router();
 
 // Validate critical environment variables
-const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_KEY', 'ENCRYPTION_KEY', 'EMAIL_USER', 'EMAIL_PASSWORD', 'REDIS_URL', 'NODE_ENV'];
+const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_KEY', 'ENCRYPTION_KEY', 'EMAIL_USER', 'EMAIL_PASSWORD', 'REDIS_URL', 'NODE_ENV', 'RECAPTCHA_SECRET_KEY'];
 requiredEnvVars.forEach((varName) => {
   if (!process.env[varName]) {
     console.error(`Missing required environment variable: ${varName}`);
@@ -42,7 +39,7 @@ const logger = winston.createLogger({
   ],
 });
 
-// Initialize Redis (shared with server.js, but included for completeness)
+// Initialize Redis (assumes shared instance from server.js; adjust as needed)
 const redis = new Redis(process.env.REDIS_URL, {
   retryStrategy: (times) => Math.min(times * 50, 2000),
   maxRetriesPerRequest: 10,
@@ -127,8 +124,6 @@ const transporter = nodemailer.createTransport({
   },
   pool: true,
   maxConnections: 5,
-  rateLimit: 14,
-  rateDelta: 1000,
   secure: true,
 });
 
@@ -149,7 +144,7 @@ transporter.verify((error, success) => {
 // Rate limiters with rate-limit-redis
 const createRateLimiter = (prefix, windowMs, max, message) =>
   rateLimit({
-    store: new RateLimitRedisStore.default({
+    store: new RateLimitRedisStore({
       sendCommand: (...args) => redis.call(...args),
       prefix: `ratelimit:${prefix}`,
     }),
@@ -195,17 +190,27 @@ function createOtpEmailTemplate(otp, subject, greeting, actionText) {
   `;
 }
 
-if (!recaptchaResult.data.success) {
-  return res.status(400).json({ success: false, message: 'reCAPTCHA verification failed.' });
-}
 // Contact Us form submission route
 router.post('/send-email', sendEmailRateLimiter, async (req, res) => {
-  const { name, email, subject, message, _csrf } = req.body;
+  const { name, email, subject, message, _csrf, 'g-recaptcha-response': recaptchaResponse } = req.body;
 
-  // Validate CSRF token
-  if (!_csrf || req.csrfToken() !== _csrf) {
+  // Validate CSRF token (assumes csurf middleware is applied)
+  if (!_csrf || _csrf !== req.csrfToken()) {
     logger.warn('Invalid CSRF token in contact form submission', { ip: req.ip });
     return res.status(403).json({ success: false, error: 'csrf_error', message: 'Invalid CSRF token.' });
+  }
+
+  // Validate reCAPTCHA
+  try {
+    const recaptchaVerifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaResponse}`;
+    const recaptchaResult = await axios.post(recaptchaVerifyUrl);
+    if (!recaptchaResult.data.success) {
+      logger.warn('reCAPTCHA verification failed', { ip: req.ip });
+      return res.status(400).json({ success: false, message: 'reCAPTCHA verification failed.' });
+    }
+  } catch (error) {
+    logger.error('reCAPTCHA verification error:', { error: error.message, ip: req.ip });
+    return res.status(500).json({ success: false, message: 'Failed to verify reCAPTCHA.' });
   }
 
   // Validate required fields
@@ -255,7 +260,7 @@ router.post('/send-email', sendEmailRateLimiter, async (req, res) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    logger.info(`Contact form email sent successfully to: dmdannsaspa@yahoo.com`, { email: emailToCheck, ip: req.ip });
+    logger.info(`Contact form email sent successfully to: marklariosa18@gmail.com`, { email: emailToCheck, ip: req.ip });
     res.status(200).json({ success: true, message: 'Your message has been sent successfully.' });
   } catch (error) {
     logger.error('Error sending contact form email:', { error: error.message, email: emailToCheck, ip: req.ip });
@@ -269,7 +274,7 @@ router.post('/send-otp', otpRateLimiter, async (req, res) => {
     const { email, _csrf } = req.body;
 
     // Validate CSRF token
-    if (!_csrf || req.csrfToken() !== _csrf) {
+    if (!_csrf || _csrf !== req.csrfToken()) {
       logger.warn('Invalid CSRF token in OTP request', { ip: req.ip });
       return res.status(403).json({ error: 'csrf_error', message: 'Invalid CSRF token.' });
     }
@@ -355,7 +360,7 @@ router.post('/send-otp-password-change-admin', otpRateLimiter, isAuthenticated, 
     const userId = req.session.userId;
 
     // Validate CSRF token
-    if (!_csrf || req.csrfToken() !== _csrf) {
+    if (!_csrf || _csrf !== req.csrfToken()) {
       logger.warn('Invalid CSRF token in admin OTP request', { ip: req.ip });
       return res.status(403).json({ error: 'csrf_error', message: 'Invalid CSRF token.' });
     }
@@ -423,7 +428,7 @@ router.post('/send-otp-password-change-user', otpRateLimiter, isAuthenticated, a
     const userId = req.session.userId;
 
     // Validate CSRF token
-    if (!_csrf || req.csrfToken() !== _csrf) {
+    if (!_csrf || _csrf !== req.csrfToken()) {
       logger.warn('Invalid CSRF token in user OTP request', { ip: req.ip });
       return res.status(403).json({ error: 'csrf_error', message: 'Invalid CSRF token.' });
     }
@@ -501,7 +506,7 @@ router.post('/verify-otp', verifyOtpRateLimiter, async (req, res) => {
     const { email: providedEmail, otp, purpose, _csrf } = req.body;
 
     // Validate CSRF token
-    if (!_csrf || req.csrfToken() !== _csrf) {
+    if (!_csrf || _csrf !== req.csrfToken()) {
       logger.warn('Invalid CSRF token in OTP verification', { ip: req.ip });
       return res.status(403).json({ error: 'csrf_error', message: 'Invalid CSRF token.' });
     }
@@ -566,7 +571,7 @@ router.post('/verify-otp', verifyOtpRateLimiter, async (req, res) => {
   }
 });
 
-// Apply helmet for security headers (redundant with server.js, but kept for completeness)
+// Apply helmet for security headers
 router.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -582,15 +587,6 @@ router.use(helmet({
 router.use((err, req, res, next) => {
   logger.error('Route error:', { error: err.message, stack: err.stack, path: req.path });
   res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
-});
-
-// Graceful shutdown for Redis (handled in server.js, but included for completeness)
-process.on('SIGTERM', () => {
-  logger.info('Shutting down Redis connection');
-  redis.quit(() => {
-    logger.info('Redis connection closed');
-    process.exit(0);
-  });
 });
 
 module.exports = {
