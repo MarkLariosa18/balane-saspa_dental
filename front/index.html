@@ -829,7 +829,8 @@
               <input type="hidden" name="_subject" value="New message from Balane-Saspa Dental Clinic website">
               <input type="hidden" name="_captcha" value="true">
               <input type="hidden" name="_template" value="table">
-              <input type="hidden" value="https://balanespasadentalclinic.com/thank-you.html">
+              <!-- Honeypot field to prevent spam without using reCAPTCHA -->
+              <input type="text" name="_honey" style="display:none">
               
               <div class="row gy-4">
                 <div class="col-md-6">
@@ -849,10 +850,7 @@
                 </div>
           
                 <div class="col-md-12 text-center">
-                  <div class="loading">Loading</div>
-                  <div class="error-message"></div>
-                  <div class="sent-message">Your message has been sent. Thank you!</div>
-                  <button type="submit">Send Message</button>
+                  <button type="submit" class="btn btn-primary">Send Message</button>
                 </div>
               </div>
             </form>
@@ -989,12 +987,17 @@
     const form = document.querySelector('.php-email-form');
     if (form) {
       form.addEventListener('submit', function(e) {
-        // Form will submit normally to FormSubmit service
-        // You can add additional client-side validation here if needed
+        // Optional: Add any client-side validation here
         
-        // If you want to show a thank you message without leaving the page (remove _next from FormSubmit config)
+        // Show loading indicator if desired
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
+          submitBtn.disabled = true;
+        }
         
         e.preventDefault();
+        
         const formData = new FormData(this);
         
         fetch('https://formsubmit.co/marklariosa18@gmail.com', {
@@ -1003,26 +1006,43 @@
         })
         .then(response => {
           if (response.ok) {
-            Swal.fire({
-              title: 'Thank You!',
-              text: 'Your message has been sent successfully.',
-              icon: 'success',
-              confirmButtonColor: '#007bff'
-            });
+            // Success message using SweetAlert2 if available
+            if (typeof Swal !== 'undefined') {
+              Swal.fire({
+                title: 'Thank You!',
+                text: 'Your message has been sent successfully.',
+                icon: 'success',
+                confirmButtonColor: '#007bff'
+              });
+            } else {
+              alert('Thank you! Your message has been sent successfully.');
+            }
             form.reset();
           } else {
             throw new Error('Something went wrong');
           }
         })
         .catch(error => {
-          Swal.fire({
-            title: 'Oops!',
-            text: 'There was a problem sending your message. Please try again.',
-            icon: 'error',
-            confirmButtonColor: '#007bff'
-          });
+          // Error message
+          if (typeof Swal !== 'undefined') {
+            Swal.fire({
+              title: 'Oops!',
+              text: 'There was a problem sending your message. Please try again.',
+              icon: 'error', 
+              confirmButtonColor: '#007bff'
+            });
+          } else {
+            alert('Oops! There was a problem sending your message. Please try again.');
+          }
+        })
+        .finally(() => {
+          // Reset button state
+          if (submitBtn) {
+            submitBtn.innerHTML = 'Send Message';
+            submitBtn.disabled = false;
+          }
         });
-
+        
       });
     }
   });
