@@ -557,7 +557,7 @@
 
   async function getCsrfToken() {
     try {
-      const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
         credentials: 'include'
       });
       const data = await response.json();
@@ -569,175 +569,186 @@
   }
 
   function initializeSocketIO() {
-    socket = io('https://balane-saspa-dental-1.onrender.com', {
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 5000
-    });
-
-    socket.on('connect', () => {
-      console.log('Socket.IO connection established');
-      socket.emit('join', { role: 'admin' }); // Join admin room
-      consecutiveFetchFailures = 0;
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-        console.log('Polling stopped due to Socket.IO connection');
-      }
-    });
-
-    socket.on('reschedule_request', async (data) => {
-      console.log('Socket.IO reschedule_request received:', data);
-      let request = data.request;
-      if (typeof request === 'string') {
-        request = await decryptData(request);
-        if (!request) {
-          console.error('Failed to decrypt reschedule request');
-          return;
-        }
-        try {
-          request = JSON.parse(request);
-        } catch (error) {
-          console.error('Failed to parse decrypted reschedule request:', error);
-          return;
-        }
-      }
-      if (
-        request.status === 'pending' &&
-        !pendingRequests.some(req => req.id === request.id) &&
-        !isExpired(request)
-      ) {
-        pendingRequests.push(request);
-        updatePendingRequests();
-        Swal.fire({
-          icon: 'info',
-          title: 'New Reschedule Request',
-          text: `New reschedule request for ${getPatientName(request.patients)}.`,
-          confirmButtonColor: '#4154f1',
-          timer: 3000
-        });
-      }
-    });
-
-    socket.on('cancel_request', async (data) => {
-      console.log('Socket.IO cancel_request received:', data);
-      let request = data.request;
-      if (typeof request === 'string') {
-        request = await decryptData(request);
-        if (!request) {
-          console.error('Failed to decrypt cancel request');
-          return;
-        }
-        try {
-          request = JSON.parse(request);
-        } catch (error) {
-          console.error('Failed to parse decrypted cancel request:', error);
-          return;
-        }
-      }
-      if (
-        request.status === 'pending' &&
-        !pendingRequests.some(req => req.id === request.id) &&
-        !isExpired(request)
-      ) {
-        pendingRequests.push(request);
-        updatePendingRequests();
-        Swal.fire({
-          icon: 'info',
-          title: 'New Cancel Request',
-          text: `New cancel request for ${getPatientName(request.patients)}.`,
-          confirmButtonColor: '#4154f1',
-          timer: 3000
-        });
-      }
-    });
-
-    socket.on('confirm_response', async (data) => {
-      console.log('Socket.IO confirm_response received:', data);
-      let message = data;
-      if (typeof data === 'string') {
-        message = await decryptData(data);
-        if (!message) {
-          console.error('Failed to decrypt confirm response');
-          return;
-        }
-        try {
-          message = JSON.parse(message);
-        } catch (error) {
-          console.error('Failed to parse decrypted confirm response:', error);
-          return;
-        }
-      }
-      handleRequestResponse(message);
-    });
-
-    socket.on('reschedule_response', async (data) => {
-      console.log('Socket.IO reschedule_response received:', data);
-      let message = data;
-      if (typeof data === 'string') {
-        message = await decryptData(data);
-        if (!message) {
-          console.error('Failed to decrypt reschedule response');
-          return;
-        }
-        try {
-          message = JSON.parse(message);
-        } catch (error) {
-          console.error('Failed to parse decrypted reschedule response:', error);
-          return;
-        }
-      }
-      handleRequestResponse(message);
-    });
-
-    socket.on('cancel_response', async (data) => {
-      console.log('Socket.IO cancel_response received:', data);
-      let message = data;
-      if (typeof data === 'string') {
-        message = await decryptData(data);
-        if (!message) {
-          console.error('Failed to decrypt cancel response');
-          return;
-        }
-        try {
-          message = JSON.parse(message);
-        } catch (error) {
-          console.error('Failed to parse decrypted cancel response:', error);
-          return;
-        }
-      }
-      handleRequestResponse(message);
-    });
-
-    socket.on('reject_response', async (data) => {
-      console.log('Socket.IO reject_response received:', data);
-      let message = data;
-      if (typeof data === 'string') {
-        message = await decryptData(data);
-        if (!message) {
-          console.error('Failed to decrypt reject response');
-          return;
-        }
-        try {
-          message = JSON.parse(message);
-        } catch (error) {
-          console.error('Failed to parse decrypted reject response:', error);
-          return;
-        }
-      }
-      handleRequestResponse(message);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('Socket.IO disconnected. Attempting to reconnect...');
+    if (typeof io === 'undefined') {
+      console.error('Socket.IO library not loaded. Falling back to polling.');
       startPolling();
-    });
+      return;
+    }
 
-    socket.on('connect_error', (error) => {
-      console.error('Socket.IO connection error:', error);
+    try {
+      socket = io('https://balane-saspa-dental-1.onrender.com', {
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 5000
+      });
+
+      socket.on('connect', () => {
+        console.log('Socket.IO connection established');
+        socket.emit('join', { role: 'admin' }); // Join admin room
+        consecutiveFetchFailures = 0;
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+          console.log('Polling stopped due to Socket.IO connection');
+        }
+      });
+
+      socket.on('reschedule_request', async (data) => {
+        console.log('Socket.IO reschedule_request received:', data);
+        let request = data.request;
+        if (typeof request === 'string') {
+          request = await decryptData(request);
+          if (!request) {
+            console.error('Failed to decrypt reschedule request');
+            return;
+          }
+          try {
+            request = JSON.parse(request);
+          } catch (error) {
+            console.error('Failed to parse decrypted reschedule request:', error);
+            return;
+          }
+        }
+        if (
+          request.status === 'pending' &&
+          !pendingRequests.some(req => req.id === request.id) &&
+          !isExpired(request)
+        ) {
+          pendingRequests.push(request);
+          updatePendingRequests();
+          Swal.fire({
+            icon: 'info',
+            title: 'New Reschedule Request',
+            text: `New reschedule request for ${getPatientName(request.patients)}.`,
+            confirmButtonColor: '#4154f1',
+            timer: 3000
+          });
+        }
+      });
+
+      socket.on('cancel_request', async (data) => {
+        console.log('Socket.IO cancel_request received:', data);
+        let request = data.request;
+        if (typeof request === 'string') {
+          request = await decryptData(request);
+          if (!request) {
+            console.error('Failed to decrypt cancel request');
+            return;
+          }
+          try {
+            request = JSON.parse(request);
+          } catch (error) {
+            console.error('Failed to parse decrypted cancel request:', error);
+            return;
+          }
+        }
+        if (
+          request.status === 'pending' &&
+          !pendingRequests.some(req => req.id === request.id) &&
+          !isExpired(request)
+        ) {
+          pendingRequests.push(request);
+          updatePendingRequests();
+          Swal.fire({
+            icon: 'info',
+            title: 'New Cancel Request',
+            text: `New cancel request for ${getPatientName(request.patients)}.`,
+            confirmButtonColor: '#4154f1',
+            timer: 3000
+          });
+        }
+      });
+
+      socket.on('confirm_response', async (data) => {
+        console.log('Socket.IO confirm_response received:', data);
+        let message = data;
+        if (typeof data === 'string') {
+          message = await decryptData(data);
+          if (!message) {
+            console.error('Failed to decrypt confirm response');
+            return;
+          }
+          try {
+            message = JSON.parse(message);
+          } catch (error) {
+            console.error('Failed to parse decrypted confirm response:', error);
+            return;
+          }
+        }
+        handleRequestResponse(message);
+      });
+
+      socket.on('reschedule_response', async (data) => {
+        console.log('Socket.IO reschedule_response received:', data);
+        let message = data;
+        if (typeof data === 'string') {
+          message = await decryptData(data);
+          if (!message) {
+            console.error('Failed to decrypt reschedule response');
+            return;
+          }
+          try {
+            message = JSON.parse(message);
+          } catch (error) {
+            console.error('Failed to parse decrypted reschedule response:', error);
+            return;
+          }
+        }
+        handleRequestResponse(message);
+      });
+
+      socket.on('cancel_response', async (data) => {
+        console.log('Socket.IO cancel_response received:', data);
+        let message = data;
+        if (typeof data === 'string') {
+          message = await decryptData(data);
+          if (!message) {
+            console.error('Failed to decrypt cancel response');
+            return;
+          }
+          try {
+            message = JSON.parse(message);
+          } catch (error) {
+            console.error('Failed to parse decrypted cancel response:', error);
+            return;
+          }
+        }
+        handleRequestResponse(message);
+      });
+
+      socket.on('reject_response', async (data) => {
+        console.log('Socket.IO reject_response received:', data);
+        let message = data;
+        if (typeof data === 'string') {
+          message = await decryptData(data);
+          if (!message) {
+            console.error('Failed to decrypt reject response');
+            return;
+          }
+          try {
+            message = JSON.parse(message);
+          } catch (error) {
+            console.error('Failed to parse decrypted reject response:', error);
+            return;
+          }
+        }
+        handleRequestResponse(message);
+      });
+
+      socket.on('disconnect', () => {
+        console.log('Socket.IO disconnected. Attempting to reconnect...');
+        startPolling();
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('Socket.IO connection error:', error);
+        startPolling();
+      });
+    } catch (error) {
+      console.error('Failed to initialize Socket.IO:', error);
       startPolling();
-    });
+    }
   }
 
   function isExpired(request) {
@@ -815,7 +826,7 @@
 
     setTimeout(() => {
       if (!socket || !socket.connected) {
-        console.warn('Socket.IO not available, falling back to polling...');
+        console.warn('Socket.IO not connected, ensuring polling is active...');
         startPolling();
       }
     }, 1000);
