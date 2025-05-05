@@ -175,7 +175,7 @@ function encrypt(text) {
 
 function decrypt(text) {
   if (!text) return null;
-  const [ivHex, authTagHex, encryptedHex] = encryptedEmail.split(':');
+  const [ivText, authTagText, encryptedText] = text.split(':');
   if (!ivText || !encryptedText || !authTagText) {
     logger.warn(`Invalid encrypted format: "${text}"`);
     return text;
