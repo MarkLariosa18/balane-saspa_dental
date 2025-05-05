@@ -59,7 +59,7 @@ function encryptEmail(email) {
 
 function decryptEmail(encryptedEmail) {
   try {
-    const [ivHex, authTagHex, encryptedHex] = encryptedEmail.split(':');
+    const [ivText, encryptedText, authTagText] = text.split(':');
     if (!ivHex || !authTagHex || !encryptedHex) {
       throw new Error('Invalid encrypted email format');
     }
