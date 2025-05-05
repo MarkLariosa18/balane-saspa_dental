@@ -165,16 +165,13 @@ app.use(helmet({
         "https://www.gstatic.com", // Added for reCAPTCHA
         "https://www.recaptcha.net", // Added for reCAPTCHA
         "https://code.jquery.com",
-        "https://www.recaptcha.net",
+        "https://www.google.com/recaptcha/api.js",
         // "'unsafe-inline'", // Uncomment for debugging, remove later
       ],
       styleSrc: [
         "'self'",
         "https://fonts.googleapis.com",
         "https://cdn.tailwindcss.com",
-        "https://www.recaptcha.net",
-        'https://www.google.com',
-        "https://www.gstatic.com/recaptcha/",
         "'unsafe-inline'", // Needed for reCAPTCHA inline styles
       ],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
@@ -193,7 +190,6 @@ app.use(helmet({
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net'],
       upgradeInsecureRequests: [],
       // Report CSP violations (optional for debugging)
       reportUri: '/csp-violation-report',
