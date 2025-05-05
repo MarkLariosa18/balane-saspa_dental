@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       recaptchaResponse = await new Promise((resolve, reject) => {
         grecaptcha.ready(() => {
-          grecaptcha.execute('your-recaptcha-site-key', { action: 'submit' })
+          grecaptcha.execute('6LdKay4rAAAAAIqBViqYzNVp40BFTlRSWShhpycJ', { action: 'submit' })
             .then(token => resolve(token))
             .catch(error => reject(error));
         });
