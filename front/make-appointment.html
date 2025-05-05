@@ -629,7 +629,7 @@
       onDayCreate: (dObj, dStr, fp, dayElem) => {
         const now = new Date();
         const day = dayElem.dateObj.getDay();
-        const dateStr = `${dayElem.dateObj.getFullYear()}-${String(dayElem.dateObj.getMonth() + 1).padStart(2, '0')}-${String(dayElem.dateObj.getDate()).padStart(2, '0')}`;
+        const dateStr = `${dayElem.dateObj.getFullYear()}-${String(dayElem.dateObj.getMonth() + 1).padStart(2, '0')}-${String(dayElem.getDate()).padStart(2, '0')}`;
         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const isFullyBooked = availableHours.every(hour => bookedTimes.includes(`${dateStr} ${hour.toString().padStart(2, '0')}:00`));
         if (day === 0 || isFullyBooked || (dateStr === todayStr && now.getHours() >= 15)) {
@@ -915,6 +915,13 @@
           if (response.status === 403) {
             hideLoading();
             await showAlert('Security Error', 'Invalid CSRF token. Please refresh the page and try again.', 'error');
+            return;
+          }
+
+          if (response.status === 429) {
+            console.log('Rate limit exceeded:', responseData);
+            hideLoading();
+            await showAlert('Booking Limit Reached', 'You have reached the maximum of 5 appointments per day. Please try booking for a different day.', 'warning');
             return;
           }
 
