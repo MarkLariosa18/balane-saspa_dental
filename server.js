@@ -154,15 +154,19 @@ io.on('connection', (socket) => {
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
+      defaultSrc: ["'self'", "https:"],
       connectSrc: ["'self'", 'wss://balane-saspa-dental-1.onrender.com'],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdn.socket.io", "https://unpkg.com", "https://fonts.googleapis.com" , "https://cdn.tailwindcss.com", "https://www.google.com"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrcAttr: ["'unsafe-inline'"], // Temporary for debugging inline handlers
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdn.socket.io", "https://unpkg.com", "https://fonts.googleapis.com", "https://cdn.tailwindcss.com", "https://www.google.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "https:"],
+      frameSrc: ["'self'", "https:"],
+      scriptSrcAttr: ["'unsafe-inline'"],
     },
   },
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 }));
+
 app.use(compression());
 app.use(cors({
   origin: (origin, callback) => {
