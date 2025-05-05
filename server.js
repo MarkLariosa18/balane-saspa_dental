@@ -150,29 +150,27 @@ io.on('connection', (socket) => {
   });
 });
 
+
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
-        defaultSrc: ["'self'", 'https:'], // Allow all HTTPS sources as fallback
-        connectSrc: [
-          "'self'",
-          'wss://*.onrender.com', // Support WebSocket connections on Render
-          'https:' // Allow all HTTPS API/form connections
-        ],
+        defaultSrc: ["'self'"],
+        connectSrc: ["'self'", 'wss://balane-saspa-dental-1.onrender.com', 'https://formsubmit.co'],
         scriptSrc: [
           "'self'",
-          "'unsafe-inline'", // For inline scripts (use cautiously)
-          'https:' // Allow all HTTPS scripts
+          "'unsafe-inline'", // Allows inline event handlers and inline scripts
+          'https://cdn.jsdelivr.net',
+          'https://cdn.socket.io',
+          'https://code.jquery.com',
+          'https://cdn.tailwindcss.com',
+          'https://formsubmit.co',
+          'https://cdn.jsdelivr.net/npm/sweetalert2@11' // Add SweetAlert
         ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'", // For inline styles (use cautiously)
-          'https:' // Allow all HTTPS styles
-        ],
-        imgSrc: ["'self'", 'data:', 'https:'], // Allow HTTPS images and data URIs
-        formAction: ["'self'", 'https:'], // Allow form submissions to HTTPS endpoints
-        frameAncestors: ["'self'"], // Prevent clickjacking
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://cdn.tailwindcss.com'],
+        imgSrc: ["'self'", 'data:'], // allow inline images or icons if needed
+        formAction: ["'self'", 'https://formsubmit.co'], // allow form submissions
+        frameAncestors: ["'self'"], // prevent clickjacking
       },
     },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
