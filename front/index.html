@@ -971,7 +971,7 @@
 
       // Fetch CSRF token
       try {
-        const csrfResponse = await fetch('auth/csrf-token', { credentials: 'include' });
+        const csrfResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', { credentials: 'include' });
         if (!csrfResponse.ok) throw new Error('CSRF token fetch failed');
         const csrfData = await csrfResponse.json();
         document.getElementById('csrf-token').value = csrfData.csrfToken;
@@ -1117,7 +1117,7 @@
             }
             // Refetch CSRF token
             try {
-              const res = await fetch('auth/csrf-token', { credentials: 'include' });
+              const res = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', { credentials: 'include' });
               if (res.ok) {
                 const data = await res.json();
                 document.getElementById('csrf-token').value = data.csrfToken;
