@@ -43,9 +43,8 @@ const redis = new Redis(process.env.REDIS_URL, {
 });
 
 // Encryption settings
-const ALGORITHM = 'aes-256-cbc'; // Upgraded to GCM for authenticated encryption
-const IV_LENGTH = 12; // GCM recommends 12 bytes for IV
-const AUTH_TAG_LENGTH = 16; // GCM auth tag length
+const ALGORITHM = 'aes-256-cbc';
+const IV_LENGTH = 16;
 
 // Validate encryption key
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
