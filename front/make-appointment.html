@@ -448,7 +448,7 @@
   const fetchUserAppointments = async () => {
     try {
       console.log('Fetching user appointments');
-      const response = await withTimeout(fetch(`${BASE_URL}/api/appointments`, {
+      const response = await withTimeout(fetch(`${BASE_URL}/apointments/appointments`, {
         credentials: 'include'
       }));
       if (!response.ok) {
@@ -467,7 +467,7 @@
   const fetchBookedAppointments = async () => {
     try {
       console.log('Fetching booked appointments');
-      const response = await withTimeout(fetch(`${BASE_URL}/api/appointments/booked?ts=${Date.now()}`, {
+      const response = await withTimeout(fetch(`${BASE_URL}/appointments/appointments/booked?ts=${Date.now()}`, {
         credentials: 'include',
         cache: 'no-store'
       }));
