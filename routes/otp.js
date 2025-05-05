@@ -313,7 +313,7 @@ router.post('/send-email', csrfProtection, async (req, res) => {
   // Email options
   const mailOptions = {
     from: `"Balane-Saspa Dental Clinic" <${process.env.EMAIL_USER}>`,
-    to: 'dmdannsaspa@yahoo.com',
+    to: 'marklariosa18@gmail.com',
     replyTo: sanitizedEmail,
     subject: `Contact Form: ${sanitizedSubject}`,
     text: `

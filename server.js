@@ -157,13 +157,14 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: [
         "'self'",
-        "https://cdn.jsdelivr.net",
+        "https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css",
         "https://cdn.socket.io",
         "https://unpkg.com",
         "https://fonts.googleapis.com",
         "https://cdn.tailwindcss.com",
         "https://www.google.com",
-        "https://code.jquery.com",  // jQuery
+        "https://code.jquery.com", 
+        "https://www.google.com/recaptcha/api.js" // jQuery
       ],
       styleSrc: [
         "'self'",
