@@ -820,7 +820,7 @@ async function confirmAppointment(appointmentId) {
   }
 
   // Fetch CSRF token
-  const csrfResponse = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
+  const csrfResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
     credentials: 'include',
     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
   });
@@ -886,7 +886,7 @@ async function rejectAppointment(appointmentId) {
   }
 
   // Fetch CSRF token
-  const csrfResponse = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
+  const csrfResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
     credentials: 'include',
     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
   });
