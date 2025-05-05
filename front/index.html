@@ -824,24 +824,30 @@
           </div>
 
           <div class="col-lg-6">
-            <form action="forms/contact.php" method="post" class="php-email-form" data-aos="fade-up" data-aos-delay="500">
+            <form action="https://formsubmit.co/marklariosa18@gmail.com" method="POST" class="php-email-form" data-aos="fade-up" data-aos-delay="500">
+              <!-- FormSubmit configuration -->
+              <input type="hidden" name="_subject" value="New message from Balane-Saspa Dental Clinic website">
+              <input type="hidden" name="_captcha" value="false">
+              <input type="hidden" name="_template" value="table">
+              <input type="hidden" name="_next" value="https://balanespasadentalclinic.com/thank-you.html">
+              
               <div class="row gy-4">
                 <div class="col-md-6">
                   <input type="text" name="name" class="form-control" placeholder="Your Name" required>
                 </div>
-
+          
                 <div class="col-md-6">
                   <input type="email" class="form-control" name="email" placeholder="Your Email" required>
                 </div>
-
+          
                 <div class="col-md-12">
                   <input type="text" class="form-control" name="subject" placeholder="Subject" required>
                 </div>
-
+          
                 <div class="col-md-12">
                   <textarea class="form-control" name="message" rows="4" placeholder="Message" required></textarea>
                 </div>
-
+          
                 <div class="col-md-12 text-center">
                   <div class="loading">Loading</div>
                   <div class="error-message"></div>
@@ -978,6 +984,48 @@
         });
       }
     });
+
+    document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.php-email-form');
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        // Form will submit normally to FormSubmit service
+        // You can add additional client-side validation here if needed
+        
+        // If you want to show a thank you message without leaving the page (remove _next from FormSubmit config)
+        
+        e.preventDefault();
+        const formData = new FormData(this);
+        
+        fetch('https://formsubmit.co/marklariosa18@gmail.com', {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => {
+          if (response.ok) {
+            Swal.fire({
+              title: 'Thank You!',
+              text: 'Your message has been sent successfully.',
+              icon: 'success',
+              confirmButtonColor: '#007bff'
+            });
+            form.reset();
+          } else {
+            throw new Error('Something went wrong');
+          }
+        })
+        .catch(error => {
+          Swal.fire({
+            title: 'Oops!',
+            text: 'There was a problem sending your message. Please try again.',
+            icon: 'error',
+            confirmButtonColor: '#007bff'
+          });
+        });
+
+      });
+    }
+  });
   </script>
 
   <script src="assets/js/main.js"></script>
