@@ -627,11 +627,17 @@
         });
       },
       onDayCreate: (dObj, dStr, fp, dayElem) => {
+        console.log('onDayCreate called for dayElem:', dayElem, 'dateObj:', dayElem.dateObj);
+        if (!dayElem.dateObj || !(dayElem.dateObj instanceof Date)) {
+          console.warn('Invalid dateObj for dayElem:', dayElem);
+          return;
+        }
         const now = new Date();
         const day = dayElem.dateObj.getDay();
-        const dateStr = `${dayElem.dateObj.getFullYear()}-${String(dayElem.dateObj.getMonth() + 1).padStart(2, '0')}-${String(dayElem.getDate()).padStart(2, '0')}`;
+        const dateStr = `${dayElem.dateObj.getFullYear()}-${String(dayElem.dateObj.getMonth() + 1).padStart(2, '0')}-${String(dayElem.dateObj.getDate()).padStart(2, '0')}`;
         const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const isFullyBooked = availableHours.every(hour => bookedTimes.includes(`${dateStr} ${hour.toString().padStart(2, '0')}:00`));
+        console.log(`Checking date ${dateStr}: isSunday=${day === 0}, isFullyBooked=${isFullyBooked}, isTodayPast=${dateStr === todayStr && now.getHours() >= 15}`);
         if (day === 0 || isFullyBooked || (dateStr === todayStr && now.getHours() >= 15)) {
           dayElem.classList.add('disabled');
         }

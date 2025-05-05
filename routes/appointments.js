@@ -83,7 +83,7 @@ transporter.verify((error, success) => {
 const appointmentRateLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'appointment:limit',
-  points: 5, // 5 appointments per day
+  points: 999, // 5 appointments per day
   duration: 24 * 60 * 60, // 24 hours
   blockDuration: 24 * 60 * 60, // Block for 24 hours if limit exceeded
 });
