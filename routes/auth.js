@@ -13,65 +13,14 @@ const cors = require('cors');
 
 require('dotenv').config();
 
-// Encryption/Decryption utilities
-const algorithm = 'aes-256-ctr';
-const ivLength = 16; // AES IV length
-
 // Validate critical environment variables
-const requiredEnvVars = [
-  'SUPABASE_URL',
-  'SUPABASE_KEY',
-  'SESSION_SECRET',
-  'REDIS_URL',
-  'NODE_ENV',
-  'EMAIL_USER',
-  'EMAIL_PASSWORD',
-  'ENCRYPTION_KEY',
-];
+const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_KEY', 'SESSION_SECRET', 'REDIS_URL', 'NODE_ENV', 'EMAIL_USER', 'EMAIL_PASSWORD'];
 requiredEnvVars.forEach((varName) => {
   if (!process.env[varName]) {
     console.error(`Missing required environment variable: ${varName}`);
     process.exit(1);
   }
 });
-
-// Ensure the encryption key is 32 bytes (256 bits) for AES-256
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
-if (ENCRYPTION_KEY.length !== 32) {
-  console.error('ENCRYPTION_KEY must be 32 bytes (64 hex characters)');
-  process.exit(1);
-}
-
-// Encrypt function
-function encryptEmail(email) {
-  try {
-    const iv = crypto.randomBytes(ivLength);
-    const cipher = crypto.createCipheriv(algorithm, ENCRYPTION_KEY, iv);
-    const encrypted = Buffer.concat([cipher.update(email), cipher.final()]);
-    return iv.toString('hex') + ':' + encrypted.toString('hex');
-  } catch (error) {
-    logger.error('Email encryption error:', error);
-    throw new Error('Failed to encrypt email');
-  }
-}
-
-// Decrypt function
-function decryptEmail(encryptedEmail) {
-  try {
-    const [ivHex, encryptedHex] = encryptedEmail.split(':');
-    if (!ivHex || !encryptedHex) {
-      throw new Error('Invalid encrypted email format');
-    }
-    const iv = Buffer.from(ivHex, 'hex');
-    const encrypted = Buffer.from(encryptedHex, 'hex');
-    const decipher = crypto.createDecipheriv(algorithm, ENCRYPTION_KEY, iv);
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-    return decrypted.toString();
-  } catch (error) {
-    logger.error('Email decryption error:', error);
-    throw new Error('Failed to decrypt email');
-  }
-}
 
 // Initialize Winston logger
 const logger = winston.createLogger({
@@ -143,7 +92,7 @@ router.use(cors({
   origin: (origin, callback) => {
     const allowedOrigins = [
       'https://balane-saspa-dental-1.onrender.com',
-      'https://your-frontend-domain.com',
+      'https://your-frontend-domain.com', // Replace with actual frontend domain
       'http://localhost:3000',
       'http://localhost:8080',
     ];
@@ -223,7 +172,6 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
     let role = null;
     let table = null;
 
-    // Check admin table
     const { data: adminByUsername, error: adminError } = await supabase
       .from('admin')
       .select('id, username, password')
@@ -240,7 +188,6 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
       role = 'admin';
       table = 'admin';
     } else {
-      // Check users table by username
       const { data: userByUsername, error: userUsernameError } = await supabase
         .from('users')
         .select('id, username, password')
@@ -263,40 +210,15 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
           logger.warn(`Login attempt for non-patient user: ${identifier}`);
           return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
         }
-        // Decrypt the email
-        try {
-          const decryptedEmail = decryptEmail(patientData.email);
-          user = { ...userByUsername, email: decryptedEmail };
-        } catch (decryptError) {
-          logger.error(`Email decryption failed for userId ${userByUsername.id}:`, decryptError);
-          return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-        }
+        user = { ...userByUsername, email: patientData.email };
       } else if (validator.isEmail(identifier)) {
-        // Check patients table by email
-        const { data: patients, error: patientEmailError } = await supabase
+        const { data: patientByEmail, error: patientEmailError } = await supabase
           .from('patients')
-          .select('id, email');
+          .select('id, email')
+          .eq('email', identifier)
+          .single();
 
-        if (patientEmailError) {
-          logger.error('Error fetching patients:', patientEmailError);
-          return res.status(500).json({ error: 'server_error', message: 'Server error' });
-        }
-
-        let patientByEmail = null;
-        for (const patient of patients) {
-          try {
-            const decryptedEmail = decryptEmail(patient.email);
-            if (decryptedEmail === identifier) {
-              patientByEmail = patient;
-              break;
-            }
-          } catch (decryptError) {
-            logger.warn(`Skipping decryption error for patientId ${patient.id}:`, decryptError);
-            continue;
-          }
-        }
-
-        if (patientByEmail) {
+        if (patientByEmail && !patientEmailError) {
           const { data: userById, error: userIdError } = await supabase
             .from('users')
             .select('id, username, password')
@@ -309,13 +231,7 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
               logger.warn(`Failed login attempt for user: ${identifier}`);
               return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
             }
-            try {
-              const decryptedEmail = decryptEmail(patientByEmail.email);
-              user = { ...userById, email: decryptedEmail };
-            } catch (decryptError) {
-              logger.error(`Email decryption failed for userId ${userById.id}:`, decryptError);
-              return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-            }
+            user = { ...userById, email: patientByEmail.email };
           }
         }
       }
@@ -500,31 +416,13 @@ router.post('/forgot-password', applyForgotPasswordRateLimiter, async (req, res)
     let table = 'users';
 
     if (validator.isEmail(identifier)) {
-      // Check patients table by email
-      const { data: patients, error: patientEmailError } = await supabase
+      const { data: patientByEmail, error: patientEmailError } = await supabase
         .from('patients')
-        .select('id, email');
+        .select('id, email')
+        .eq('email', identifier)
+        .single();
 
-      if (patientEmailError) {
-        logger.error('Error fetching patients:', patientEmailError);
-        return res.status(500).json({ error: 'server_error', message: 'Server error' });
-      }
-
-      let patientByEmail = null;
-      for (const patient of patients) {
-        try {
-          const decryptedEmail = decryptEmail(patient.email);
-          if (decryptedEmail === identifier) {
-            patientByEmail = patient;
-            break;
-          }
-        } catch (decryptError) {
-          logger.warn(`Skipping decryption error for patientId ${patient.id}:`, decryptError);
-          continue;
-        }
-      }
-
-      if (patientByEmail) {
+      if (patientByEmail && !patientEmailError) {
         const { data: userById, error: userIdError } = await supabase
           .from('users')
           .select('id, username')
@@ -532,17 +430,10 @@ router.post('/forgot-password', applyForgotPasswordRateLimiter, async (req, res)
           .single();
 
         if (userById && !userIdError) {
-          try {
-            const decryptedEmail = decryptEmail(patientByEmail.email);
-            user = { ...userById, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userById.id}:`, decryptError);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
+          user = { ...userById, email: patientByEmail.email };
         }
       }
     } else {
-      // Check users table by username
       const { data: userByUsername, error: userUsernameError } = await supabase
         .from('users')
         .select('id, username')
@@ -557,13 +448,7 @@ router.post('/forgot-password', applyForgotPasswordRateLimiter, async (req, res)
           .single();
 
         if (patientById && !patientIdError) {
-          try {
-            const decryptedEmail = decryptEmail(patientById.email);
-            user = { ...userByUsername, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userByUsername.id}:`, decryptError);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
+          user = { ...userByUsername, email: patientById.email };
         }
       }
     }
@@ -630,31 +515,13 @@ router.post('/verify-otp', async (req, res) => {
     let user = null;
 
     if (validator.isEmail(identifier)) {
-      // Check patients table by email
-      const { data: patients, error: patientEmailError } = await supabase
+      const { data: patientByEmail, error: patientEmailError } = await supabase
         .from('patients')
-        .select('id, email');
+        .select('id, email')
+        .eq('email', identifier)
+        .single();
 
-      if (patientEmailError) {
-        logger.error('Error fetching patients:', patientEmailError);
-        return res.status(500).json({ error: 'server_error', message: 'Server error' });
-      }
-
-      let patientByEmail = null;
-      for (const patient of patients) {
-        try {
-          const decryptedEmail = decryptEmail(patient.email);
-          if (decryptedEmail === identifier) {
-            patientByEmail = patient;
-            break;
-          }
-        } catch (decryptError) {
-          logger.warn(`Skipping decryption error for patientId ${patient.id}:`, decryptError);
-          continue;
-        }
-      }
-
-      if (patientByEmail) {
+      if (patientByEmail && !patientEmailError) {
         const { data: userById, error: userIdError } = await supabase
           .from('users')
           .select('id, username')
@@ -662,17 +529,10 @@ router.post('/verify-otp', async (req, res) => {
           .single();
 
         if (userById && !userIdError) {
-          try {
-            const decryptedEmail = decryptEmail(patientByEmail.email);
-            user = { ...userById, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userById.id}:`, decryptError);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
+          user = { ...userById, email: patientByEmail.email };
         }
       }
     } else {
-      // Check users table by username
       const { data: userByUsername, error: userUsernameError } = await supabase
         .from('users')
         .select('id, username')
@@ -687,13 +547,7 @@ router.post('/verify-otp', async (req, res) => {
           .single();
 
         if (patientById && !patientIdError) {
-          try {
-            const decryptedEmail = decryptEmail(patientById.email);
-            user = { ...userByUsername, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userByUsername.id}:`, decryptError);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
+          user = { ...userByUsername, email: patientById.email };
         }
       }
     }
@@ -742,31 +596,13 @@ router.post('/reset-password', async (req, res) => {
     let table = 'users';
 
     if (validator.isEmail(identifier)) {
-      // Check patients table by email
-      const { data: patients, error: patientEmailError } = await supabase
+      const { data: patientByEmail, error: patientEmailError } = await supabase
         .from('patients')
-        .select('id, email');
+        .select('id, email')
+        .eq('email', identifier)
+        .single();
 
-      if (patientEmailError) {
-        logger.error('Error fetching patients:', patientEmailError);
-        return res.status(500).json({ error: 'server_error', message: 'Server error' });
-      }
-
-      let patientByEmail = null;
-      for (const patient of patients) {
-        try {
-          const decryptedEmail = decryptEmail(patient.email);
-          if (decryptedEmail === identifier) {
-            patientByEmail = patient;
-            break;
-          }
-        } catch (decryptError) {
-          logger.warn(`Skipping decryption error for patientId ${patient.id}:`, decryptError);
-          continue;
-        }
-      }
-
-      if (patientByEmail) {
+      if (patientByEmail && !patientEmailError) {
         const { data: userById, error: userIdError } = await supabase
           .from('users')
           .select('id, username')
@@ -774,17 +610,10 @@ router.post('/reset-password', async (req, res) => {
           .single();
 
         if (userById && !userIdError) {
-          try {
-            const decryptedEmail = decryptEmail(patientByEmail.email);
-            user = { ...userById, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userById.id}:`, decryptError);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
+          user = { ...userById, email: patientByEmail.email };
         }
       }
     } else {
-      // Check users table by username
       const { data: userByUsername, error: userUsernameError } = await supabase
         .from('users')
         .select('id, username')
@@ -799,13 +628,7 @@ router.post('/reset-password', async (req, res) => {
           .single();
 
         if (patientById && !patientIdError) {
-          try {
-            const decryptedEmail = decryptEmail(patientById.email);
-            user = { ...userByUsername, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userByUsername.id}:`, decryptError);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
+          user = { ...userByUsername, email: patientById.email };
         }
       }
     }
