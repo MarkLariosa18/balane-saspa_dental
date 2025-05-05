@@ -459,8 +459,46 @@ let displayedAppointments = [];
 const ITEMS_PER_PAGE = 10;
 let currentPage = 1;
 
+// Decryption function for AES-256-GCM
+async function decryptData(text) {
+  if (!text) return null;
+  const [ivText, encryptedText, authTagText] = text.split(':');
+  if (!ivText || !encryptedText || !authTagText) {
+    console.warn(`Invalid encrypted format: "${text}"`);
+    return text;
+  }
+  try {
+    const iv = Uint8Array.from(atob(ivText).split('').map(c => c.charCodeAt(0)));
+    const encrypted = Uint8Array.from(atob(encryptedText).split('').map(c => c.charCodeAt(0)));
+    const authTag = Uint8Array.from(atob(authTagText).split('').map(c => c.charCodeAt(0)));
+    const key = Uint8Array.from(atob('your-encryption-key-base64').split('').map(c => c.charCodeAt(0))); // Replace with actual base64-encoded key
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      key,
+      { name: 'AES-GCM' },
+      false,
+      ['decrypt']
+    );
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv, tagLength: 128 },
+      cryptoKey,
+      new Uint8Array([...encrypted, ...authTag])
+    );
+    const decoder = new TextDecoder();
+    const decryptedString = decoder.decode(decrypted);
+    if (!decryptedString || /[^ -~]/.test(decryptedString)) {
+      console.warn(`Invalid decryption result: "${decryptedString}"`);
+      return text;
+    }
+    return decryptedString;
+  } catch (error) {
+    console.error('Decryption failed:', error);
+    return text;
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-  // Test basic chart rendering
+  // Test chart rendering
   function testChart() {
     const testCanvas = document.createElement('canvas');
     testCanvas.id = 'testChart';
@@ -488,92 +526,199 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   testChart();
 
-  // Initialize WebSocket
-  let ws;
-  function initWebSocket() {
-    ws = new WebSocket('wss://balane-saspa-dental-1.onrender.com');
-    ws.onopen = () => console.log('WebSocket connected');
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      handleWebSocketMessage(message);
-    };
-    ws.onclose = () => {
-      console.log('WebSocket disconnected. Reconnecting in 5s...');
-      setTimeout(initWebSocket, 5000);
-    };
-    ws.onerror = (error) => console.error('WebSocket error:', error);
-  }
-  initWebSocket();
+  // Initialize Socket.IO
+  let socket;
+  function initSocketIO() {
+    socket = io('https://balane-saspa-dental-1.onrender.com', {
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 5000
+    });
 
-  async function handleWebSocketMessage(message) {
-    console.log('Received WebSocket message:', message);
+    socket.on('connect', () => {
+      console.log('Socket.IO connected');
+      socket.emit('join', { role: 'admin' }); // Join admin room
+    });
+
+    socket.on('reschedule_request', async (data) => {
+      console.log('Socket.IO reschedule_request received:', data);
+      let request = data.request;
+      if (typeof request === 'string') {
+        request = await decryptData(request);
+        if (!request) {
+          console.error('Failed to decrypt reschedule request');
+          return;
+        }
+        try {
+          request = JSON.parse(request);
+        } catch (error) {
+          console.error('Failed to parse decrypted reschedule request:', error);
+          return;
+        }
+      }
+      handleSocketIORequest({ type: 'reschedule_request', request });
+    });
+
+    socket.on('cancel_request', async (data) => {
+      console.log('Socket.IO cancel_request received:', data);
+      let request = data.request;
+      if (typeof request === 'string') {
+        request = await decryptData(request);
+        if (!request) {
+          console.error('Failed to decrypt cancel request');
+          return;
+        }
+        try {
+          request = JSON.parse(request);
+        } catch (error) {
+          console.error('Failed to parse decrypted cancel request:', error);
+          return;
+        }
+      }
+      handleSocketIORequest({ type: 'cancel_request', request });
+    });
+
+    socket.on('confirm_response', async (data) => {
+      console.log('Socket.IO confirm_response received:', data);
+      let message = data;
+      if (typeof data === 'string') {
+        message = await decryptData(data);
+        if (!message) {
+          console.error('Failed to decrypt confirm response');
+          return;
+        }
+        try {
+          message = JSON.parse(message);
+        } catch (error) {
+          console.error('Failed to parse decrypted confirm response:', error);
+          return;
+        }
+      }
+      handleSocketIOResponse(message);
+    });
+
+    socket.on('reschedule_response', async (data) => {
+      console.log('Socket.IO reschedule_response received:', data);
+      let message = data;
+      if (typeof data === 'string') {
+        message = await decryptData(data);
+        if (!message) {
+          console.error('Failed to decrypt reschedule response');
+          return;
+        }
+        try {
+          message = JSON.parse(message);
+        } catch (error) {
+          console.error('Failed to parse decrypted reschedule response:', error);
+          return;
+        }
+      }
+      handleSocketIOResponse(message);
+    });
+
+    socket.on('cancel_response', async (data) => {
+      console.log('Socket.IO cancel_response received:', data);
+      let message = data;
+      if (typeof data === 'string') {
+        message = await decryptData(data);
+        if (!message) {
+          console.error('Failed to decrypt cancel response');
+          return;
+        }
+        try {
+          message = JSON.parse(message);
+        } catch (error) {
+          console.error('Failed to parse decrypted cancel response:', error);
+          return;
+        }
+      }
+      handleSocketIOResponse(message);
+    });
+
+    socket.on('reject_response', async (data) => {
+      console.log('Socket.IO reject_response received:', data);
+      let message = data;
+      if (typeof data === 'string') {
+        message = await decryptData(data);
+        if (!message) {
+          console.error('Failed to decrypt reject response');
+          return;
+        }
+        try {
+          message = JSON.parse(message);
+        } catch (error) {
+          console.error('Failed to parse decrypted reject response:', error);
+          return;
+        }
+      }
+      handleSocketIOResponse(message);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket.IO disconnected. Attempting to reconnect...');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error);
+    });
+  }
+  initSocketIO();
+
+  async function handleSocketIORequest(message) {
+    console.log('Processing Socket.IO request:', message);
     const yearFilter = document.getElementById('yearFilter');
     const serviceFilter = document.getElementById('serviceFilter');
     const currentYear = parseInt(yearFilter.value);
     const currentService = serviceFilter.value;
 
-    switch (message.type) {
-      case 'reschedule_request':
-      case 'cancel_request':
-        Swal.fire({
-          icon: 'info',
-          title: `${message.type === 'reschedule_request' ? 'Reschedule' : 'Cancel'} Request`,
-          text: `New ${message.type === 'reschedule_request' ? 'reschedule' : 'cancel'} request for ${getPatientName(message.request.patients)}.`,
-          confirmButtonColor: '#4154f1',
-          timer: 3000
-        });
-        break;
-      case 'confirm_response':
-      case 'reschedule_response':
-      case 'cancel_response':
-      case 'reject_response':
-        const appointmentId = message.request.appointment_id || message.requestId;
-        const appointmentIndex = allAppointments.findIndex(app => app.id === appointmentId);
-        if (appointmentIndex !== -1) {
-          const appointment = allAppointments[appointmentIndex];
-          if (message.type === 'confirm_response' && message.status === 'approved') {
-            appointment.status = 'confirmed';
-            appointment.pending_action = null;
-          } else if (message.type === 'reschedule_response' && message.status === 'approved') {
-            appointment.appointment_date = message.request.new_appointment_date;
-            appointment.status = 'confirmed';
-            appointment.pending_action = null;
-          } else if (message.type === 'cancel_response' && message.status === 'approved') {
-            appointment.status = 'cancelled';
-            appointment.pending_action = null;
-          } else if (message.type === 'reject_response' && message.status === 'rejected') {
-            appointment.status = 'rejected';
-            appointment.reject_reason = message.reject_reason || 'N/A';
-            appointment.pending_action = null;
-          }
-          allAppointments[appointmentIndex] = appointment;
-          filterAppointments();
-          renderAppointmentsGraph(allAppointments, allServices, currentYear, currentService);
-          Swal.fire({
-            icon: message.status === 'approved' ? 'success' : 'error',
-            title: `${message.type.replace('_response', '').capitalize()} ${message.status.capitalize()}`,
-            text: `Appointment ${message.status} for ${getPatientName(appointment.patients)}.`,
-            confirmButtonColor: '#4154f1',
-            timer: 3000
-          });
-        }
-        break;
-      case 'service_added':
-        const newService = message.service;
-        if (!allServices.some(s => s.name === newService.name)) {
-          allServices.push(newService);
-          populateServiceFilter(allServices);
-          populateServiceTableFilter(allServices);
-          renderAppointmentsGraph(allAppointments, allServices, currentYear, currentService);
-          Swal.fire({
-            icon: 'info',
-            title: 'New Service',
-            text: `Service "${newService.name}" added.`,
-            confirmButtonColor: '#4154f1',
-            timer: 3000
-          });
-        }
-        break;
+    if (message.type === 'reschedule_request' || message.type === 'cancel_request') {
+      Swal.fire({
+        icon: 'info',
+        title: `${message.type === 'reschedule_request' ? 'Reschedule' : 'Cancel'} Request`,
+        text: `New ${message.type === 'reschedule_request' ? 'reschedule' : 'cancel'} request for ${getPatientName(message.request.patients)}.`,
+        confirmButtonColor: '#4154f1',
+        timer: 3000
+      });
+    }
+  }
+
+  async function handleSocketIOResponse(message) {
+    console.log('Processing Socket.IO response:', message);
+    const yearFilter = document.getElementById('yearFilter');
+    const serviceFilter = document.getElementById('serviceFilter');
+    const currentYear = parseInt(yearFilter.value);
+    const currentService = serviceFilter.value;
+
+    const appointmentId = message.requestId || message.request.appointment_id;
+    const appointmentIndex = allAppointments.findIndex(app => app.id === appointmentId);
+    if (appointmentIndex !== -1) {
+      const appointment = allAppointments[appointmentIndex];
+      if (message.type === 'confirm_response' && message.status === 'approved') {
+        appointment.status = 'confirmed';
+        appointment.pending_action = null;
+      } else if (message.type === 'reschedule_response' && message.status === 'approved') {
+        appointment.appointment_date = message.request.new_appointment_date;
+        appointment.status = 'confirmed';
+        appointment.pending_action = null;
+      } else if (message.type === 'cancel_response' && message.status === 'approved') {
+        appointment.status = 'cancelled';
+        appointment.pending_action = null;
+      } else if (message.type === 'reject_response' && message.status === 'rejected') {
+        appointment.status = 'rejected';
+        appointment.reject_reason = message.reject_reason || 'N/A';
+        appointment.pending_action = null;
+      }
+      allAppointments[appointmentIndex] = appointment;
+      filterAppointments();
+      renderAppointmentsGraph(allAppointments, allServices, currentYear, currentService);
+      Swal.fire({
+        icon: message.status === 'approved' ? 'success' : 'error',
+        title: `${message.type.replace('_response', '').capitalize()} ${message.status.capitalize()}`,
+        text: `Appointment ${message.status} for ${getPatientName(appointment.patients)}.`,
+        confirmButtonColor: '#4154f1',
+        timer: 3000
+      });
     }
   }
 
@@ -582,11 +727,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     return this.charAt(0).toUpperCase() + this.slice(1);
   };
 
+  async function getCsrfToken() {
+    try {
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      return data.csrfToken;
+    } catch (error) {
+      console.error('Error fetching CSRF token:', error);
+      throw new Error('Failed to fetch CSRF token');
+    }
+  }
+
   try {
     // Check authentication
-    const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', { 
+    const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', {
       credentials: 'include',
-      headers: { 
+      headers: {
         'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
         'X-CSRF-Token': await getCsrfToken()
       }
@@ -611,32 +769,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Fetch appointments
-    const appointmentsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', { 
+    const appointmentsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', {
       credentials: 'include',
-      headers: { 
+      headers: {
         'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
         'X-CSRF-Token': await getCsrfToken()
       }
     });
     if (!appointmentsResponse.ok) throw new Error(`Failed to fetch appointments: ${appointmentsResponse.status}`);
-    const appointmentsData = await appointmentsResponse.json();
-    if (!appointmentsData.success) throw new Error(appointmentsData.message);
-    allAppointments = appointmentsData.appointments;
-    console.log('Appointments loaded:', allAppointments);
+    let appointmentsData = await appointmentsResponse.json();
+    if (appointmentsData.success) {
+      allAppointments = await Promise.all(appointmentsData.appointments.map(async app => ({
+        ...app,
+        notes: app.notes ? await decryptData(app.notes) : null,
+        cancel_reason: app.cancel_reason ? await decryptData(app.cancel_reason) : null,
+        reject_reason: app.reject_reason ? await decryptData(app.reject_reason) : null
+      })));
+      console.log('Appointments loaded:', allAppointments);
+    } else {
+      throw new Error(appointmentsData.message);
+    }
 
     // Fetch services
     try {
-      const servicesResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/services/all', { 
+      const servicesResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/services/all', {
         credentials: 'include',
-        headers: { 
+        headers: {
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
           'X-CSRF-Token': await getCsrfToken()
         }
       });
       if (!servicesResponse.ok) throw new Error(`Failed to fetch services: ${servicesResponse.status}`);
-      const servicesData = await servicesResponse.json();
-      if (!servicesData.success) throw new Error(servicesData.message);
-      allServices = servicesData.services;
+      let servicesData = await servicesResponse.json();
+      if (servicesData.success) {
+        allServices = servicesData.services;
+      } else {
+        throw new Error(servicesData.message);
+      }
     } catch (error) {
       console.error('Error fetching services:', error);
       Swal.fire({
@@ -652,16 +821,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Validate appointment dates
     const invalidAppointments = allAppointments.filter(app => isNaN(new Date(app.appointment_date).getTime()));
-if (invalidAppointments.length > 0) {
-  console.warn('Invalid appointment dates:', invalidAppointments);
-  Swal.fire({
-    icon: 'warning',
-    title: 'Invalid Data',
-    text: `${invalidAppointments.length} appointment(s) have invalid dates and will be excluded from the graph.`,
-    confirmButtonColor: '#4154f1'
-  });
-  allAppointments = allAppointments.filter(app => !isNaN(new Date(app.appointment_date).getTime()));
-}
+    if (invalidAppointments.length > 0) {
+      console.warn('Invalid appointment dates:', invalidAppointments);
+      Swal.fire({
+        icon: 'warning',
+        title: 'Invalid Data',
+        text: `${invalidAppointments.length} appointment(s) have invalid dates and will be excluded from the graph.`,
+        confirmButtonColor: '#4154f1'
+      });
+      allAppointments = allAppointments.filter(app => !isNaN(new Date(app.appointment_date).getTime()));
+    }
 
     if (allAppointments.length === 0) {
       Swal.fire({
@@ -728,19 +897,6 @@ if (invalidAppointments.length > 0) {
   }
 });
 
-async function getCsrfToken() {
-  try {
-    const response = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
-      credentials: 'include'
-    });
-    const data = await response.json();
-    return data.csrfToken;
-  } catch (error) {
-    console.error('Error fetching CSRF token:', error);
-    throw new Error('Failed to fetch CSRF token');
-  }
-}
-
 function getPatientName(patientData) {
   if (!patientData) return 'Unknown';
   const { first_name, middle_name, last_name } = patientData;
@@ -795,7 +951,7 @@ function renderAppointmentsGraph(appointments, services, year, selectedService) 
   try {
     const canvas = document.getElementById('appointmentsChart');
     if (!canvas) {
-      throw new Error('Canvas element # AppointmentsChart not found');
+      throw new Error('Canvas element #appointmentsChart not found');
     }
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -965,7 +1121,7 @@ function renderAppointmentsGraph(appointments, services, year, selectedService) 
         : `Month with Highest Appointments for ${selectedService}: ${highestMonth} (${maxCount} appointments)`;
   } catch (error) {
     console.error('Error rendering graph:', error);
-    Swal.fly({
+    Swal.fire({
       icon: 'error',
       title: 'Graph Error',
       text: `Failed to render graph: ${error.message}`,
@@ -1088,6 +1244,7 @@ function exportGraphToCsv(appointments, year) {
   link.download = `appointments_graph_${year}.csv`;
   document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
   Swal.fire({
     icon: 'success',
     title: 'Export Successful',

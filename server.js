@@ -149,15 +149,29 @@ io.on('connection', (socket) => {
     console.error(`Socket.IO error for ${socket.id}:`, error);
   });
 });
+const { v4: uuidv4 } = require('uuid');
+
+app.use((req, res, next) => {
+  // Generate a unique nonce for each request
+  res.locals.cspNonce = uuidv4();
+  next();
+});
+
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        connectSrc: ["'self'", 'wss://balane-saspa-dental-1.onrender.com', 'https://formsubmit.co'],
+        connectSrc: [
+          "'self'",
+          'wss://balane-saspa-dental-1.onrender.com',
+          'https://balane-saspa-dental-1.onrender.com',
+          'https://formsubmit.co'
+        ],
         scriptSrc: [
           "'self'",
-          "'unsafe-inline'",
+          // Use nonce for inline scripts
+          // "'nonce-#{res.locals.cspNonce}'",
           'https://cdn.jsdelivr.net',
           'https://cdn.socket.io',
           'https://code.jquery.com',
@@ -165,24 +179,39 @@ app.use(
           'https://formsubmit.co',
           'https://cdn.jsdelivr.net/npm/sweetalert2@11',
           'https://cdnjs.cloudflare.com',
-          'https://cdn.tiny.cloud' // For TinyMCE
+          'https://cdn.tiny.cloud',
+          'https://unpkg.com'
         ],
         styleSrc: [
           "'self'",
-          "'unsafe-inline'",
           'https://cdn.jsdelivr.net',
           'https://cdn.tailwindcss.com',
           'https://fonts.googleapis.com',
-          'https://fonts.gstatic.com'
+          'https://fonts.gstatic.com',
+          'https://unpkg.com'
         ],
-        imgSrc: ["'self'", 'data:'],
+        imgSrc: ["'self'", 'data:', 'https://balane-saspa-dental-1.onrender.com'],
+        fontSrc: [
+          "'self'",
+          'https://fonts.gstatic.com',
+          'https://cdn.jsdelivr.net',
+          'https://unpkg.com'
+        ],
         formAction: ["'self'", 'https://formsubmit.co'],
         frameAncestors: ["'self'"],
+        // Report CSP violations (optional)
+        reportUri: '/csp-violation-report'
       },
     },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   })
 );
+
+// Optional: Handle CSP violation reports
+app.post('/csp-violation-report', express.json(), (req, res) => {
+  console.log('CSP Violation:', req.body);
+  res.status(204).send();
+});
 
 app.use(compression());
 app.use(cors({
