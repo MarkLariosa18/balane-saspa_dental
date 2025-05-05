@@ -149,6 +149,7 @@ io.on('connection', (socket) => {
     console.error(`Socket.IO error for ${socket.id}:`, error);
   });
 });
+
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -157,29 +158,18 @@ app.use(
         connectSrc: ["'self'", 'wss://balane-saspa-dental-1.onrender.com', 'https://formsubmit.co'],
         scriptSrc: [
           "'self'",
-          "'unsafe-inline'",
+          "'unsafe-inline'", // Allows inline event handlers and inline scripts
           'https://cdn.jsdelivr.net',
           'https://cdn.socket.io',
           'https://code.jquery.com',
           'https://cdn.tailwindcss.com',
           'https://formsubmit.co',
-          'https://cdn.jsdelivr.net/npm/sweetalert2@11',
-          'https://cdnjs.cloudflare.com',
-          'https://cdn.tiny.cloud',
-          'https://unpkg.com' // For Leaflet and AOS
+          'https://cdn.jsdelivr.net/npm/sweetalert2@11' // Add SweetAlert
         ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          'https://cdn.jsdelivr.net',
-          'https://cdn.tailwindcss.com',
-          'https://fonts.googleapis.com',
-          'https://fonts.gstatic.com',
-          'https://unpkg.com' // For Leaflet CSS
-        ],
-        imgSrc: ["'self'", 'data:'],
-        formAction: ["'self'", 'https://formsubmit.co'],
-        frameAncestors: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://cdn.tailwindcss.com'],
+        imgSrc: ["'self'", 'data:'], // allow inline images or icons if needed
+        formAction: ["'self'", 'https://formsubmit.co'], // allow form submissions
+        frameAncestors: ["'self'"], // prevent clickjacking
       },
     },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
