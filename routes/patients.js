@@ -504,7 +504,7 @@ router.get('/profile', isAuthenticated, applyRateLimiter(profileGetLimiter), asy
       full_name: `${safeDecrypt(data.first_name)} ${safeDecrypt(data.last_name)}`,
       email: safeDecrypt(data.email),
       phone: safeDecrypt(data.mobile_no),
-      birthdate: safeDecrypt(data.birthdate),
+      dob: safeDecrypt(data.birthdate),
       gender: data.sex === 'M' ? 'male' : data.sex === 'F' ? 'female' : 'other',
       address: safeDecrypt(data.home_address),
       religion: safeDecrypt(data.religion) || 'N/A',
@@ -593,17 +593,17 @@ function calculateAge(birthdate) {
 router.put('/profile', isAuthenticated, applyRateLimiter(profileUpdateLimiter), async (req, res) => {
   try {
     const userId = req.session.userId;
-    const { fullName, birthdate, gender, address, religion, nationality, homeNumber, phone, email } = req.body;
+    const { fullName, dob, gender, address, religion, nationality, homeNumber, phone, email } = req.body;
 
     // Validate inputs
-    if (!fullName || !birthdate || !gender || !address || !phone || !email) {
+    if (!fullName || !dob || !gender || !address || !phone || !email) {
       logger.warn(`Missing required fields for profile update: userId ${userId}`);
       return res.status(400).json({ error: 'missing_fields', message: 'All required fields must be provided' });
     }
     if (!validator.isEmail(email)) {
       return res.status(400).json({ error: 'invalid_data', message: 'Invalid email format' });
     }
-    if (!validator.isISO8601(birthdate)) {
+    if (!validator.isISO8601(dob)) {
       return res.status(400).json({ error: 'invalid_data', message: 'Invalid date of birth format' });
     }
     if (!['male', 'female', 'other'].includes(gender)) {
@@ -634,7 +634,7 @@ router.put('/profile', isAuthenticated, applyRateLimiter(profileUpdateLimiter), 
     const encryptedData = {
       first_name: encrypt(first_name),
       last_name: encrypt(last_name),
-      birthdate: encrypt(birthdate),
+      birthdate: encrypt(dob),
       sex: gender === 'male' ? 'M' : gender === 'female' ? 'F' : 'O',
       home_address: encrypt(address),
       religion: religion && religion !== 'N/A' ? encrypt(religion) : null,
