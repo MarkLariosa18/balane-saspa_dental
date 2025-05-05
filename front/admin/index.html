@@ -506,28 +506,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   let appointments = [];
   window.pendingRequests = [];
 
-  // Initialize Socket.IO
-  let socket;
-  function initSocket() {
-    socket = io('https://balane-saspa-dental-1.onrender.com', {
-      withCredentials: true,
-      extraHeaders: {
-        Authorization: 'Bearer ' + localStorage.getItem('authToken')
-      }
-    });
-    socket.on('connect', () => console.log('Socket.IO connected'));
-    socket.on('welcome', (data) => console.log('Socket.IO welcome:', data));
-    socket.on('message', (message) => handleSocketMessage(message));
-    socket.on('disconnect', () => {
-      console.log('Socket.IO disconnected. Reconnecting in 5s...');
-      setTimeout(initSocket, 5000);
-    });
-    socket.on('error', (error) => console.error('Socket.IO error:', error));
+  // Initialize WebSocket
+  let ws;
+  function initWebSocket() {
+    ws = new WebSocket('wss://balane-saspa-dental-1.onrender.com');
+    ws.onopen = () => console.log('WebSocket connected');
+    ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      handleWebSocketMessage(message);
+    };
+    ws.onclose = () => {
+      console.log('WebSocket disconnected. Reconnecting in 5s...');
+      setTimeout(initWebSocket, 5000);
+    };
+    ws.onerror = (error) => console.error('WebSocket error:', error);
   }
-  initSocket();
+  initWebSocket();
 
-  async function handleSocketMessage(message) {
-    console.log('Received Socket.IO message:', message);
+  async function handleWebSocketMessage(message) {
+    console.log('Received WebSocket message:', message);
     switch (message.type) {
       case 'reschedule_request':
       case 'cancel_request':
@@ -605,7 +602,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', { 
       credentials: 'include',
-      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
+      headers: { 
+        'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
+        'X-CSRF-Token': await getCsrfToken()
+      }
     });
     if (!authResponse.ok) {
       const errorData = await authResponse.json();
@@ -626,27 +626,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const csrfResponse = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
-      credentials: 'include',
-      headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
-    });
-    if (!csrfResponse.ok) throw new Error('Failed to fetch CSRF token');
-    const csrfData = await csrfResponse.json();
-    const csrfToken = csrfData.csrfToken;
-
     const [appointmentsResponse, requestsResponse] = await Promise.all([
       fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', { 
         credentials: 'include',
         headers: { 
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'CSRF-Token': csrfToken
+          'X-CSRF-Token': await getCsrfToken()
         }
       }),
       fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/requests', { 
         credentials: 'include',
         headers: { 
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'CSRF-Token': csrfToken
+          'X-CSRF-Token': await getCsrfToken()
         }
       })
     ]);
@@ -681,6 +673,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 });
+
+async function getCsrfToken() {
+  try {
+    const response = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    return data.csrfToken;
+  } catch (error) {
+    console.error('Error fetching CSRF token:', error);
+    throw new Error('Failed to fetch CSRF token');
+  }
+}
 
 function updateCalendar(appointments) {
   const calendarGrid = document.getElementById('calendarGrid');
@@ -810,20 +815,13 @@ async function confirmAppointment(appointmentId) {
   }).then(async (result) => {
     if (result.isConfirmed) {
       try {
-        const csrfResponse = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
-          credentials: 'include',
-          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
-        });
-        if (!csrfResponse.ok) throw new Error('Failed to fetch CSRF token');
-        const csrfData = await csrfResponse.json();
-        const csrfToken = csrfData.csrfToken;
-
+        const csrfToken = await getCsrfToken();
         const response = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/requests/${request.id}/approve`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-            'CSRF-Token': csrfToken
+            'X-CSRF-Token': csrfToken
           },
           credentials: 'include'
         });
@@ -882,20 +880,13 @@ async function rejectAppointment(appointmentId) {
   }).then(async (result) => {
     if (result.isConfirmed) {
       try {
-        const csrfResponse = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
-          credentials: 'include',
-          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
-        });
-        if (!csrfResponse.ok) throw new Error('Failed to fetch CSRF token');
-        const csrfData = await csrfResponse.json();
-        const csrfToken = csrfData.csrfToken;
-
+        const csrfToken = await getCsrfToken();
         const response = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/requests/${request.id}/reject`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-            'CSRF-Token': csrfToken
+            'X-CSRF-Token': csrfToken
           },
           credentials: 'include',
           body: JSON.stringify({ reject_reason: result.value })
