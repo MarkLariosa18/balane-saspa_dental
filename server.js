@@ -38,7 +38,7 @@ const patientRoutes = require('./routes/patients');
 const userRoutes = require('./routes/users');
 const appointmentRoutes = require('./routes/appointments');
 const serviceRoutes = require('./routes/services');
-const { otpRoutes } = require('./routes/otp');
+const otpRoutes = require('./routes/otp');
 const authRoutes = require('./routes/auth');
 
 // Initialize Redis with enhanced configuration
