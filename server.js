@@ -150,9 +150,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// Middleware
-const helmet = require('helmet');
-
 app.use(
   helmet({
     contentSecurityPolicy: {
