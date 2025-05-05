@@ -342,16 +342,19 @@
 
   // Utility functions
   const showLoading = () => {
+    console.log('Showing loading overlay');
     document.getElementById('loading-overlay').style.display = 'flex';
     document.querySelector('.book-appointment-btn').disabled = true;
   };
 
   const hideLoading = () => {
+    console.log('Hiding loading overlay');
     document.getElementById('loading-overlay').style.display = 'none';
     document.querySelector('.book-appointment-btn').disabled = false;
   };
 
   const showAlert = (title, text, icon = 'info') => {
+    console.log(`Showing alert: ${title} - ${text}`);
     hideLoading();
     return Swal.fire({
       title,
@@ -365,14 +368,25 @@
     });
   };
 
+  const withTimeout = (promise, timeoutMs = 10000) => {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
+      )
+    ]);
+  };
+
   const tryAutoLogin = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/auth/auto-login`, {
+      console.log('Attempting auto-login');
+      const response = await withTimeout(fetch(`${BASE_URL}/auth/auto-login`, {
         method: 'POST',
         credentials: 'include',
-      });
+      }));
       if (!response.ok) throw new Error(`Auto-login failed: ${response.statusText}`);
       const data = await response.json();
+      console.log('Auto-login response:', data);
       return data.success;
     } catch (err) {
       console.error('Auto-login error:', err);
@@ -382,11 +396,14 @@
 
   const checkAuth = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/check-auth`, {
+      console.log('Checking authentication');
+      const response = await withTimeout(fetch(`${BASE_URL}/check-auth`, {
         credentials: 'include'
-      });
+      }));
       if (!response.ok) throw new Error(`Failed to check auth: ${response.statusText}`);
-      return await response.json();
+      const data = await response.json();
+      console.log('Auth check response:', data);
+      return data;
     } catch (err) {
       console.error('Error checking auth:', err);
       throw err;
@@ -395,11 +412,13 @@
 
   const fetchCsrfToken = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/auth/csrf-token`, {
+      console.log('Fetching CSRF token');
+      const response = await withTimeout(fetch(`${BASE_URL}/auth/csrf-token`, {
         credentials: 'include'
-      });
+      }));
       if (!response.ok) throw new Error(`Failed to fetch CSRF token: ${response.statusText}`);
       const data = await response.json();
+      console.log('CSRF token fetched:', data.csrfToken);
       return data.csrfToken;
     } catch (err) {
       console.error('Error fetching CSRF token:', err);
@@ -409,14 +428,16 @@
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/api/services/all`, {
+      console.log('Fetching services');
+      const response = await withTimeout(fetch(`${BASE_URL}/api/services/all`, {
         credentials: 'include'
-      });
+      }));
       if (!response.ok) {
         if (response.status === 401) throw new Error('Unauthorized: Please log in again.');
         throw new Error(`Failed to fetch services: ${response.statusText}`);
       }
       const data = await response.json();
+      console.log('Services fetched:', data);
       return Array.isArray(data.services) ? data.services : (Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching services:', err);
@@ -426,14 +447,16 @@
 
   const fetchUserAppointments = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/api/appointments`, {
+      console.log('Fetching user appointments');
+      const response = await withTimeout(fetch(`${BASE_URL}/api/appointments`, {
         credentials: 'include'
-      });
+      }));
       if (!response.ok) {
         if (response.status === 401) throw new Error('Unauthorized: Please log in again.');
         throw new Error(`Failed to fetch user appointments: ${response.statusText}`);
       }
       const data = await response.json();
+      console.log('User appointments fetched:', data);
       return Array.isArray(data.appointments) ? data.appointments : [];
     } catch (err) {
       console.error('Error fetching user appointments:', err);
@@ -443,16 +466,17 @@
 
   const fetchBookedAppointments = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/api/appointments/booked?ts=${Date.now()}`, {
+      console.log('Fetching booked appointments');
+      const response = await withTimeout(fetch(`${BASE_URL}/api/appointments/booked?ts=${Date.now()}`, {
         credentials: 'include',
         cache: 'no-store'
-      });
+      }));
       if (!response.ok) {
         if (response.status === 401) throw new Error('Unauthorized: Please log in again.');
         throw new Error(`Failed to fetch booked appointments: ${response.statusText}`);
       }
       const data = await response.json();
-      console.log('Fetched booked appointments:', data.appointments);
+      console.log('Booked appointments fetched:', data.appointments);
       return Array.isArray(data.appointments) ? data.appointments : [];
     } catch (err) {
       console.error('Error fetching booked appointments:', err);
@@ -461,6 +485,7 @@
   };
 
   const populateServices = (services) => {
+    console.log('Populating services:', services);
     const serviceList = document.getElementById('service-list');
     const serviceInput = document.getElementById('service');
     const serviceDescription = document.getElementById('service-description');
@@ -490,18 +515,20 @@
     });
   };
 
-  const initializeWebSocket = (onUpdate) => {
+  const initializeWebSocket = (onUpdate, userId) => {
+    console.log('Initializing Socket.IO connection');
     const socket = io(BASE_URL, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,
-      reconnectionDelay: 5000
+      reconnectionDelay: 5000,
+      auth: { userId }
     });
 
     socket.on('connect', () => {
       console.log(`Socket.IO connected: ${socket.id}`);
-      socket.emit('join', { userId: socket.auth?.userId });
+      socket.emit('join', { userId });
     });
 
     socket.on('welcome', (data) => {
@@ -510,7 +537,7 @@
 
     socket.on('appointment_update', (data) => {
       console.log('Received Socket.IO appointment update:', data.appointments);
-      onUpdate(data.appagements);
+      onUpdate(data.appointments);
     });
 
     socket.on('connect_error', (error) => {
@@ -539,6 +566,7 @@
   let flatpickrInstance = null;
 
   const initializeDatePicker = (bookedAppointments) => {
+    console.log('Initializing date picker with booked appointments:', bookedAppointments);
     const bookedTimes = Array.isArray(bookedAppointments) ? bookedAppointments.map(appointment => {
       const date = new Date(appointment.appointment_date);
       if (isNaN(date.getTime())) {
@@ -652,6 +680,7 @@
   };
 
   const updateDatePicker = (bookedAppointments) => {
+    console.log('Updating date picker');
     if (flatpickrInstance) {
       const bookedTimes = initializeDatePicker(bookedAppointments);
       flatpickrInstance.config.bookedTimes = bookedTimes;
@@ -660,6 +689,7 @@
   };
 
   const validateAppointmentDate = (date, bookedAppointments) => {
+    console.log('Validating appointment date:', date);
     const [datePart, hourPart, period] = date.split(' ');
     let hour = parseInt(hourPart);
     if (period === 'PM' && hour !== 12) hour += 12;
@@ -682,6 +712,7 @@
   };
 
   const convertToISO = (dateStr) => {
+    console.log('Converting to ISO:', dateStr);
     const [datePart, hourPart, period] = dateStr.split(' ');
     let hour = parseInt(hourPart);
     if (period === 'PM' && hour !== 12) hour += 12;
@@ -690,6 +721,7 @@
   };
 
   const checkAppointmentRestrictions = async (appointments) => {
+    console.log('Checking appointment restrictions:', appointments);
     const now = new Date();
     const restrictionMessage = document.getElementById('appointment-restriction-message');
     const form = document.getElementById('appointment-form');
@@ -747,41 +779,86 @@
   document.addEventListener('DOMContentLoaded', async function() {
     showLoading();
     try {
-      let authData = await checkAuth();
+      console.log('Starting page initialization');
 
-      if (!authData.isLoggedIn) {
-        const autoLoginSuccess = await tryAutoLogin();
-        if (autoLoginSuccess) authData = await checkAuth();
+      let authData;
+      try {
+        authData = await checkAuth();
+        console.log('Auth data:', authData);
+      } catch (err) {
+        console.error('Auth check failed:', err);
+        throw new Error('Authentication check failed');
       }
 
       if (!authData.isLoggedIn) {
+        console.log('User not logged in, attempting auto-login');
+        const autoLoginSuccess = await tryAutoLogin();
+        if (autoLoginSuccess) {
+          authData = await checkAuth();
+          console.log('Auto-login successful, new auth data:', authData);
+        }
+      }
+
+      if (!authData.isLoggedIn) {
+        console.log('Redirecting to login page');
         await showAlert('Login Required', 'Please log in to make an appointment.', 'warning');
         window.location.replace('pages-login.html');
-        return;
-      }
-
-      const csrfToken = await fetchCsrfToken();
-      document.getElementById('csrf-token').value = csrfToken;
-
-      const services = await fetchServices();
-      populateServices(services);
-
-      const userAppointments = await fetchUserAppointments();
-      const canBook = await checkAppointmentRestrictions(userAppointments);
-      if (!canBook) {
         hideLoading();
         return;
       }
 
-      const bookedAppointments = await fetchBookedAppointments();
-      initializeDatePicker(bookedAppointments);
+      let csrfToken;
+      try {
+        csrfToken = await fetchCsrfToken();
+        document.getElementById('csrf-token').value = csrfToken;
+      } catch (err) {
+        console.error('CSRF token fetch failed:', err);
+        throw new Error('Failed to fetch CSRF token');
+      }
 
-      const socket = initializeWebSocket((updatedAppointments) => {
-        console.log('Updating date picker with new appointments:', updatedAppointments);
-        updateDatePicker(updatedAppointments);
-      });
+      let services;
+      try {
+        services = await fetchServices();
+        populateServices(services);
+      } catch (err) {
+        console.error('Services fetch failed:', err);
+        throw new Error('Failed to fetch services');
+      }
 
-      socket.auth = { userId: authData.userId };
+      let userAppointments;
+      try {
+        userAppointments = await fetchUserAppointments();
+      } catch (err) {
+        console.error('User appointments fetch failed:', err);
+        throw new Error('Failed to fetch user appointments');
+      }
+
+      const canBook = await checkAppointmentRestrictions(userAppointments);
+      if (!canBook) {
+        console.log('Cannot book due to restrictions');
+        hideLoading();
+        return;
+      }
+
+      let bookedAppointments;
+      try {
+        bookedAppointments = await fetchBookedAppointments();
+        initializeDatePicker(bookedAppointments);
+      } catch (err) {
+        console.error('Booked appointments fetch failed:', err);
+        throw new Error('Failed to fetch booked appointments');
+      }
+
+      let socket;
+      try {
+        socket = initializeWebSocket((updatedAppointments) => {
+          console.log('Updating date picker with new appointments:', updatedAppointments);
+          updateDatePicker(updatedAppointments);
+        }, authData.userId);
+      } catch (err) {
+        console.error('Socket.IO initialization failed:', err);
+        // Allow page to continue loading even if Socket.IO fails
+      }
 
       document.getElementById('appointment-form').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -858,10 +935,13 @@
           await showAlert('Error', 'Failed to book appointment: ' + err.message, 'error');
         }
       });
+
+      console.log('Page initialization completed');
     } catch (err) {
       console.error('Error initializing page:', err);
-      hideLoading();
       await showAlert('Error', err.message || 'An error occurred while loading the page. Please try again later.', 'error');
+    } finally {
+      hideLoading();
     }
   });
 </script>
