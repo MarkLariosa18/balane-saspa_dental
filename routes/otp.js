@@ -22,7 +22,6 @@ router.use(cors({
     const allowedOrigins = [
       'https://balane-saspa-dental-1.onrender.com',
       'http://localhost:3000',
-      'http://localhost:8080',
     ];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -58,8 +57,13 @@ if (!validator.isEmail(process.env.EMAIL_USER)) {
   console.error('Invalid EMAIL_USER: Must be a valid email address');
   process.exit(1);
 }
+// Validate RECAPTCHA_SECRET_KEY format (starts with 6L for v2)
+if (!process.env.RECAPTCHA_SECRET_KEY.startsWith('6L')) {
+  console.error('Invalid RECAPTCHA_SECRET_KEY: Must start with 6L for v2 Checkbox');
+  process.exit(1);
+}
 
-// Initialize Winston logger
+// Initialize Winston logger (console-only for Render)
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   format: winston.format.combine(
@@ -69,10 +73,11 @@ const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
   ],
 });
+
+// Log obfuscated RECAPTCHA_SECRET_KEY for debugging
+logger.info('RECAPTCHA_SECRET_KEY loaded', { key: process.env.RECAPTCHA_SECRET_KEY.slice(0, 6) + '...' });
 
 // Initialize Redis
 const redis = new Redis(process.env.REDIS_URL, {
@@ -173,7 +178,7 @@ const sendEmailRateLimiter = new RateLimiterRedis({
   keyPrefix: 'otp:sendEmail',
   points: 5,
   duration: 15 * 60,
-  blockDuration: 10 * 60, // Reduced to 10 minutes
+  blockDuration: 10 * 60,
 });
 
 const otpRateLimiter = new RateLimiterRedis({
@@ -237,6 +242,16 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// reCAPTCHA error code mappings
+const recaptchaErrorCodes = {
+  'missing-input-secret': 'The secret key is missing.',
+  'invalid-input-secret': 'The secret key is invalid or malformed.',
+  'missing-input-response': 'The reCAPTCHA response is missing.',
+  'invalid-input-response': 'The reCAPTCHA response is invalid.',
+  'bad-request': 'The request is invalid or malformed.',
+  'timeout-or-duplicate': 'The response is no longer valid: either timed out or duplicate.'
+};
+
 // Send email route
 router.post('/send-email', async (req, res) => {
   const { name, email, subject, message, 'g-recaptcha-response': recaptchaResponse } = req.body;
@@ -289,17 +304,20 @@ router.post('/send-email', async (req, res) => {
         response: recaptchaResponse,
         remoteip: req.ip,
       },
-      timeout: 5000 // 5-second timeout
+      timeout: 5000
     });
 
     const { success, 'error-codes': errorCodes } = response.data;
 
     if (!success) {
-      logger.warn(`reCAPTCHA verification failed`, { errorCodes, ip: req.ip });
+      const errorMessage = errorCodes && errorCodes.length > 0
+        ? `reCAPTCHA verification failed: ${errorCodes.map(code => recaptchaErrorCodes[code] || code).join(', ')}`
+        : 'reCAPTCHA verification failed.';
+      logger.warn(errorMessage, { errorCodes, ip: req.ip });
       return res.status(400).json({
         success: false,
         error: 'recaptcha_error',
-        message: 'reCAPTCHA verification failed. Please try again.',
+        message: errorMessage,
       });
     }
   } catch (error) {
@@ -318,7 +336,7 @@ router.post('/send-email', async (req, res) => {
   // Email options
   const mailOptions = {
     from: `"Balane-Saspa Dental Clinic" <${process.env.EMAIL_USER}>`,
-    to: 'dmdannsaspa@yahoo.com', // Updated to clinic's actual email
+    to: 'dmdannsaspa@yahoo.com',
     replyTo: sanitizedEmail,
     subject: `Contact Form: ${sanitizedSubject}`,
     text: `
@@ -569,7 +587,7 @@ router.post('/verify-otp', applyVerifyOtpRateLimiter, async (req, res) => {
       return res.status(400).json({ success: false, error: 'missing_fields', message: 'OTP and purpose are required' });
     }
     if (!validator.isNumeric(otp) || otp.length !== 6) {
-      logger.warn(`Invalid OTP format: ${otp}`, { ip: req.ip });
+ tongues.warn(`Invalid OTP format: ${otp}`, { ip: req.ip });
       return res.status(400).json({ success: false, error: 'invalid_otp', message: 'OTP must be a 6-digit number' });
     }
     if (!['signup', 'password_change_user', 'password_change_admin'].includes(purpose)) {
@@ -623,9 +641,9 @@ router.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", 'https://www.google.com', 'https://www.gstatic.com'],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://www.google.com', 'https://www.gstatic.com', 'https://www.recaptcha.net'],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      connectSrc: ["'self'", 'https://www.google.com'],
+      connectSrc: ["'self'", 'https://www.google.com', 'https://www.recaptcha.net'],
     },
   },
 }));

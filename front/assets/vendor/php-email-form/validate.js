@@ -1,13 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const form = document.querySelector('#contact-form');
-  const submitButton = form.querySelector('button[type="submit"]') || form.querySelector('input[type="submit"]');
-  const recaptchaError = document.querySelector('#recaptcha-error');
+  const form = document.querySelector('.php-email-form');
+  const submitButton = form.querySelector('button[type="submit"]');
+  const errorMessage = document.querySelector('.error-message');
   let csrfToken = null;
+  let isRecaptchaReady = false;
 
   // Fetch CSRF token
   async function fetchCsrfToken() {
     try {
-      const response = await fetch('auth/csrf-token', {
+      const response = await fetch('/api/csrf-token', {
         method: 'GET',
         credentials: 'include',
       });
@@ -19,29 +20,53 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('CSRF token fetched:', csrfToken);
     } catch (error) {
       console.error('Error fetching CSRF token:', error);
-      alert('Failed to initialize form. Please refresh the page.');
-      if (recaptchaError) recaptchaError.style.display = 'block';
+      showError('Failed to initialize form. Please refresh the page.');
+      if (errorMessage) errorMessage.textContent = 'Failed to initialize form. Please refresh the page.';
     }
   }
 
-  // Initialize reCAPTCHA with retry
-  async function initializeRecaptcha(maxRetries = 3, delay = 1000) {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      if (typeof grecaptcha !== 'undefined') {
-        return new Promise((resolve) => {
-          grecaptcha.ready(() => {
-            console.log('reCAPTCHA initialized');
-            if (recaptchaError) recaptchaError.style.display = 'none';
-            resolve(true);
-          });
-        });
-      }
-      console.warn(`reCAPTCHA not loaded, attempt ${attempt}/${maxRetries}`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+  // reCAPTCHA onload callback
+  window.onRecaptchaLoad = function() {
+    try {
+      grecaptcha.render('g-recaptcha', {
+        'sitekey': '6LcO5S4rAAAAADSxc4Tvy2WfL60jj7uG_MgSlT70', // Replace with your new v2 Checkbox site key
+        'callback': function(response) {
+          console.log('reCAPTCHA verified:', response);
+          if (errorMessage) errorMessage.style.display = 'none';
+        },
+        'error-callback': function() {
+          showError('reCAPTCHA error. Please try again or refresh the page.');
+          if (errorMessage) errorMessage.textContent = 'reCAPTCHA error. Please try again.';
+        }
+      });
+      isRecaptchaReady = true;
+      console.log('reCAPTCHA initialized successfully');
+      if (errorMessage) errorMessage.style.display = 'none';
+    } catch (error) {
+      console.error('reCAPTCHA initialization failed:', error);
+      showError('Failed to load reCAPTCHA. Please refresh the page.');
+      if (errorMessage) errorMessage.textContent = 'Failed to load reCAPTCHA. Please refresh the page.';
     }
-    console.error('reCAPTCHA script failed to load after retries');
-    if (recaptchaError) recaptchaError.style.display = 'block';
-    return false;
+  };
+
+  // Show error message using SweetAlert2
+  function showError(message) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: message,
+      confirmButtonColor: '#4154f1'
+    });
+  }
+
+  // Show success message
+  function showSuccess(message) {
+    Swal.fire({
+      icon: 'success',
+      title: 'Success',
+      text: message,
+      confirmButtonColor: '#4154f1'
+    });
   }
 
   // Handle form submission
@@ -49,60 +74,50 @@ document.addEventListener('DOMContentLoaded', () => {
     event.preventDefault();
     if (!submitButton) {
       console.error('Submit button not found');
-      alert('Form configuration error. Please contact support.');
+      showError('Form configuration error. Please contact support.');
       return;
     }
     submitButton.disabled = true;
     submitButton.textContent = 'Sending...';
-    if (recaptchaError) recaptchaError.style.display = 'none';
+    if (errorMessage) errorMessage.style.display = 'none';
 
     if (!csrfToken) {
-      alert('Form not initialized. Please refresh the page.');
+      showError('Form not initialized. Please refresh the page.');
       submitButton.disabled = false;
       submitButton.textContent = 'Send Message';
       return;
     }
 
-    if (!(await initializeRecaptcha())) {
-      alert('reCAPTCHA failed to load. Please refresh the page.');
+    if (!isRecaptchaReady || typeof grecaptcha === 'undefined') {
+      showError('reCAPTCHA is not loaded. Please refresh the page.');
       submitButton.disabled = false;
       submitButton.textContent = 'Send Message';
       return;
     }
 
-    let recaptchaResponse;
-    try {
-      // Replace YOUR_RECAPTCHA_SITE_KEY with your actual site key
-      recaptchaResponse = await Promise.race([
-        new Promise((resolve, reject) => {
-          grecaptcha.ready(() => {
-            grecaptcha.execute('6LdKay4rAAAAAIqBViqYzNVp40BFTlRSWShhpycJ', { action: 'submit' })
-              .then(token => resolve(token))
-              .catch(error => reject(error));
-          });
-        }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('reCAPTCHA timeout')), 5000))
-      ]);
-    } catch (error) {
-      console.error('reCAPTCHA error:', error.message);
-      alert(`reCAPTCHA verification failed: ${error.message}. Please try again.`);
-      if (recaptchaError) recaptchaError.style.display = 'block';
+    const recaptchaResponse = grecaptcha.getResponse();
+    if (!recaptchaResponse) {
+      showError('Please complete the reCAPTCHA checkbox.');
       submitButton.disabled = false;
       submitButton.textContent = 'Send Message';
       return;
     }
 
     const formData = new FormData(form);
-    formData.append('_csrf', csrfToken);
     formData.append('g-recaptcha-response', recaptchaResponse);
 
-    // Log form data and cookies for debugging
-    console.log('Form data:', Object.fromEntries(formData));
-    console.log('Cookies sent:', document.cookie);
+    // Log form data for debugging (obfuscate sensitive fields)
+    console.log('Form data:', {
+      name: formData.get('name') ? '[REDACTED]' : null,
+      email: formData.get('email') ? '[REDACTED]' : null,
+      subject: formData.get('subject'),
+      message: formData.get('message') ? '[REDACTED]' : null,
+      'g-recaptcha-response': recaptchaResponse ? '[REDACTED]' : null
+    });
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const response = await fetch('/api/send-email', {
         method: 'POST',
@@ -119,36 +134,34 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        alert('Email sent successfully!');
+        showSuccess('Email sent successfully!');
+        if (errorMessage) errorMessage.style.display = 'none';
         form.reset();
-        if (typeof grecaptcha !== 'undefined') {
-          grecaptcha.reset();
-        }
+        grecaptcha.reset();
       } else {
         console.error('Server response:', data);
         if (data.error === 'csrf_error') {
-          // Refetch CSRF token and prompt retry
           await fetchCsrfToken();
-          alert('Session expired or invalid token. A new token has been fetched. Please try submitting again.');
+          showError('Session expired or invalid token. A new token has been fetched. Please try submitting again.');
         } else if (data.error === 'recaptcha_error') {
-          alert(`reCAPTCHA verification failed: ${data.message}.`);
-          if (recaptchaError) recaptchaError.style.display = 'block';
+          showError(`reCAPTCHA verification failed: ${data.message}`);
+          if (errorMessage) errorMessage.textContent = `reCAPTCHA verification failed: ${data.message}`;
         } else if (data.error === 'too_many_requests') {
-          alert('Too many submissions. Please try again later.');
+          showError('Too many submissions. Please try again later.');
         } else if (data.error === 'missing_fields') {
-          alert('All fields are required, including reCAPTCHA.');
-        } else if (data.error === 'email_error') {
-          alert(`Failed to send email: ${data.message}.`);
+          showError('All fields are required, including reCAPTCHA.');
+        } else if (data.error === 'invalid_email') {
+          showError('Invalid email address.');
         } else {
-          alert(data.message || 'Failed to send email. Please try again.');
+          showError(data.message || 'Failed to send email. Please try again.');
         }
       }
     } catch (error) {
       console.error('Error sending email:', error);
       if (error.name === 'AbortError') {
-        alert('Request timed out. Please try again later.');
+        showError('Request timed out. Please try again later.');
       } else {
-        alert(`An error occurred: ${error.message}. Please try again later.`);
+        showError(`An error occurred: ${error.message}. Please try again later.`);
       }
     } finally {
       submitButton.disabled = false;
@@ -158,8 +171,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize
   fetchCsrfToken();
-  initializeRecaptcha();
-
-  // Attach submit handler
-  form.addEventListener('submit', handleSubmit);
+  // onRecaptchaLoad is called by reCAPTCHA script
+  if (form) {
+    form.addEventListener('submit', handleSubmit);
+  } else {
+    console.error('Form with class .php-email-form not found');
+    showError('Form not found. Please contact support.');
+  }
 });
