@@ -461,7 +461,7 @@
                     </div>
                     <div class="row">
                       <div class="col-lg-3 col-md-4 label">Date of Birth</div>
-                      <div class="col-lg-9 col-md-8" id="overview-dob">Loading...</div>
+                      <div class="col-lg-9 col-md-8" id="overview-birthdate">Loading...</div>
                     </div>
                     <div class="row">
                       <div class="col-lg-3 col-md-4 label">Gender</div>
@@ -547,9 +547,9 @@
                         </div>
                       </div>
                       <div class="row mb-3">
-                        <label for="dob" class="col-md-4 col-lg-3 col-form-label">Date of Birth</label>
+                        <label for="birthdate" class="col-md-4 col-lg-3 col-form-label">Date of Birth</label>
                         <div class="col-md-8 col-lg-9">
-                          <input name="dob" type="date" class="form-control" id="dob">
+                          <input name="birthdate" type="date" class="form-control" id="birthdate">
                         </div>
                       </div>
                       <div class="row mb-3">
@@ -1338,7 +1338,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       full_name: profileData.full_name || 'N/A',
       email: profileData.email || 'N/A',
       phone: profileData.phone || 'N/A',
-      dob: profileData.dob ? new Date(profileData.dob).toISOString().split('T')[0] : 'N/A',
+      birthdate: profileData.birthdate ? new Date(profileData.birthdate).toISOString().split('T')[0] : 'N/A',
       gender: profileData.gender || 'N/A',
       address: profileData.address || 'N/A',
       religion: profileData.religion || 'N/A',
@@ -1351,7 +1351,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('profile-phone').textContent = safeProfileData.phone;
 
     document.getElementById('overview-name').textContent = safeProfileData.full_name;
-    document.getElementById('overview-dob').textContent = safeProfileData.dob !== 'N/A' ? safeProfileData.dob : 'Not provided';
+    document.getElementById('overview-birthdate').textContent = safeProfileData.birthdate !== 'N/A' ? safeProfileData.birthdate : 'Not provided';
     document.getElementById('overview-gender').textContent = safeProfileData.gender;
     document.getElementById('overview-address').textContent = safeProfileData.address;
     document.getElementById('overview-religion').textContent = safeProfileData.religion;
@@ -1361,7 +1361,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('overview-email').textContent = safeProfileData.email;
 
     document.getElementById('fullName').value = safeProfileData.full_name !== 'N/A' ? safeProfileData.full_name : '';
-    document.getElementById('dob').value = safeProfileData.dob !== 'N/A' ? safeProfileData.dob : '';
+    document.getElementById('Birthdate').value = safeProfileData.birthdate !== 'N/A' ? safeProfileData.birthdate : '';
     document.getElementById('gender').value = safeProfileData.gender !== 'N/A' ? safeProfileData.gender : 'other';
     document.getElementById('Address').value = safeProfileData.address !== 'N/A' ? safeProfileData.address : '';
     document.getElementById('religion').value = safeProfileData.religion !== 'N/A' ? safeProfileData.religion : '';
@@ -1687,7 +1687,7 @@ async function saveProfile() {
     showError('A valid email address is required.');
     return;
   }
-  if (profileData.dob && !/^\d{4}-\d{2}-\d{2}$/.test(profileData.dob)) {
+  if (profileData.birthdate && !/^\d{4}-\d{2}-\d{2}$/.test(profileData.birthdate)) {
     showError('Date of birth must be in YYYY-MM-DD format.');
     return;
   }

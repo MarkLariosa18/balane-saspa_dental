@@ -4,17 +4,18 @@ const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const Redis = require('ioredis');
-const { RateLimiterRedis } = require('rate-limiter-flexible'); // Upgraded rate limiting
-const validator = require('validator'); // Added for input validation
-const helmet = require('helmet'); // Added for security headers
-const winston = require('winston'); // Added for structured logging
+const { RateLimiterRedis } = require('rate-limiter-flexible');
+const { body, query, validationResult } = require('express-validator'); // Added for input validation
+const helmet = require('helmet');
+const winston = require('winston');
 
 require('dotenv').config();
 
 // Initialize router
-router.use(express.json({ limit: '10kb' })); // Limit payload size for security
+router.use(express.json({ limit: '10kb' }));
+router.use(helmet()); // Apply helmet early for all routes
 
-// Validate critical environment variables
+// Validate environment variables
 const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_KEY', 'ENCRYPTION_KEY', 'REDIS_URL', 'NODE_ENV'];
 requiredEnvVars.forEach((varName) => {
   if (!process.env[varName]) {
@@ -37,31 +38,27 @@ const logger = winston.createLogger({
   ],
 });
 
-// Initialize Redis with enhanced configuration
+// Initialize Redis
 const redis = new Redis(process.env.REDIS_URL, {
   retryStrategy: (times) => Math.min(times * 50, 2000),
   maxRetriesPerRequest: 10,
 });
 
 // Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// Encryption setup with AES-256-GCM for authenticated encryption
+// Encryption setup
 const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 12; // GCM recommends 12 bytes
+const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
+const encryptionKey = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
-const encryptionKey = Buffer.from(ENCRYPTION_KEY, 'hex');
 if (encryptionKey.length !== 32) {
   logger.error(`Invalid ENCRYPTION_KEY length: expected 32 bytes, got ${encryptionKey.length}`);
   process.exit(1);
 }
 logger.info('Encryption key initialized successfully');
 
-// Encryption functions
 function encrypt(text) {
   if (!text) return null;
   try {
@@ -106,76 +103,71 @@ function decrypt(text) {
   }
 }
 
-// Rate limiters using RateLimiterRedis
-const checkUsernameLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:username',
-  points: 50, // 50 requests per hour
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-});
-
-const registrationLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:register',
-  points: 5, // 5 requests per hour
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-});
-
-const profileGetLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:profile:get',
-  points: 100, // 100 requests per 15 minutes
-  duration: 15 * 60,
-  blockDuration: 15 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
-
-const profileUpdateLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:profile:update',
-  points: 10, // 10 requests per hour
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
-
-const allPatientsLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:allpatients',
-  points: 50, // 50 requests per hour
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
-
-const changePasswordLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:password',
-  points: 5, // 5 requests per hour
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
-
-const adminProfileLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:adminprofile',
-  points: 100, // 100 requests per 15 minutes
-  duration: 15 * 60,
-  blockDuration: 15 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
-
-const adminUpdateLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:adminupdate',
-  points: 5, // 5 requests per hour
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
+// Rate limiters
+const rateLimiters = {
+  checkUsername: new RateLimiterRedis({
+    storeClient: redis,
+    keyPrefix: 'rl:username',
+    points: 100, // Increased for usability
+    duration: 60 * 60,
+    blockDuration: 60 * 60,
+  }),
+  registration: new RateLimiterRedis({
+    storeClient: redis,
+    keyPrefix: 'rl:register',
+    points: 5,
+    duration: 60 * 60,
+    blockDuration: 60 * 60,
+  }),
+  profileGet: new RateLimiterRedis({
+    storeClient: redis,
+    keyPrefix: 'rl:profile:get',
+    points: 200, // Increased for frequent profile checks
+    duration: 15 * 60,
+    blockDuration: 15 * 60,
+    keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
+  }),
+  profileUpdate: new RateLimiterRedis({
+    storeClient: redis,
+    keyPrefix: 'rl:profile:update',
+    points: 10,
+    duration: 60 * 60,
+    blockDuration: 60 * 60,
+    keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
+  }),
+  allPatients: new RateLimiterRedis({
+    storeClient: redis,
+    keyPrefix: 'rl:allpatients',
+    points: 50,
+    duration: 60 * 60,
+    blockDuration: 60 * 60,
+    keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
+  }),
+  changePassword: new RateLimiterRedis({
+    storeClient: redis,
+    keyPrefix: 'rl:password',
+    points: 5,
+    duration: 60 * 60,
+    blockDuration: 60 * 60,
+    keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
+  }),
+  adminProfile: new RateLimiterRedis({
+    storeClient: redis,
+    keyPrefix: 'rl:adminprofile',
+    points: 100,
+    duration: 15 * 60,
+    blockDuration: 15 * 60,
+    keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
+  }),
+  adminUpdate: new RateLimiterRedis({
+    storeClient: redis,
+    keyPrefix: 'rl:adminupdate',
+    points: 5,
+    duration: 60 * 60,
+    blockDuration: 60 * 60,
+    keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
+  }),
+};
 
 // Rate limiter middleware
 const applyRateLimiter = (limiter) => async (req, res, next) => {
@@ -187,21 +179,34 @@ const applyRateLimiter = (limiter) => async (req, res, next) => {
     logger.warn(`Rate limit exceeded for ${key} on ${req.path}`);
     res.status(429).json({
       error: 'too_many_requests',
-      message: error.message || 'Too many requests, please try again later',
+      message: 'Too many requests, please try again later',
+      retryAfter: error.msBeforeNext / 1000,
     });
   }
 };
 
-// Authentication middleware
-const isAuthenticated = (req, res, next) => {
+// Authentication middleware with session validation
+const isAuthenticated = async (req, res, next) => {
   if (!req.session || !req.session.isLoggedIn || !req.session.userId) {
     logger.warn(`Unauthorized access attempt: ${req.method} ${req.path}`);
     return res.status(401).json({ error: 'unauthorized', message: 'You must be logged in to perform this action' });
   }
-  next();
+  // Validate session in Redis
+  try {
+    const sessionData = await redis.get(`sess:${req.session.id}`);
+    if (!sessionData) {
+      logger.warn(`Invalid session for userId: ${req.session.userId}`);
+      req.session.destroy();
+      return res.status(401).json({ error: 'session_expired', message: 'Session expired, please log in again' });
+    }
+    next();
+  } catch (error) {
+    logger.error('Session validation error:', error);
+    res.status(500).json({ error: 'server_error', message: 'Failed to validate session' });
+  }
 };
 
-// Check if user is admin
+// Admin check
 const isAdmin = async (userId) => {
   const { data, error } = await supabase
     .from('admin')
@@ -212,276 +217,246 @@ const isAdmin = async (userId) => {
 };
 
 // Socket.IO handlers
-const handlePatientRegistration = (io, data) => {
-  try {
-    logger.info('Emitting patient registration via Socket.IO:', data);
-    io.emit('patient_registration', {
-      patient: {
-        id: data.patient_id,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        timestamp: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    logger.error('Error in patient registration handler:', error);
-  }
-};
-
-const handleProfileUpdate = (io, data) => {
-  try {
-    logger.info('Emitting profile update via Socket.IO:', data);
-    io.emit('profile_update', {
-      patient: {
-        id: data.userId,
-        full_name: data.fullName,
-        email: data.email,
-        timestamp: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    logger.error('Error in profile update handler:', error);
-  }
-};
-
-const handlePasswordChange = (io, data) => {
-  try {
-    logger.info('Emitting password change via Socket.IO:', data);
-    io.emit('password_change', {
-      userId: data.userId,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error('Error in password change handler:', error);
-  }
-};
-
-const handleAdminUpdate = (io, data) => {
-  try {
-    logger.info('Emitting admin account update via Socket.IO:', data);
-    io.emit('admin_update', {
-      userId: data.userId,
-      username: data.username,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error('Error in admin account update handler:', error);
-  }
-};
-
-// Username availability check endpoint (public)
-router.get('/check-username', applyRateLimiter(checkUsernameLimiter), async (req, res) => {
-  try {
-    const { username } = req.query;
-    if (!username || !validator.isAlphanumeric(username, 'en-US', { ignore: '_-' }) || !validator.isLength(username, { min: 3, max: 50 })) {
-      logger.warn(`Invalid username parameter: ${username}`);
-      return res.status(400).json({ error: 'invalid_request', message: 'Username must be 3-50 alphanumeric characters' });
+const socketHandlers = {
+  patientRegistration: (io, data) => {
+    try {
+      logger.info('Emitting patient registration:', data);
+      io.emit('patient_registration', {
+        patient: {
+          id: data.patient_id,
+          first_name: data.first_name,
+          last_name: data.last_name,
+          email: data.email,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      logger.error('Patient registration handler error:', error);
     }
-    logger.info(`Checking username availability: ${username}`);
-    const { data, error } = await supabase
-      .from('users')
-      .select('username')
-      .eq('username', username);
-    if (error) throw error;
-    const exists = data && data.length > 0;
-    logger.info(`Username exists: ${exists}`);
-    res.status(200).json({ exists });
-  } catch (error) {
-    logger.error('Error in check-username:', error);
-    res.status(500).json({ error: 'server_error', message: 'Internal server error' });
+  },
+  profileUpdate: (io, data) => {
+    try {
+      logger.info('Emitting profile update:', data);
+      io.emit('profile_update', {
+        patient: {
+          id: data.userId,
+          full_name: data.fullName,
+          email: data.email,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      logger.error('Profile update handler error:', error);
+    }
+  },
+  passwordChange: (io, data) => {
+    try {
+      logger.info('Emitting password change:', data);
+      io.emit('password_change', {
+        userId: data.userId,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error('Password change handler error:', error);
+    }
+  },
+  adminUpdate: (io, data) => {
+    try {
+      logger.info('Emitting admin update:', data);
+      io.emit('admin_update', {
+        userId: data.userId,
+        username: data.username,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error('Admin update handler error:', error);
+    }
+  },
+};
+
+// Username availability check
+router.get(
+  '/check-username',
+  applyRateLimiter(rateLimiters.checkUsername),
+  [
+    query('username')
+      .isAlphanumeric('en-US', { ignore: '_-' })
+      .isLength({ min: 3, max: 50 })
+      .trim()
+      .escape(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn(`Invalid username input: ${req.query.username}`);
+      return res.status(400).json({ error: 'invalid_request', message: errors.array()[0].msg });
+    }
+    try {
+      const { username } = req.query;
+      logger.info(`Checking username availability: ${username}`);
+      const { data, error } = await supabase
+        .from('users')
+        .select('username')
+        .eq('username', username)
+        .maybeSingle();
+      if (error) throw error;
+      res.status(200).json({ exists: !!data });
+    } catch (error) {
+      logger.error('Check-username error:', error);
+      res.status(500).json({ error: 'server_error', message: 'Internal server error' });
+    }
   }
-});
+);
 
-// Full patient registration endpoint (public)
-router.post('/', applyRateLimiter(registrationLimiter), async (req, res) => {
-  try {
-    const {
-      username,
-      password,
-      last_name,
-      first_name,
-      middle_name,
-      birthdate,
-      sex,
-      nickname,
-      religion,
-      nationality,
-      home_address,
-      home_no,
-      occupation,
-      office_no,
-      dental_insurance,
-      fax_no,
-      mobile_no,
-      email,
-    } = req.body;
+// Patient registration
+router.post(
+  '/',
+  applyRateLimiter(rateLimiters.registration),
+  [
+    body('username').isAlphanumeric('en-US', { ignore: '_-' }).isLength({ min: 3, max: 50 }).trim().escape(),
+    body('password').isLength({ min: 8, max: 100 }).trim(),
+    body('email').isEmail().normalizeEmail(),
+    body('first_name').isLength({ max: 50 }).trim().escape(),
+    body('last_name').isLength({ max: 50 }).trim().escape(),
+    body('birthdate').isISO8601().toDate(),
+    body('sex').isIn(['M', 'F']),
+    body('home_address').isLength({ max: 200 }).trim().escape(),
+    body('mobile_no').isMobilePhone('any').trim(),
+    body('middle_name').optional().isLength({ max: 50 }).trim().escape(),
+    body('nickname').optional().isLength({ max: 50 }).trim().escape(),
+    body('religion').optional().isLength({ max: 50 }).trim().escape(),
+    body('nationality').optional().isLength({ max: 50 }).trim().escape(),
+    body('home_no').optional().isLength({ max: 20 }).trim().escape(),
+    body('occupation').optional().isLength({ max: 100 }).trim().escape(),
+    body('office_no').optional().isLength({ max: 20 }).trim().escape(),
+    body('dental_insurance').optional().isLength({ max: 100 }).trim().escape(),
+    body('fax_no').optional().isLength({ max: 20 }).trim().escape(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Registration validation errors:', errors.array());
+      return res.status(400).json({ error: 'invalid_data', message: errors.array()[0].msg });
+    }
+    try {
+      const {
+        username,
+        password,
+        last_name,
+        first_name,
+        middle_name,
+        birthdate,
+        sex,
+        nickname,
+        religion,
+        nationality,
+        home_address,
+        home_no,
+        occupation,
+        office_no,
+        dental_insurance,
+        fax_no,
+        mobile_no,
+        email,
+      } = req.body;
 
-    // Validate required fields
-    const requiredFields = { username, password, last_name, first_name, birthdate, sex, home_address, mobile_no, email };
-    for (const [key, value] of Object.entries(requiredFields)) {
-      if (!value) {
-        logger.warn(`Missing required field: ${key}`);
-        return res.status(400).json({ error: 'missing_fields', message: `${key} is required` });
+      // Check for existing username
+      const { data: usernameCheck, error: usernameError } = await supabase
+        .from('users')
+        .select('username')
+        .eq('username', username)
+        .maybeSingle();
+      if (usernameError) throw usernameError;
+      if (usernameCheck) {
+        logger.warn(`Username already exists: ${username}`);
+        return res.status(400).json({ error: 'username_exists', message: 'Username already exists' });
       }
-    }
 
-    // Validate data types and formats
-    if (!validator.isAlphanumeric(username, 'en-US', { ignore: '_-' }) || !validator.isLength(username, { min: 3, max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Username must be 3-50 alphanumeric characters' });
-    }
-    if (!validator.isLength(password, { min: 8, max: 100 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Password must be 8-100 characters' });
-    }
-    if (!validator.isEmail(email)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid email format' });
-    }
-    if (!['M', 'F'].includes(sex)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Sex must be M or F' });
-    }
-    if (!validator.isISO8601(birthdate)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid birthdate format' });
-    }
-    if (!validator.isMobilePhone(mobile_no, 'any')) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid mobile number' });
-    }
-    if (middle_name && !validator.isLength(middle_name, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Middle name too long' });
-    }
-    if (nickname && !validator.isLength(nickname, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Nickname too long' });
-    }
-    if (religion && !validator.isLength(religion, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Religion too long' });
-    }
-    if (nationality && !validator.isLength(nationality, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Nationality too long' });
-    }
-    if (!validator.isLength(home_address, { max: 200 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Home address too long' });
-    }
-    if (home_no && !validator.isLength(home_no, { max: 20 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Home number too long' });
-    }
-    if (occupation && !validator.isLength(occupation, { max: 100 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Occupation too long' });
-    }
-    if (office_no && !validator.isLength(office_no, { max: 20 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Office number too long' });
-    }
-    if (dental_insurance && !validator.isLength(dental_insurance, { max: 100 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Dental insurance too long' });
-    }
-    if (fax_no && !validator.isLength(fax_no, { max: 20 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Fax number too long' });
-    }
-
-    // Check for existing username
-    const { data: usernameCheck, error: usernameCheckError } = await supabase
-      .from('users')
-      .select('username')
-      .eq('username', username);
-    if (usernameCheckError) throw usernameCheckError;
-    if (usernameCheck && usernameCheck.length > 0) {
-      logger.warn(`Username already exists: ${username}`);
-      return res.status(400).json({ error: 'username_exists', message: 'Username already exists' });
-    }
-
-    // Check for existing email
-    const emailToCheck = email.toLowerCase();
-    const { data: emailCheck, error: emailCheckError } = await supabase
-      .from('patients')
-      .select('email');
-    if (emailCheckError) throw emailCheckError;
-    for (const patient of emailCheck) {
-      if (patient.email) {
-        const decryptedEmail = decrypt(patient.email);
-        if (decryptedEmail === emailToCheck) {
+      // Check for existing email
+      const emailToCheck = email.toLowerCase();
+      const { data: emailCheck, error: emailError } = await supabase
+        .from('patients')
+        .select('email');
+      if (emailError) throw emailError;
+      for (const patient of emailCheck) {
+        if (patient.email && decrypt(patient.email) === emailToCheck) {
           logger.warn(`Email already exists: ${emailToCheck}`);
           return res.status(400).json({ error: 'email_exists', message: 'Email already exists' });
         }
       }
-    }
 
-    // Hash password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Encrypt patient data
-    const encryptedData = {
-      last_name: encrypt(last_name),
-      first_name: encrypt(first_name),
-      middle_name: middle_name ? encrypt(middle_name) : null,
-      birthdate: encrypt(birthdate),
-      sex,
-      nickname: nickname ? encrypt(nickname) : null,
-      religion: religion ? encrypt(religion) : null,
-      nationality: nationality ? encrypt(nationality) : null,
-      home_address: encrypt(home_address),
-      home_no: home_no ? encrypt(home_no) : null,
-      occupation: occupation ? encrypt(occupation) : null,
-      office_no: office_no ? encrypt(office_no) : null,
-      dental_insurance: dental_insurance ? encrypt(dental_insurance) : null,
-      fax_no: fax_no ? encrypt(fax_no) : null,
-      mobile_no: encrypt(mobile_no),
-      email: encrypt(emailToCheck),
-    };
+      // Encrypt patient data
+      const encryptedData = {
+        last_name: encrypt(last_name),
+        first_name: encrypt(first_name),
+        middle_name: middle_name ? encrypt(middle_name) : null,
+        birthdate: encrypt(birthdate),
+        sex,
+        nickname: nickname ? encrypt(nickname) : null,
+        religion: religion ? encrypt(religion) : null,
+        nationality: nationality ? encrypt(nationality) : null,
+        home_address: encrypt(home_address),
+        home_no: home_no ? encrypt(home_no) : null,
+        occupation: occupation ? encrypt(occupation) : null,
+        office_no: office_no ? encrypt(office_no) : null,
+        dental_insurance: dental_insurance ? encrypt(dental_insurance) : null,
+        fax_no: fax_no ? encrypt(fax_no) : null,
+        mobile_no: encrypt(mobile_no),
+        email: encrypt(emailToCheck),
+      };
 
-    // Insert user into users table
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .insert([{ username, password: hashedPassword, created_at: new Date().toISOString() }])
-      .select('id')
-      .single();
-    if (userError) {
-      logger.error('User insertion error:', userError);
-      if (userError.code === '23505') {
-        return res.status(400).json({ error: 'username_exists', message: 'Username already exists' });
+      // Insert user
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .insert([{ username, password: hashedPassword, created_at: new Date().toISOString() }])
+        .select('id')
+        .single();
+      if (userError) {
+        logger.error('User insertion error:', userError);
+        if (userError.code === '23505') {
+          return res.status(400).json({ error: 'username_exists', message: 'Username already exists' });
+        }
+        throw userError;
       }
-      throw userError;
-    }
 
-    // Insert patient into patients table
-    const { data: patientData, error: patientError } = await supabase
-      .from('patients')
-      .insert([
-        {
-          id: userData.id,
-          ...encryptedData,
-          effective_date: new Date().toISOString(),
-        },
-      ])
-      .select('id')
-      .single();
-    if (patientError) {
-      logger.error('Patient insertion error:', patientError);
-      // Rollback user insertion
-      await supabase.from('users').delete().eq('id', userData.id);
-      if (patientError.code === '23505') {
-        return res.status(400).json({ error: 'email_exists', message: 'Email already exists' });
+      // Insert patient
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .insert([{ id: userData.id, ...encryptedData, effective_date: new Date().toISOString() }])
+        .select('id')
+        .single();
+      if (patientError) {
+        logger.error('Patient insertion error:', patientError);
+        await supabase.from('users').delete().eq('id', userData.id);
+        if (patientError.code === '23505') {
+          return res.status(400).json({ error: 'email_exists', message: 'Email already exists' });
+        }
+        throw patientError;
       }
-      throw patientError;
+
+      // Emit Socket.IO event
+      const io = req.app.get('socketio');
+      socketHandlers.patientRegistration(io, {
+        patient_id: patientData.id,
+        first_name,
+        last_name,
+        email: emailToCheck,
+      });
+
+      logger.info(`Patient registered: userId ${userData.id}`);
+      res.status(201).json({ success: true, message: 'Patient registered successfully', patient_id: patientData.id });
+    } catch (error) {
+      logger.error('Registration error:', error);
+      res.status(500).json({ error: 'server_error', message: 'Failed to register patient' });
     }
-
-    // Emit Socket.IO event
-    const io = req.app.get('socketio');
-    handlePatientRegistration(io, {
-      patient_id: patientData.id,
-      first_name,
-      last_name,
-      email: emailToCheck,
-    });
-
-    logger.info(`Patient registered successfully: userId ${userData.id}`);
-    res.status(201).json({ success: true, message: 'Patient registered successfully', patient_id: patientData.id });
-  } catch (error) {
-    logger.error('Error registering patient:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to register patient' });
   }
-});
+);
 
-// Fetch profile data (protected)
-router.get('/profile', isAuthenticated, applyRateLimiter(profileGetLimiter), async (req, res) => {
+// Fetch profile
+router.get('/profile', isAuthenticated, applyRateLimiter(rateLimiters.profileGet), async (req, res) => {
   try {
     const userId = req.session.userId;
     logger.info(`Fetching profile for userId: ${userId}`);
@@ -516,22 +491,20 @@ router.get('/profile', isAuthenticated, applyRateLimiter(profileGetLimiter), asy
       emergency_contact: 'N/A',
     };
 
-    logger.info(`Profile data retrieved for userId: ${userId}`);
+    logger.info(`Profile retrieved for userId: ${userId}`);
     res.status(200).json(profileData);
   } catch (error) {
-    logger.error('Error fetching profile:', error);
+    logger.error('Profile fetch error:', error);
     res.status(500).json({ error: 'server_error', message: 'Failed to fetch profile' });
   }
 });
 
-// Fetch all patients (protected, admin-only)
-router.get('/allPatients', isAuthenticated, applyRateLimiter(allPatientsLimiter), async (req, res) => {
+// Fetch all patients (admin-only)
+router.get('/allPatients', isAuthenticated, applyRateLimiter(rateLimiters.allPatients), async (req, res) => {
   try {
     const userId = req.session.userId;
-    logger.info(`Fetching all patients for userId: ${userId}`);
-
     if (!(await isAdmin(userId))) {
-      logger.warn(`Non-admin attempted to fetch all patients: userId ${userId}`);
+      logger.warn(`Non-admin access attempt: userId ${userId}`);
       return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
     }
 
@@ -571,12 +544,11 @@ router.get('/allPatients', isAuthenticated, applyRateLimiter(allPatientsLimiter)
     logger.info(`Fetched ${decryptedPatients.length} patients`);
     res.status(200).json(decryptedPatients);
   } catch (error) {
-    logger.error('Error fetching all patients:', error);
+    logger.error('All patients fetch error:', error);
     res.status(500).json({ error: 'server_error', message: 'Failed to fetch patients' });
   }
 });
 
-// Helper function to calculate age
 function calculateAge(birthdate) {
   try {
     const today = new Date();
@@ -584,194 +556,170 @@ function calculateAge(birthdate) {
     const age = Math.floor((today - birth) / (365.25 * 24 * 60 * 60 * 1000));
     return age >= 0 ? age : 0;
   } catch (error) {
-    logger.warn(`Invalid birthdate for age calculation: ${birthdate}`);
+    logger.warn(`Invalid birthdate: ${birthdate}`);
     return 0;
   }
 }
 
-// Update profile (protected)
-router.put('/profile', isAuthenticated, applyRateLimiter(profileUpdateLimiter), async (req, res) => {
-  try {
-    const userId = req.session.userId;
-    const { fullName, dob, gender, address, religion, nationality, homeNumber, phone, email } = req.body;
+// Update profile
+router.put(
+  '/profile',
+  isAuthenticated,
+  applyRateLimiter(rateLimiters.profileUpdate),
+  [
+    body('fullName').isLength({ min: 2, max: 100 }).trim().escape(),
+    body('dob').isISO8601().toDate(),
+    body('gender').isIn(['male', 'female', 'other']),
+    body('address').isLength({ max: 200 }).trim().escape(),
+    body('phone').isMobilePhone('any').trim(),
+    body('email').isEmail().normalizeEmail(),
+    body('religion').optional().isLength({ max: 50 }).trim().escape(),
+    body('nationality').optional().isLength({ max: 50 }).trim().escape(),
+    body('homeNumber').optional().isLength({ max: 20 }).trim().escape(),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Profile update validation errors:', errors.array());
+      return res.status(400).json({ error: 'invalid_data', message: errors.array()[0].msg });
+    }
+    try {
+      const userId = req.session.userId;
+      const { fullName, dob, gender, address, religion, nationality, homeNumber, phone, email } = req.body;
 
-    // Validate inputs
-    if (!fullName || !dob || !gender || !address || !phone || !email) {
-      logger.warn(`Missing required fields for profile update: userId ${userId}`);
-      return res.status(400).json({ error: 'missing_fields', message: 'All required fields must be provided' });
-    }
-    if (!validator.isEmail(email)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid email format' });
-    }
-    if (!validator.isISO8601(dob)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid date of birth format' });
-    }
-    if (!['male', 'female', 'other'].includes(gender)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid gender' });
-    }
-    if (!validator.isMobilePhone(phone, 'any')) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid phone number' });
-    }
-    if (!validator.isLength(fullName, { min: 2, max: 100 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Full name must be 2-100 characters' });
-    }
-    if (!validator.isLength(address, { max: 200 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Address too long' });
-    }
-    if (religion && !validator.isLength(religion, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Religion too long' });
-    }
-    if (nationality && !validator.isLength(nationality, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Nationality too long' });
-    }
-    if (homeNumber && !validator.isLength(homeNumber, { max: 20 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Home number too long' });
-    }
+      const [first_name, ...lastNameParts] = fullName.trim().split(/\s+/);
+      const last_name = lastNameParts.join(' ');
 
-    const [first_name, ...lastNameParts] = fullName.trim().split(/\s+/);
-    const last_name = lastNameParts.join(' ');
+      const encryptedData = {
+        first_name: encrypt(first_name),
+        last_name: encrypt(last_name),
+        birthdate: encrypt(dob),
+        sex: gender === 'male' ? 'M' : gender === 'female' ? 'F' : 'O',
+        home_address: encrypt(address),
+        religion: religion && religion !== 'N/A' ? encrypt(religion) : null,
+        nationality: nationality && nationality !== 'N/A' ? encrypt(nationality) : null,
+        home_no: homeNumber && homeNumber !== 'N/A' ? encrypt(homeNumber) : null,
+        mobile_no: encrypt(phone),
+        email: encrypt(email.toLowerCase()),
+      };
 
-    const encryptedData = {
-      first_name: encrypt(first_name),
-      last_name: encrypt(last_name),
-      birthdate: encrypt(dob),
-      sex: gender === 'male' ? 'M' : gender === 'female' ? 'F' : 'O',
-      home_address: encrypt(address),
-      religion: religion && religion !== 'N/A' ? encrypt(religion) : null,
-      nationality: nationality && nationality !== 'N/A' ? encrypt(nationality) : null,
-      home_no: homeNumber && homeNumber !== 'N/A' ? encrypt(homeNumber) : null,
-      mobile_no: encrypt(phone),
-      email: encrypt(email.toLowerCase()),
-    };
+      const { data, error } = await supabase
+        .from('patients')
+        .update(encryptedData)
+        .eq('id', userId)
+        .select('id')
+        .single();
 
-    const { data, error } = await supabase
-      .from('patients')
-      .update(encryptedData)
-      .eq('id', userId)
-      .select('id')
-      .single();
+      if (error) throw error;
 
-    if (error) throw error;
+      const io = req.app.get('socketio');
+      socketHandlers.profileUpdate(io, { userId, fullName, email });
 
-    // Emit Socket.IO event
-    const io = req.app.get('socketio');
-    handleProfileUpdate(io, { userId, fullName, email });
-
-    logger.info(`Profile updated for userId: ${userId}`);
-    res.status(200).json({ success: true, message: 'Profile updated successfully' });
-  } catch (error) {
-    logger.error('Error updating profile:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to update profile' });
+      logger.info(`Profile updated for userId: ${userId}`);
+      res.status(200).json({ success: true, message: 'Profile updated successfully' });
+    } catch (error) {
+      logger.error('Profile update error:', error);
+      res.status(500).json({ error: 'server_error', message: 'Failed to update profile' });
+    }
   }
-});
+);
 
-// Update settings (protected, placeholder)
+// Update settings
 router.put('/settings', isAuthenticated, async (req, res) => {
   try {
-    logger.info(`Settings update received for userId: ${req.session.userId}`);
+    logger.info(`Settings update for userId: ${req.session.userId}`);
     res.status(200).json({ success: true, message: 'Settings saved successfully' });
   } catch (error) {
-    logger.error('Error saving settings:', error);
+    logger.error('Settings update error:', error);
     res.status(500).json({ error: 'server_error', message: 'Failed to save settings' });
   }
 });
 
-// Change password (protected)
-router.put('/change-password', isAuthenticated, applyRateLimiter(changePasswordLimiter), async (req, res) => {
-  try {
-    const userId = req.session.userId;
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      logger.warn(`Missing password fields for userId: ${userId}`);
-      return res.status(400).json({ error: 'missing_fields', message: 'Current and new passwords are required' });
+// Change password
+router.put(
+  '/change-password',
+  isAuthenticated,
+  applyRateLimiter(rateLimiters.changePassword),
+  [
+    body('currentPassword').notEmpty().trim(),
+    body('newPassword')
+      .isLength({ min: 8, max: 100 })
+      .matches(/[0-9]/)
+      .matches(/[!@#$%^&*]/)
+      .matches(/[A-Z]/)
+      .matches(/[a-z]/),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Password change validation errors:', errors.array());
+      return res.status(400).json({ error: 'invalid_data', message: errors.array()[0].msg });
     }
+    try {
+      const userId = req.session.userId;
+      const { currentPassword, newPassword } = req.body;
 
-    // Validate new password
-    const passwordErrors = [];
-    if (!validator.isLength(newPassword, { min: 8, max: 100 })) {
-      passwordErrors.push('Password must be 8-100 characters long');
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one number');
-    }
-    if (!/[!@#$%^&*]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one special character');
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one uppercase letter');
-    }
-    if (!/[a-z]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one lowercase letter');
-    }
-    if (passwordErrors.length > 0) {
-      logger.warn(`Invalid new password for userId: ${userId}`);
-      return res.status(400).json({ error: 'invalid_password', message: 'Password does not meet security requirements', details: passwordErrors });
-    }
+      const { data: userData, error: fetchError } = await supabase
+        .from('users')
+        .select('password')
+        .eq('id', userId)
+        .single();
 
-    const { data: userData, error: fetchError } = await supabase
-      .from('users')
-      .select('password')
-      .eq('id', userId)
-      .single();
+      if (fetchError) throw fetchError;
+      if (!userData) {
+        logger.warn(`User not found: userId ${userId}`);
+        return res.status(404).json({ error: 'not_found', message: 'User not found' });
+      }
 
-    if (fetchError) throw fetchError;
-    if (!userData) {
-      logger.warn(`User not found for userId: ${userId}`);
-      return res.status(404).json({ error: 'not_found', message: 'User not found' });
-    }
+      const passwordMatch = await bcrypt.compare(currentPassword, userData.password);
+      if (!passwordMatch) {
+        logger.warn(`Incorrect password for userId: ${userId}`);
+        return res.status(401).json({ error: 'invalid_password', message: 'Current password is incorrect' });
+      }
 
-    const passwordMatch = await bcrypt.compare(currentPassword, userData.password);
-    if (!passwordMatch) {
-      logger.warn(`Incorrect current password for userId: ${userId}`);
-      return res.status(401).json({ error: 'invalid_password', message: 'Current password is incorrect' });
-    }
+      if (await bcrypt.compare(newPassword, userData.password)) {
+        logger.warn(`New password same as current: userId ${userId}`);
+        return res.status(400).json({ error: 'invalid_password', message: 'New password must be different' });
+      }
 
-    if (await bcrypt.compare(newPassword, userData.password)) {
-      logger.warn(`New password same as current for userId: ${userId}`);
-      return res.status(400).json({ error: 'invalid_password', message: 'New password must not be the same as the current password' });
-    }
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ password: hashedPassword })
+        .eq('id', userId);
 
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ password: hashedPassword })
-      .eq('id', userId);
+      if (updateError) throw updateError;
 
-    if (updateError) throw updateError;
+      const io = req.app.get('socketio');
+      socketHandlers.passwordChange(io, { userId });
 
-    // Emit Socket.IO event
-    const io = req.app.get('socketio');
-    handlePasswordChange(io, { userId });
-
-    // Destroy session
-    await new Promise((resolve, reject) => {
-      req.session.destroy((err) => {
-        if (err) {
-          logger.error('Error destroying session:', err);
-          reject(err);
-          return;
-        }
-        resolve();
+      await new Promise((resolve, reject) => {
+        req.session.destroy((err) => {
+          if (err) {
+            logger.error('Session destroy error:', err);
+            reject(err);
+            return;
+          }
+          resolve();
+        });
       });
-    });
 
-    logger.info(`Password changed for userId: ${userId}`);
-    res.status(200).json({ success: true, message: 'Password changed successfully. Please log in again.' });
-  } catch (error) {
-    logger.error('Error changing password:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to change password' });
+      logger.info(`Password changed for userId: ${userId}`);
+      res.status(200).json({ success: true, message: 'Password changed successfully. Please log in again.' });
+    } catch (error) {
+      logger.error('Password change error:', error);
+      res.status(500).json({ error: 'server_error', message: 'Failed to change password' });
+    }
   }
-});
+);
 
-// Fetch admin profile (protected, admin-specific)
-router.get('/admin-profile', isAuthenticated, applyRateLimiter(adminProfileLimiter), async (req, res) => {
+// Fetch admin profile
+router.get('/admin-profile', isAuthenticated, applyRateLimiter(rateLimiters.adminProfile), async (req, res) => {
   try {
     const userId = req.session.userId;
     if (!(await isAdmin(userId))) {
-      logger.warn(`Non-admin attempted to fetch admin profile: userId ${userId}`);
+      logger.warn(`Non-admin access attempt: userId ${userId}`);
       return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
     }
 
@@ -783,151 +731,121 @@ router.get('/admin-profile', isAuthenticated, applyRateLimiter(adminProfileLimit
 
     if (error) throw error;
     if (!data) {
-      logger.warn(`Admin profile not found for userId: ${userId}`);
+      logger.warn(`Admin profile not found: userId ${userId}`);
       return res.status(404).json({ error: 'not_found', message: 'Admin profile not found' });
     }
 
-    logger.info(`Admin profile fetched for userId: ${userId}`);
+    logger.info(`Admin profile fetched: userId ${userId}`);
     res.status(200).json({
       username: data.username,
       email: decrypt(data.email) || 'Not provided',
     });
   } catch (error) {
-    logger.error('Error fetching admin profile:', error);
+    logger.error('Admin profile fetch error:', error);
     res.status(500).json({ error: 'server_error', message: 'Failed to fetch admin profile' });
   }
 });
 
-// Update admin account (protected, admin-specific)
-router.put('/admin-update', isAuthenticated, applyRateLimiter(adminUpdateLimiter), async (req, res) => {
-  try {
-    const userId = req.session.userId;
-    if (!(await isAdmin(userId))) {
-      logger.warn(`Non-admin attempted to update admin account: userId ${userId}`);
-      return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
+// Update admin account
+router.put(
+  '/admin-update',
+  isAuthenticated,
+  applyRateLimiter(rateLimiters.adminUpdate),
+  [
+    body('username').isAlphanumeric('en-US', { ignore: '_-' }).isLength({ min: 3, max: 50 }).trim().escape(),
+    body('currentPassword').notEmpty().trim(),
+    body('newPassword')
+      .isLength({ min: 8, max: 100 })
+      .matches(/[0-9]/)
+      .matches(/[!@#$%^&*]/)
+      .matches(/[A-Z]/)
+      .matches(/[a-z]/),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      logger.warn('Admin update validation errors:', errors.array());
+      return res.status(400).json({ error: 'invalid_data', message: errors.array()[0].msg });
     }
-
-    const { username, currentPassword, newPassword } = req.body;
-
-    if (!username || !currentPassword || !newPassword) {
-      logger.warn(`Missing fields for admin update: userId ${userId}`);
-      return res.status(400).json({ error: 'missing_fields', message: 'All fields are required' });
-    }
-
-    if (!validator.isAlphanumeric(username, 'en-US', { ignore: '_-' }) || !validator.isLength(username, { min: 3, max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Username must be 3-50 alphanumeric characters' });
-    }
-
-    // Validate new password
-    const passwordErrors = [];
-    if (!validator.isLength(newPassword, { min: 8, max: 100 })) {
-      passwordErrors.push('Password must be 8-100 characters long');
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one number');
-    }
-    if (!/[!@#$%^&*]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one special character');
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one uppercase letter');
-    }
-    if (!/[a-z]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one lowercase letter');
-    }
-    if (passwordErrors.length > 0) {
-      logger.warn(`Invalid new password for admin userId: ${userId}`);
-      return res.status(400).json({ error: 'invalid_password', message: 'Password does not meet security requirements', details: passwordErrors });
-    }
-
-    // Fetch current admin data
-    const { data: adminData, error: fetchError } = await supabase
-      .from('admin')
-      .select  .select('username, password')
-      .eq('id', userId)
-      .single();
-
-    if (fetchError) throw fetchError;
-    if (!adminData) {
-      logger.warn(`Admin not found for userId: ${userId}`);
-      return res.status(404).json({ error: 'not_found', message: 'Admin not found' });
-    }
-
-    // Verify current password
-    const passwordMatch = await bcrypt.compare(currentPassword, adminData.password);
-    if (!passwordMatch) {
-      logger.warn(`Incorrect current password for admin userId: ${userId}`);
-      return res.status(401).json({ error: 'invalid_password', message: 'Current password is incorrect' });
-    }
-
-    if (await bcrypt.compare(newPassword, adminData.password)) {
-      logger.warn(`New password same as current for admin userId: ${userId}`);
-      return res.status(400).json({ error: 'invalid_password', message: 'New password must not be the same as the current password' });
-    }
-
-    // Check if username is taken
-    if (username !== adminData.username) {
-      const { data: adminCheck, error: adminError } = await supabase
-        .from('admin')
-        .select('id')
-        .eq('username', username);
-      const { data: userCheck, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('username', username);
-      if (adminError || userError) throw adminError || userError;
-      if ((adminCheck && adminCheck.length > 0) || (userCheck && userCheck.length > 0)) {
-        logger.warn(`Username already taken: ${username}`);
-        return res.status(400).json({ error: 'username_exists', message: 'Username is already taken' });
+    try {
+      const userId = req.session.userId;
+      if (!(await isAdmin(userId))) {
+        logger.warn(`Non-admin access attempt: userId ${userId}`);
+        return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
       }
-    }
 
-    // Hash new password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+      const { username, currentPassword, newPassword } = req.body;
 
-    // Update admin data
-    const { error: updateError } = await supabase
-      .from('admin')
-      .update({ username, password: hashedPassword })
-      .eq('id', userId);
+      const { data: adminData, error: fetchError } = await supabase
+        .from('admin')
+        .select('username, password')
+        .eq('id', userId)
+        .single();
 
-    if (updateError) throw updateError;
+      if (fetchError) throw fetchError;
+      if (!adminData) {
+        logger.warn(`Admin not found: userId ${userId}`);
+        return res.status(404).json({ error: 'not_found', message: 'Admin not found' });
+      }
 
-    // Emit Socket.IO event
-    const io = req.app.get('socketio');
-    handleAdminUpdate(io, { userId, username });
+      const passwordMatch = await bcrypt.compare(currentPassword, adminData.password);
+      if (!passwordMatch) {
+        logger.warn(`Incorrect password for admin: userId ${userId}`);
+        return res.status(401).json({ error: 'invalid_password', message: 'Current password is incorrect' });
+      }
 
-    // Destroy session
-    await new Promise((resolve, reject) => {
-      req.session.destroy((err) => {
-        if (err) {
-          logger.error('Error destroying session:', err);
-          reject(err);
-          return;
+      if (await bcrypt.compare(newPassword, adminData.password)) {
+        logger.warn(`New password same as current: userId ${userId}`);
+        return res.status(400).json({ error: 'invalid_password', message: 'New password must be different' });
+      }
+
+      if (username !== adminData.username) {
+        const { data: adminCheck, error: adminError } = await supabase
+          .from('admin')
+          .select('id')
+          .eq('username', username);
+        const { data: userCheck, error: userError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('username', username);
+        if (adminError || userError) throw adminError || userError;
+        if ((adminCheck && adminCheck.length > 0) || (userCheck && userCheck.length > 0)) {
+          logger.warn(`Username taken: ${username}`);
+          return res.status(400).json({ error: 'username_exists', message: 'Username is already taken' });
         }
-        resolve();
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      const { error: updateError } = await supabase
+        .from('admin')
+        .update({ username, password: hashedPassword })
+        .eq('id', userId);
+
+      if (updateError) throw updateError;
+
+      const io = req.app.get('socketio');
+      socketHandlers.adminUpdate(io, { userId, username });
+
+      await new Promise((resolve, reject) => {
+        req.session.destroy((err) => {
+          if (err) {
+            logger.error('Session destroy error:', err);
+            reject(err);
+            return;
+          }
+          resolve();
+        });
       });
-    });
 
-    logger.info(`Admin account updated for userId: ${userId}`);
-    res.status(200).json({ success: true, message: 'Account updated successfully. Please log in again.' });
-  } catch (error) {
-    logger.error('Error updating admin account:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to update account' });
+      logger.info(`Admin updated: userId ${userId}`);
+      res.status(200).json({ success: true, message: 'Account updated successfully. Please log in again.' });
+    } catch (error) {
+      logger.error('Admin update error:', error);
+      res.status(500).json({ error: 'server_error', message: 'Failed to update account' });
+    }
   }
-});
-
-// Apply helmet for security headers
-router.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-    },
-  },
-}));
+);
 
 // Error handling middleware
 router.use((err, req, res, next) => {
@@ -935,7 +853,7 @@ router.use((err, req, res, next) => {
   res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
 });
 
-// Graceful shutdown for Redis
+// Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('Shutting down Redis connection');
   redis.quit(() => {
@@ -946,8 +864,5 @@ process.on('SIGTERM', () => {
 
 module.exports = {
   router,
-  handlePatientRegistration,
-  handleProfileUpdate,
-  handlePasswordChange,
-  handleAdminUpdate,
+  ...socketHandlers,
 };
