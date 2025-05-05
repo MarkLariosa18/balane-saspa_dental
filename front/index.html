@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-  <script src="https://www.google.com/recaptcha/api.js?render=6LdKay4rAAAAAIqBViqYzNVp40BFTlRSWShhpycJ"></script>
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
@@ -116,6 +116,9 @@
       border-radius: 10px;
       box-shadow: 0 3px 10px rgba(0,0,0,0.08);
       transition: transform 0.3s ease, box-shadow 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
 
     .service-item:hover {
@@ -126,14 +129,33 @@
     .card {
       border-radius: 8px;
       overflow: hidden;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
     }
 
     .card img {
       transition: transform 0.3s ease;
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
     }
 
     .card:hover img {
       transform: scale(1.05);
+    }
+
+    .card__content {
+      padding: 15px;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .card__content p {
+      margin: 5px 0;
+      font-size: 14px;
     }
 
     .call-to-action {
@@ -238,11 +260,23 @@
         width: 100%;
         margin: 5px 0;
       }
+
+      .service-item {
+        max-width: 100%;
+      }
+
+      .card img {
+        height: 150px;
+      }
     }
 
     @media (max-width: 576px) {
       .topbar .col-6 {
         font-size: 12px;
+      }
+
+      .card img {
+        height: 120px;
       }
     }
   </style>
@@ -511,7 +545,8 @@
             <div class="service-item position-relative">
               <h3>Composite Filling</h3>
               <div class="card">
-                <img src="assets/img/services/compositefilling.jpg" alt="Composite dental filling" style="width: 100%" <div class="card__content">
+                <img src="assets/img/services/compositefilling.jpg" alt="Composite dental filling" style="width: 100%; height: auto;">
+                <div class="card__content">
                   <p class="card-des">Small</p>
                   <p class="card-des">Medium</p>
                   <p class="card-des">Large</p>
@@ -607,6 +642,7 @@
                   <p class="card-des">Posterior</p>
                 </div>
               </div>
+ en
             </div>
           </div>
 
@@ -859,7 +895,7 @@
                   <textarea class="form-control" name="message" rows="4" placeholder="Message" required aria-label="Message"></textarea>
                 </div>
                 <div class="col-md-12">
-                  <div class="g-recaptcha" data-sitekey="<!-- 6LdKay4rAAAAAIqBViqYzNVp40BFTlRSWShhpycJ -->"></div>
+                  <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY"></div>
                 </div>
                 <div class="col-md-12 text-center">
                   <div class="loading">Loading</div>
@@ -930,13 +966,9 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
   <!-- Custom Scripts -->
-  <!-- Main site functionality -->
   <script src="assets/js/main.js"></script>
-  <!-- Shared utility functions -->
   <script src="common.js"></script>
-  <!-- Service card toggle functionality -->
   <script src="assets/js/see-more.js"></script>
-  <!-- Card overlay effects -->
   <script src="assets/js/card-overlay.js"></script>
 
   <script>
@@ -982,7 +1014,7 @@
 
       // Fetch CSRF token
       try {
-        const csrfResponse = await fetch('/auth/csrf-token', { credentials: 'include' });
+        const csrfResponse = await fetch('/csrf-token', { credentials: 'include' });
         if (!csrfResponse.ok) throw new Error('CSRF token fetch failed');
         const csrfData = await csrfResponse.json();
         document.getElementById('csrf-token').value = csrfData.csrfToken;
@@ -1053,15 +1085,14 @@
 
         // Collect form data
         const formData = new FormData(form);
-
-        // Client-side validation
         const name = formData.get('name').trim();
         const email = formData.get('email').trim();
         const subject = formData.get('subject').trim();
         const message = formData.get('message').trim();
         const csrfToken = formData.get('_csrf');
-        const recaptchaResponse = formData.get('g-recaptcha-response');
+        const recaptchaResponse = grecaptcha.getResponse();
 
+        // Client-side validation
         if (!name || !email || !subject || !message || !csrfToken) {
           loading.style.display = 'none';
           errorMessage.textContent = 'Please fill in all fields.';
@@ -1106,6 +1137,9 @@
         try {
           const response = await fetch('/api/send-email', {
             method: 'POST',
+            headers: {
+              'X-CSRF-Token': csrfToken
+            },
             body: formData,
             credentials: 'include'
           });
@@ -1122,13 +1156,10 @@
               confirmButtonColor: '#007bff'
             });
             form.reset();
-            // Reset reCAPTCHA
-            if (typeof grecaptcha !== 'undefined') {
-              grecaptcha.reset();
-            }
+            grecaptcha.reset();
             // Refetch CSRF token
             try {
-              const res = await fetch('/auth/csrf-token', { credentials: 'include' });
+              const res = await fetch('/csrf-token', { credentials: 'include' });
               if (res.ok) {
                 const data = await res.json();
                 document.getElementById('csrf-token').value = data.csrfToken;

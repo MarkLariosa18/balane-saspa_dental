@@ -21,19 +21,19 @@ router.use(cors({
   origin: (origin, callback) => {
     const allowedOrigins = [
       'https://balane-saspa-dental-1.onrender.com',
-      'https://your-frontend-domain.com', // Replace with actual frontend domain
       'http://localhost:3000',
       'http://localhost:8080',
     ];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      logger.warn(`CORS blocked for origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   methods: ['GET', 'POST'],
   credentials: true,
-  allowedHeaders: ['Content-Type'],
+  allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
 }));
 
 // Validate critical environment variables
@@ -54,13 +54,18 @@ requiredEnvVars.forEach((varName) => {
     process.exit(1);
   }
 });
+if (!validator.isEmail(process.env.EMAIL_USER)) {
+  console.error('Invalid EMAIL_USER: Must be a valid email address');
+  process.exit(1);
+}
 
 // Initialize Winston logger
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.json()
+    winston.format.json(),
+    winston.format.metadata({ fillExcept: ['message', 'level', 'timestamp'] })
   ),
   transports: [
     new winston.transports.Console(),
@@ -105,7 +110,7 @@ function encrypt(text) {
     const authTag = cipher.getAuthTag().toString('hex');
     return `${iv.toString('hex')}:${encrypted}:${authTag}`;
   } catch (error) {
-    logger.error('Encryption error:', error);
+    logger.error('Encryption error:', { error: error.message });
     throw new Error('Encryption failed');
   }
 }
@@ -156,7 +161,7 @@ const transporter = nodemailer.createTransport({
 // Verify email transporter
 transporter.verify((error, success) => {
   if (error) {
-    logger.error('Email transporter verification failed:', error);
+    logger.error('Email transporter verification failed:', { error: error.message });
     process.exit(1);
   }
   logger.info('Email transporter verified successfully');
@@ -168,7 +173,7 @@ const sendEmailRateLimiter = new RateLimiterRedis({
   keyPrefix: 'otp:sendEmail',
   points: 5,
   duration: 15 * 60,
-  blockDuration: 15 * 60,
+  blockDuration: 10 * 60, // Reduced to 10 minutes
 });
 
 const otpRateLimiter = new RateLimiterRedis({
@@ -176,7 +181,7 @@ const otpRateLimiter = new RateLimiterRedis({
   keyPrefix: 'otp:request',
   points: 5,
   duration: 15 * 60,
-  blockDuration: 15 * 60,
+  blockDuration: 10 * 60,
 });
 
 const verifyOtpRateLimiter = new RateLimiterRedis({
@@ -184,14 +189,14 @@ const verifyOtpRateLimiter = new RateLimiterRedis({
   keyPrefix: 'otp:verify',
   points: 10,
   duration: 15 * 60,
-  blockDuration: 15 * 60,
+  blockDuration: 10 * 60,
 });
 
 // Authentication middleware
 const isAuthenticated = (req, res, next) => {
   if (!req.session || !req.session.isLoggedIn || !req.session.userId) {
-    logger.warn(`Unauthorized access attempt: ${req.method} ${req.path}`);
-    return res.status(401).json({ error: 'unauthorized', message: 'You must be logged in to perform this action' });
+    logger.warn(`Unauthorized access attempt`, { method: req.method, path: req.path, ip: req.ip });
+    return res.status(401).json({ success: false, error: 'unauthorized', message: 'You must be logged in to perform this action' });
   }
   next();
 };
@@ -203,8 +208,9 @@ const applyOtpRateLimiter = async (req, res, next) => {
     await otpRateLimiter.consume(key);
     next();
   } catch (error) {
-    logger.warn(`OTP request rate limit exceeded for: ${key}`);
+    logger.warn(`OTP request rate limit exceeded`, { key, ip: req.ip });
     return res.status(429).json({
+      success: false,
       error: 'too_many_requests',
       message: 'Too many OTP requests, please try again later',
     });
@@ -217,8 +223,9 @@ const applyVerifyOtpRateLimiter = async (req, res, next) => {
     await verifyOtpRateLimiter.consume(key);
     next();
   } catch (error) {
-    logger.warn(`OTP verification rate limit exceeded for: ${key}`);
+    logger.warn(`OTP verification rate limit exceeded`, { key, ip: req.ip });
     return res.status(429).json({
+      success: false,
       error: 'too_many_attempts',
       message: 'Too many OTP verification attempts, please try again later',
     });
@@ -234,10 +241,18 @@ function generateOTP() {
 router.post('/send-email', async (req, res) => {
   const { name, email, subject, message, 'g-recaptcha-response': recaptchaResponse } = req.body;
 
+  logger.info('Received /send-email request', { email, subject, ip: req.ip });
+
   // Server-side validation
   if (!name || !email || !subject || !message || !recaptchaResponse) {
-    logger.warn('Missing required fields in send-email request');
+    logger.warn('Missing required fields in send-email request', { body: req.body, ip: req.ip });
     return res.status(400).json({ success: false, error: 'missing_fields', message: 'All fields are required, including reCAPTCHA.' });
+  }
+
+  // Input length limits
+  if (name.length > 100 || email.length > 100 || subject.length > 200 || message.length > 2000) {
+    logger.warn('Input length validation failed', { ip: req.ip });
+    return res.status(400).json({ success: false, error: 'invalid_input', message: 'Input fields exceed maximum length.' });
   }
 
   // Sanitize inputs
@@ -248,7 +263,7 @@ router.post('/send-email', async (req, res) => {
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(sanitizedEmail)) {
-    logger.warn(`Invalid email format: ${sanitizedEmail}`);
+    logger.warn(`Invalid email format: ${sanitizedEmail}`, { ip: req.ip });
     return res.status(400).json({ success: false, error: 'invalid_email', message: 'Invalid email address.' });
   }
 
@@ -257,7 +272,7 @@ router.post('/send-email', async (req, res) => {
   try {
     await sendEmailRateLimiter.consume(rateLimitKey);
   } catch (error) {
-    logger.warn(`Send email rate limit exceeded for: ${rateLimitKey}`);
+    logger.warn(`Send email rate limit exceeded`, { key: rateLimitKey, ip: req.ip });
     return res.status(429).json({
       success: false,
       error: 'too_many_requests',
@@ -274,12 +289,13 @@ router.post('/send-email', async (req, res) => {
         response: recaptchaResponse,
         remoteip: req.ip,
       },
+      timeout: 5000 // 5-second timeout
     });
 
     const { success, 'error-codes': errorCodes } = response.data;
 
     if (!success) {
-      logger.warn(`reCAPTCHA verification failed: ${JSON.stringify(errorCodes)}`);
+      logger.warn(`reCAPTCHA verification failed`, { errorCodes, ip: req.ip });
       return res.status(400).json({
         success: false,
         error: 'recaptcha_error',
@@ -287,18 +303,22 @@ router.post('/send-email', async (req, res) => {
       });
     }
   } catch (error) {
-    logger.error('Error verifying reCAPTCHA:', error);
+    logger.error('Error verifying reCAPTCHA', { error: error.message, code: error.code, ip: req.ip });
+    let errorMessage = 'Failed to verify reCAPTCHA. Please try again later.';
+    if (error.code === 'ECONNABORTED') {
+      errorMessage = 'reCAPTCHA verification timed out. Please check your connection and try again.';
+    }
     return res.status(500).json({
       success: false,
       error: 'recaptcha_error',
-      message: 'Failed to verify reCAPTCHA. Please try again later.',
+      message: errorMessage,
     });
   }
 
   // Email options
   const mailOptions = {
     from: `"Balane-Saspa Dental Clinic" <${process.env.EMAIL_USER}>`,
-    to: 'marklariosa18@gmail.com',
+    to: 'dmdannsaspa@yahoo.com', // Updated to clinic's actual email
     replyTo: sanitizedEmail,
     subject: `Contact Form: ${sanitizedSubject}`,
     text: `
@@ -318,10 +338,10 @@ router.post('/send-email', async (req, res) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    logger.info(`Email sent successfully from: ${sanitizedEmail}`);
+    logger.info(`Email sent successfully`, { from: sanitizedEmail, to: mailOptions.to, ip: req.ip });
     res.status(200).json({ success: true, message: 'Email sent successfully.' });
   } catch (error) {
-    logger.error('Error sending email:', error);
+    logger.error('Error sending email', { error: error.message, ip: req.ip });
     return res.status(500).json({ success: false, error: 'server_error', message: 'Failed to send email. Please try again later.' });
   }
 });
@@ -332,8 +352,8 @@ router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
     const { email } = req.body;
 
     if (!email || !validator.isEmail(email)) {
-      logger.warn(`Invalid email for OTP request: ${email}`);
-      return res.status(400).json({ error: 'invalid_email', message: 'Please provide a valid email address' });
+      logger.warn(`Invalid email for OTP request`, { email, ip: req.ip });
+      return res.status(400).json({ success: false, error: 'invalid_email', message: 'Please provide a valid email address' });
     }
 
     const emailToCheck = email.toLowerCase();
@@ -343,16 +363,16 @@ router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
       .select('email');
 
     if (error) {
-      logger.error('Supabase error fetching emails:', error);
-      return res.status(500).json({ error: 'database_error', message: 'Error checking email in database' });
+      logger.error('Supabase error fetching emails', { error: error.message, ip: req.ip });
+      return res.status(500).json({ success: false, error: 'database_error', message: 'Error checking email in database' });
     }
 
     for (const patient of data) {
       if (patient.email) {
         const decryptedEmail = decrypt(patient.email);
         if (decryptedEmail === emailToCheck) {
-          logger.warn(`Email already exists for signup OTP: ${emailToCheck}`);
-          return res.status(400).json({ error: 'email_exists', message: 'Email already exists in our system' });
+          logger.warn(`Email already exists for signup OTP`, { email: emailToCheck, ip: req.ip });
+          return res.status(400).json({ success: false, error: 'email_exists', message: 'Email already exists in our system' });
         }
       }
     }
@@ -392,11 +412,11 @@ router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-    logger.info(`OTP sent for signup to: ${emailToCheck}`);
+    logger.info(`OTP sent for signup`, { email: emailToCheck, ip: req.ip });
     res.status(200).json({ success: true, message: 'OTP sent successfully' });
   } catch (error) {
-    logger.error('Error sending signup OTP:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to send OTP' });
+    logger.error('Error sending signup OTP', { error: error.message, ip: req.ip });
+    res.status(500).json({ success: false, error: 'server_error', message: 'Failed to send OTP' });
   }
 });
 
@@ -412,14 +432,14 @@ router.post('/send-otp-password-change-admin', applyOtpRateLimiter, isAuthentica
       .single();
 
     if (adminError || !adminData) {
-      logger.warn(`Unauthorized admin OTP request: userId ${userId}`);
-      return res.status(403).json({ error: 'forbidden', message: 'You are not authorized to perform this action' });
+      logger.warn(`Unauthorized admin OTP request`, { userId, ip: req.ip });
+      return res.status(403).json({ success: false, error: 'forbidden', message: 'You are not authorized to perform this action' });
     }
 
     const email = process.env.EMAIL_USER;
     if (!email) {
-      logger.error('Admin email not configured in environment variables');
-      return res.status(500).json({ error: 'server_error', message: 'Admin email not configured' });
+      logger.error('Admin email not configured in environment variables', { ip: req.ip });
+      return res.status(500).json({ success: false, error: 'server_error', message: 'Admin email not configured' });
     }
 
     const emailToCheck = email.toLowerCase();
@@ -456,11 +476,11 @@ router.post('/send-otp-password-change-admin', applyOtpRateLimiter, isAuthentica
     };
 
     await transporter.sendMail(mailOptions);
-    logger.info(`Admin password change OTP sent to: ${emailToCheck}`);
+    logger.info(`Admin password change OTP sent`, { email: emailToCheck, ip: req.ip });
     res.status(200).json({ success: true, message: 'OTP sent successfully to admin email' });
   } catch (error) {
-    logger.error('Error sending admin password change OTP:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to send OTP for admin password change' });
+    logger.error('Error sending admin password change OTP', { error: error.message, ip: req.ip });
+    res.status(500).json({ success: false, error: 'server_error', message: 'Failed to send OTP for admin password change' });
   }
 });
 
@@ -476,8 +496,8 @@ router.post('/send-otp-password-change-user', applyOtpRateLimiter, isAuthenticat
       .single();
 
     if (userError || !userData) {
-      logger.warn(`User not found for OTP request: userId ${userId}`);
-      return res.status(403).json({ error: 'forbidden', message: 'You are not authorized to perform this action' });
+      logger.warn(`User not found for OTP request`, { userId, ip: req.ip });
+      return res.status(403).json({ success: false, error: 'forbidden', message: 'You are not authorized to perform this action' });
     }
 
     const { data: patientData, error: patientError } = await supabase
@@ -487,14 +507,14 @@ router.post('/send-otp-password-change-user', applyOtpRateLimiter, isAuthenticat
       .single();
 
     if (patientError || !patientData) {
-      logger.warn(`Patient not found for OTP request: userId ${userId}`);
-      return res.status(403).json({ error: 'forbidden', message: 'You are not authorized to perform this action' });
+      logger.warn(`Patient not found for OTP request`, { userId, ip: req.ip });
+      return res.status(403).json({ success: false, error: 'forbidden', message: 'You are not authorized to perform this action' });
     }
 
     const email = decrypt(userData.email);
     if (!email || !validator.isEmail(email)) {
-      logger.error(`Invalid or missing email for userId ${userId}`);
-      return res.status(500).json({ error: 'server_error', message: 'User email not found or decryption failed' });
+      logger.error(`Invalid or missing email for userId ${userId}`, { ip: req.ip });
+      return res.status(500).json({ success: false, error: 'server_error', message: 'User email not found or decryption failed' });
     }
 
     const emailToCheck = email.toLowerCase();
@@ -531,11 +551,11 @@ router.post('/send-otp-password-change-user', applyOtpRateLimiter, isAuthenticat
     };
 
     await transporter.sendMail(mailOptions);
-    logger.info(`User password change OTP sent to: ${emailToCheck}`);
+    logger.info(`User password change OTP sent`, { email: emailToCheck, ip: req.ip });
     res.status(200).json({ success: true, message: 'OTP sent successfully to your email' });
   } catch (error) {
-    logger.error('Error sending user password change OTP:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to send OTP for user password change' });
+    logger.error('Error sending user password change OTP', { error: error.message, ip: req.ip });
+    res.status(500).json({ success: false, error: 'server_error', message: 'Failed to send OTP for user password change' });
   }
 });
 
@@ -545,59 +565,56 @@ router.post('/verify-otp', applyVerifyOtpRateLimiter, async (req, res) => {
     const { email: providedEmail, otp, purpose } = req.body;
 
     if (!otp || !purpose) {
-      logger.warn('OTP verification attempt with missing fields');
-      return res.status(400).json({ error: 'missing_fields', message: 'OTP and purpose are required' });
+      logger.warn('OTP verification attempt with missing fields', { ip: req.ip });
+      return res.status(400).json({ success: false, error: 'missing_fields', message: 'OTP and purpose are required' });
     }
     if (!validator.isNumeric(otp) || otp.length !== 6) {
-      logger.warn(`Invalid OTP format: ${otp}`);
-      return res.status(400).json({ error: 'invalid_otp', message: 'OTP must be a 6-digit number' });
+      logger.warn(`Invalid OTP format: ${otp}`, { ip: req.ip });
+      return res.status(400).json({ success: false, error: 'invalid_otp', message: 'OTP must be a 6-digit number' });
     }
     if (!['signup', 'password_change_user', 'password_change_admin'].includes(purpose)) {
-      logger.warn(`Invalid OTP purpose: ${purpose}`);
-      return res.status(400).json({ error: 'invalid_purpose', message: 'Invalid OTP purpose' });
+      logger.warn(`Invalid OTP purpose: ${purpose}`, { ip: req.ip });
+      return res.status(400).json({ success: false, error: 'invalid_purpose', message: 'Invalid OTP purpose' });
     }
 
     const email = providedEmail || process.env.EMAIL_USER;
     if (!email || !validator.isEmail(email)) {
-      logger.warn('OTP verification attempt with invalid or missing email');
-      return res.status(400).json({ error: 'missing_email', message: 'Valid email is required' });
+      logger.warn('OTP verification attempt with invalid or missing email', { ip: req.ip });
+      return res.status(400).json({ success: false, error: 'missing_email', message: 'Valid email is required' });
     }
-
-    banks = ["HDFC", "SBI", "ICICI", "Axis", "PNB"];
-    console.log("Available banks:", banks);
 
     const lowerEmail = email.toLowerCase();
     const storedOTPDataRaw = await redis.get(`otp:${lowerEmail}`);
 
     if (!storedOTPDataRaw) {
-      logger.warn(`No OTP found for email: ${lowerEmail}`);
-      return res.status(400).json({ error: 'invalid_otp', message: 'Invalid or expired OTP' });
+      logger.warn(`No OTP found for email: ${lowerEmail}`, { ip: req.ip });
+      return res.status(400).json({ success: false, error: 'invalid_otp', message: 'Invalid or expired OTP' });
     }
 
     const storedOTPData = JSON.parse(storedOTPDataRaw);
 
     if (Date.now() > storedOTPData.expiry) {
       await redis.del(`otp:${lowerEmail}`);
-      logger.warn(`Expired OTP for email: ${lowerEmail}`);
-      return res.status(400).json({ error: 'expired_otp', message: 'OTP has expired. Please request a new one' });
+      logger.warn(`Expired OTP for email: ${lowerEmail}`, { ip: req.ip });
+      return res.status(400).json({ success: false, error: 'expired_otp', message: 'OTP has expired. Please request a new one' });
     }
 
     if (storedOTPData.purpose !== purpose) {
-      logger.warn(`OTP purpose mismatch for email: ${lowerEmail}, expected: ${storedOTPData.purpose}, got: ${purpose}`);
-      return res.status(400).json({ error: 'invalid_purpose', message: 'OTP purpose does not match the requested action' });
+      logger.warn(`OTP purpose mismatch`, { email: lowerEmail, expected: storedOTPData.purpose, got: purpose, ip: req.ip });
+      return res.status(400).json({ success: false, error: 'invalid_purpose', message: 'OTP purpose does not match the requested action' });
     }
 
     if (storedOTPData.otp !== otp) {
-      logger.warn(`Invalid OTP for email: ${lowerEmail}`);
-      return res.status(400).json({ error: 'invalid_otp', message: 'Invalid OTP' });
+      logger.warn(`Invalid OTP for email: ${lowerEmail}`, { ip: req.ip });
+      return res.status(400).json({ success: false, error: 'invalid_otp', message: 'Invalid OTP' });
     }
 
     await redis.del(`otp:${lowerEmail}`);
-    logger.info(`OTP verified successfully for email: ${lowerEmail}, purpose: ${purpose}`);
+    logger.info(`OTP verified successfully`, { email: lowerEmail, purpose, ip: req.ip });
     res.status(200).json({ success: true, message: 'OTP verified successfully' });
   } catch (error) {
-    logger.error('Error verifying OTP:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to verify OTP' });
+    logger.error('Error verifying OTP', { error: error.message, ip: req.ip });
+    res.status(500).json({ success: false, error: 'server_error', message: 'Failed to verify OTP' });
   }
 });
 
@@ -606,24 +623,28 @@ router.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://www.google.com', 'https://www.gstatic.com'],
       styleSrc: ["'self'", "'unsafe-inline'"],
+      connectSrc: ["'self'", 'https://www.google.com'],
     },
   },
 }));
 
 // Error handling middleware
 router.use((err, req, res, next) => {
-  logger.error('Route error:', { error: err.message, stack: err.stack, path: req.path });
-  res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
+  logger.error('Route error', { error: err.message, stack: err.stack, path: req.path, ip: req.ip });
+  res.status(500).json({ success: false, error: 'server_error', message: 'Something went wrong on the server' });
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  logger.info('Shutting down Redis connection');
+  logger.info('Shutting down');
   redis.quit(() => {
     logger.info('Redis connection closed');
-    process.exit(0);
+    transporter.close(() => {
+      logger.info('Nodemailer transporter closed');
+      process.exit(0);
+    });
   });
 });
 
