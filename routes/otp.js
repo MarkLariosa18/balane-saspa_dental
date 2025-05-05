@@ -3,10 +3,12 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const Redis = require('ioredis');
-const { RateLimiterRedis } = require('rate-limiter-flexible'); // Added for advanced rate limiting
-const validator = require('validator'); // Added for input validation
-const helmet = require('helmet'); // Added for security headers
-const winston = require('winston'); // Added for structured logging
+const RateLimitRedisStore = require('rate-limit-redis');
+const rateLimit = require('express-rate-limit');
+const validator = require('validator');
+const helmet = require('helmet');
+const winston = require('winston');
+const sanitizeHtml = require('sanitize-html');
 
 require('dotenv').config();
 
@@ -36,10 +38,15 @@ const logger = winston.createLogger({
   ],
 });
 
-// Initialize Redis with enhanced configuration
+// Initialize Redis (shared with server.js, but included for completeness)
 const redis = new Redis(process.env.REDIS_URL, {
   retryStrategy: (times) => Math.min(times * 50, 2000),
   maxRetriesPerRequest: 10,
+});
+
+// Handle Redis errors
+redis.on('error', (error) => {
+  logger.error('Redis connection error:', error);
 });
 
 // Initialize Supabase client
@@ -48,9 +55,9 @@ const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Encryption settings
-const ALGORITHM = 'aes-256-gcm'; // Upgraded to GCM for authenticated encryption
-const IV_LENGTH = 12; // GCM recommends 12 bytes for IV
-const AUTH_TAG_LENGTH = 16; // GCM auth tag length
+const ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 12;
+const AUTH_TAG_LENGTH = 16;
 
 // Validate encryption key
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
@@ -59,7 +66,7 @@ if (encryptionKey.length !== 32) {
   logger.error(`Invalid ENCRYPTION_KEY length: expected 32 bytes, got ${encryptionKey.length}`);
   process.exit(1);
 }
-logger.info('Encryption key initialized successfully');
+logger.info('Encryption key initialized');
 
 // Encryption functions with GCM
 function encrypt(text) {
@@ -109,16 +116,21 @@ function decrypt(text) {
 
 // Configure nodemailer with secure options
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  service: process.env.EMAIL_SERVICE || 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
-  pool: true, // Use connection pooling for performance
+  pool: true,
   maxConnections: 5,
-  rateLimit: 14, // Gmail limit: ~14 emails/second
+  rateLimit: 14,
   rateDelta: 1000,
-  secure: true, // Enforce TLS
+  secure: true,
+});
+
+// Monitor nodemailer errors
+transporter.on('error', (error) => {
+  logger.error('Nodemailer error:', error);
 });
 
 // Verify email transporter on startup
@@ -130,25 +142,25 @@ transporter.verify((error, success) => {
   logger.info('Email transporter verified successfully');
 });
 
-// Rate limiter for OTP requests
-const otpRateLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'otp:request',
-  points: 5, // 5 requests per 15 minutes
-  duration: 15 * 60, // 15 minutes
-  blockDuration: 15 * 60, // Block for 15 minutes if limit exceeded
-});
+// Rate limiters with rate-limit-redis
+const createRateLimiter = (prefix, windowMs, max, message) =>
+  rateLimit({
+    store: new RateLimitRedisStore.default({
+      sendCommand: (...args) => redis.call(...args),
+      prefix: `ratelimit:${prefix}`,
+    }),
+    windowMs,
+    max,
+    message: { error: 'too_many_requests', message },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
 
-// Rate limiter for OTP verification
-const verifyOtpRateLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'otp:verify',
-  points: 10, // 10 attempts per 15 minutes
-  duration: 15 * 60, // 15 minutes
-  blockDuration: 15 * 60, // Block for 15 minutes if limit exceeded
-});
+const sendEmailRateLimiter = createRateLimiter('otp:sendEmail:', 15 * 60 * 1000, 5, 'Too many contact form submissions. Try again later.');
+const otpRateLimiter = createRateLimiter('otp:request:', 15 * 60 * 1000, 5, 'Too many OTP requests. Try again later.');
+const verifyOtpRateLimiter = createRateLimiter('otp:verify:', 15 * 60 * 1000, 10, 'Too many OTP verification attempts. Try again later.');
 
-// Middleware to check if user is authenticated
+// Middleware for authentication
 const isAuthenticated = (req, res, next) => {
   if (!req.session || !req.session.isLoggedIn || !req.session.userId) {
     logger.warn(`Unauthorized access attempt: ${req.method} ${req.path}`);
@@ -157,45 +169,103 @@ const isAuthenticated = (req, res, next) => {
   next();
 };
 
-// Middleware to apply OTP rate limiter
-const applyOtpRateLimiter = async (req, res, next) => {
-  const key = req.body.email ? req.body.email.toLowerCase() : req.ip;
-  try {
-    await otpRateLimiter.consume(key);
-    next();
-  } catch (error) {
-    logger.warn(`OTP request rate limit exceeded for: ${key}`);
-    res.status(429).json({
-      error: 'too_many_requests',
-      message: 'Too many OTP requests, please try again later',
-    });
-  }
-};
-
-// Middleware to apply OTP verification rate limiter
-const applyVerifyOtpRateLimiter = async (req, res, next) => {
-  const key = req.body.email ? req.body.email.toLowerCase() : req.ip;
-  try {
-    await verifyOtpRateLimiter.consume(key);
-    next();
-  } catch (error) {
-    logger.warn(`OTP verification rate limit exceeded for: ${key}`);
-    res.status(429).json({
-      error: 'too_many_attempts',
-      message: 'Too many OTP verification attempts, please try again later',
-    });
-  }
-};
-
 // Generate OTP
+const OTP_LENGTH = 6;
 function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return Math.floor(Math.pow(10, OTP_LENGTH - 1) + Math.random() * 9 * Math.pow(10, OTP_LENGTH - 1)).toString();
 }
 
-// Send OTP route for signup
-router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
+// Reusable OTP email template
+function createOtpEmailTemplate(otp, subject, greeting, actionText) {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+      <h2 style="color: #4154f1; text-align: center;">Balane-Saspa Dental Clinic</h2>
+      <p>${greeting},</p>
+      <p>${actionText}</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <div style="font-size: 24px; font-weight: bold; letter-spacing: 5px; background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${otp}</div>
+      </div>
+      <p>This code expires in 15 minutes. If you did not request this change, please contact support.</p>
+      <p>Best regards,<br>Balane-Saspa Dental Clinic Team</p>
+    </div>
+  `;
+}
+
+// Contact Us form submission route
+router.post('/send-email', sendEmailRateLimiter, async (req, res) => {
+  const { name, email, subject, message, _csrf } = req.body;
+
+  // Validate CSRF token
+  if (!_csrf || req.csrfToken() !== _csrf) {
+    logger.warn('Invalid CSRF token in contact form submission', { ip: req.ip });
+    return res.status(403).json({ success: false, error: 'csrf_error', message: 'Invalid CSRF token.' });
+  }
+
+  // Validate required fields
+  if (!name || !email || !subject || !message) {
+    logger.warn('Contact form submission with missing fields', { ip: req.ip });
+    return res.status(400).json({ success: false, message: 'All fields are required.' });
+  }
+
+  // Normalize and validate email
+  const emailToCheck = validator.normalizeEmail(email);
+  if (!emailToCheck || !validator.isEmail(emailToCheck)) {
+    logger.warn(`Invalid email in contact form: ${email}`, { ip: req.ip });
+    return res.status(400).json({ success: false, message: 'Invalid email address.' });
+  }
+
+  // Sanitize inputs to prevent XSS or injection
+  const cleanName = sanitizeHtml(name, { allowedTags: [], allowedAttributes: {} });
+  const cleanSubject = sanitizeHtml(subject, { allowedTags: [], allowedAttributes: {} });
+  const cleanMessage = sanitizeHtml(message, { allowedTags: [], allowedAttributes: {} });
+
+  // Validate sanitized inputs
+  if (!cleanName || !cleanSubject || !cleanMessage) {
+    logger.warn('Invalid sanitized input in contact form', { ip: req.ip });
+    return res.status(400).json({ success: false, message: 'Invalid input provided.' });
+  }
+
+  // Email options
+  const mailOptions = {
+    from: `"Balane-Saspa Dental Clinic" <${process.env.EMAIL_USER}>`,
+    to: 'dmdannsaspa@yahoo.com',
+    replyTo: emailToCheck,
+    subject: `Contact Form: ${cleanSubject}`,
+    text: `
+      Name: ${cleanName}
+      Email: ${emailToCheck}
+      Subject: ${cleanSubject}
+      Message: ${cleanMessage}
+    `,
+    html: `
+      <h3>New Contact Form Submission</h3>
+      <p><strong>Name:</strong> ${cleanName}</p>
+      <p><strong>Email:</strong> ${emailToCheck}</p>
+      <p><strong>Subject:</strong> ${cleanSubject}</p>
+      <p><strong>Message:</strong> ${cleanMessage}</p>
+    `,
+  };
+
   try {
-    const { email } = req.body;
+    await transporter.sendMail(mailOptions);
+    logger.info(`Contact form email sent successfully to: dmdannsaspa@yahoo.com`, { email: emailToCheck, ip: req.ip });
+    res.status(200).json({ success: true, message: 'Your message has been sent successfully.' });
+  } catch (error) {
+    logger.error('Error sending contact form email:', { error: error.message, email: emailToCheck, ip: req.ip });
+    res.status(500).json({ success: false, message: 'Failed to send your message. Please try again later.' });
+  }
+});
+
+// Send OTP route for signup
+router.post('/send-otp', otpRateLimiter, async (req, res) => {
+  try {
+    const { email, _csrf } = req.body;
+
+    // Validate CSRF token
+    if (!_csrf || req.csrfToken() !== _csrf) {
+      logger.warn('Invalid CSRF token in OTP request', { ip: req.ip });
+      return res.status(403).json({ error: 'csrf_error', message: 'Invalid CSRF token.' });
+    }
 
     // Validate email
     if (!email || !validator.isEmail(email)) {
@@ -203,7 +273,7 @@ router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
       return res.status(400).json({ error: 'invalid_email', message: 'Please provide a valid email address' });
     }
 
-    const emailToCheck = email.toLowerCase();
+    const emailToCheck = validator.normalizeEmail(email);
 
     // Check if email exists in the database
     const { data, error } = await supabase
@@ -217,26 +287,36 @@ router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
 
     for (const patient of data) {
       if (patient.email) {
-        const decryptedEmail = decrypt(patient.email);
-        if (decryptedEmail === emailToCheck) {
-          logger.warn(`Email already exists for signup OTP: ${emailToCheck}`);
-          return res.status(400).json({ error: 'email_exists', message: 'Email already exists in our system' });
+        let decryptedEmail;
+        try {
+          decryptedEmail = decrypt(patient.email);
+          if (!decryptedEmail || decryptedEmail === patient.email) {
+            logger.warn(`Failed to decrypt email for patient: ${patient.email}`);
+            continue;
+          }
+          if (decryptedEmail === emailToCheck) {
+            logger.warn(`Email already exists for signup OTP: ${emailToCheck}`);
+            return res.status(400).json({ error: 'email_exists', message: 'Email already exists in our system' });
+          }
+        } catch (err) {
+          logger.warn(`Decryption error for patient email: ${patient.email}`);
+          continue;
         }
       }
     }
 
-    // Generate and store OTP in Redis
+    // Generate and store OTP
     const otp = generateOTP();
     const otpData = {
       otp,
-      expiry: Date.now() + 15 * 60 * 1000, // 15 minutes
+      expiry: Date.now() + 15 * 60 * 1000,
       purpose: 'signup',
     };
     await redis.set(
       `otp:${emailToCheck}`,
       JSON.stringify(otpData),
       'PX',
-      15 * 60 * 1000 // Expire in 15 minutes
+      15 * 60 * 1000
     );
 
     // Send email with OTP
@@ -244,21 +324,12 @@ router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
       from: process.env.EMAIL_USER,
       to: emailToCheck,
       subject: 'Balane-Saspa Dental Clinic - Email Verification',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-          <div style="text-align: center; margin-bottom: 20px;">
-            <h2 style="color: #4154f1;">Balane-Saspa Dental Clinic</h2>
-          </div>
-          <p>Dear Patient,</p>
-          <p>Thank you for registering with Balane-Saspa Dental Clinic. To complete your registration, please use the following verification code:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <div style="font-size: 24px; font-weight: bold; letter-spacing: 5px; background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${otp}</div>
-          </div>
-          <p>This code will expire in 15 minutes.</p>
-          <p>If you did not request this verification, please ignore this email.</p>
-          <p>Best regards,<br>Balane-Saspa Dental Clinic Team</p>
-        </div>
-      `,
+      html: createOtpEmailTemplate(
+        otp,
+        'Balane-Saspa Dental Clinic - Email Verification',
+        'Dear Patient',
+        'Thank you for registering with Balane-Saspa Dental Clinic. To complete your registration, please use the following verification code:'
+      ),
     };
 
     await transporter.sendMail(mailOptions);
@@ -271,9 +342,16 @@ router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
 });
 
 // Send OTP route for admin password change
-router.post('/send-otp-password-change-admin', applyOtpRateLimiter, isAuthenticated, async (req, res) => {
+router.post('/send-otp-password-change-admin', otpRateLimiter, isAuthenticated, async (req, res) => {
   try {
+    const { _csrf } = req.body;
     const userId = req.session.userId;
+
+    // Validate CSRF token
+    if (!_csrf || req.csrfToken() !== _csrf) {
+      logger.warn('Invalid CSRF token in admin OTP request', { ip: req.ip });
+      return res.status(403).json({ error: 'csrf_error', message: 'Invalid CSRF token.' });
+    }
 
     // Verify the user is an admin
     const { data: adminData, error: adminError } = await supabase
@@ -294,7 +372,7 @@ router.post('/send-otp-password-change-admin', applyOtpRateLimiter, isAuthentica
       return res.status(500).json({ error: 'server_error', message: 'Admin email not configured' });
     }
 
-    const emailToCheck = email.toLowerCase();
+    const emailToCheck = validator.normalizeEmail(email);
     const otp = generateOTP();
 
     // Store OTP in Redis
@@ -314,18 +392,12 @@ router.post('/send-otp-password-change-admin', applyOtpRateLimiter, isAuthentica
       from: process.env.EMAIL_USER,
       to: emailToCheck,
       subject: 'Balane-Saspa Dental Clinic - Admin Password Change Verification',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-          <h2 style="color: #4154f1; text-align: center;">Balane-Saspa Dental Clinic</h2>
-          <p>Dear Admin,</p>
-          <p>We received a request to change your password. Please use the following OTP to verify your request:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <div style="font-size: 24px; font-weight: bold; letter-spacing: 5px; background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${otp}</div>
-          </div>
-          <p>This code expires in 15 minutes. If you did not request this change, please contact support.</p>
-          <p>Best regards,<br>Balane-Saspa Dental Clinic Team</p>
-        </div>
-      `,
+      html: createOtpEmailTemplate(
+        otp,
+        'Balane-Saspa Dental Clinic - Admin Password Change Verification',
+        'Dear Admin',
+        'We received a request to change your password. Please use the following OTP to verify your request:'
+      ),
     };
 
     await transporter.sendMail(mailOptions);
@@ -338,9 +410,16 @@ router.post('/send-otp-password-change-admin', applyOtpRateLimiter, isAuthentica
 });
 
 // Send OTP route for user (patient) password change
-router.post('/send-otp-password-change-user', applyOtpRateLimiter, isAuthenticated, async (req, res) => {
+router.post('/send-otp-password-change-user', otpRateLimiter, isAuthenticated, async (req, res) => {
   try {
+    const { _csrf } = req.body;
     const userId = req.session.userId;
+
+    // Validate CSRF token
+    if (!_csrf || req.csrfToken() !== _csrf) {
+      logger.warn('Invalid CSRF token in user OTP request', { ip: req.ip });
+      return res.status(403).json({ error: 'csrf_error', message: 'Invalid CSRF token.' });
+    }
 
     // Fetch user email from patients table
     const { data: userData, error: userError } = await supabase
@@ -372,7 +451,7 @@ router.post('/send-otp-password-change-user', applyOtpRateLimiter, isAuthenticat
       return res.status(500).json({ error: 'server_error', message: 'User email not found or decryption failed' });
     }
 
-    const emailToCheck = email.toLowerCase();
+    const emailToCheck = validator.normalizeEmail(email);
     const otp = generateOTP();
 
     // Store OTP in Redis
@@ -392,18 +471,12 @@ router.post('/send-otp-password-change-user', applyOtpRateLimiter, isAuthenticat
       from: process.env.EMAIL_USER,
       to: emailToCheck,
       subject: 'Balane-Saspa Dental Clinic - Password Change Verification',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-          <h2 style="color: #4154f1; text-align: center;">Balane-Saspa Dental Clinic</h2>
-          <p>Dear Patient,</p>
-          <p>We received a request to change your password. Please use the following OTP to verify your request:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <div style="font-size: 24px; font-weight: bold; letter-spacing: 5px; background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${otp}</div>
-          </div>
-          <p>This code expires in 15 minutes. If you did not request this change, please contact support.</p>
-          <p>Best regards,<br>Balane-Saspa Dental Clinic Team</p>
-        </div>
-      `,
+      html: createOtpEmailTemplate(
+        otp,
+        'Balane-Saspa Dental Clinic - Password Change Verification',
+        'Dear Patient',
+        'We received a request to change your password. Please use the following OTP to verify your request:'
+      ),
     };
 
     await transporter.sendMail(mailOptions);
@@ -416,18 +489,24 @@ router.post('/send-otp-password-change-user', applyOtpRateLimiter, isAuthenticat
 });
 
 // Verify OTP route
-router.post('/verify-otp', applyVerifyOtpRateLimiter, async (req, res) => {
+router.post('/verify-otp', verifyOtpRateLimiter, async (req, res) => {
   try {
-    const { email: providedEmail, otp, purpose } = req.body;
+    const { email: providedEmail, otp, purpose, _csrf } = req.body;
+
+    // Validate CSRF token
+    if (!_csrf || req.csrfToken() !== _csrf) {
+      logger.warn('Invalid CSRF token in OTP verification', { ip: req.ip });
+      return res.status(403).json({ error: 'csrf_error', message: 'Invalid CSRF token.' });
+    }
 
     // Validate inputs
     if (!otp || !purpose) {
       logger.warn('OTP verification attempt with missing fields');
       return res.status(400).json({ error: 'missing_fields', message: 'OTP and purpose are required' });
     }
-    if (!validator.isNumeric(otp) || otp.length !== 6) {
+    if (!validator.isNumeric(otp) || otp.length !== OTP_LENGTH) {
       logger.warn(`Invalid OTP format: ${otp}`);
-      return res.status(400).json({ error: 'invalid_otp', message: 'OTP must be a 6-digit number' });
+      return res.status(400).json({ error: 'invalid_otp', message: `OTP must be a ${OTP_LENGTH}-digit number` });
     }
     if (!['signup', 'password_change_user', 'password_change_admin'].includes(purpose)) {
       logger.warn(`Invalid OTP purpose: ${purpose}`);
@@ -441,7 +520,7 @@ router.post('/verify-otp', applyVerifyOtpRateLimiter, async (req, res) => {
       return res.status(400).json({ error: 'missing_email', message: 'Valid email is required' });
     }
 
-    const lowerEmail = email.toLowerCase();
+    const lowerEmail = validator.normalizeEmail(email);
     const storedOTPDataRaw = await redis.get(`otp:${lowerEmail}`);
 
     if (!storedOTPDataRaw) {
@@ -470,7 +549,7 @@ router.post('/verify-otp', applyVerifyOtpRateLimiter, async (req, res) => {
       return res.status(400).json({ error: 'invalid_otp', message: 'Invalid OTP' });
     }
 
-    // OTP is valid, remove it from Redis (one-time use)
+    // OTP is valid, remove it from Redis
     await redis.del(`otp:${lowerEmail}`);
     logger.info(`OTP verified successfully for email: ${lowerEmail}, purpose: ${purpose}`);
     res.status(200).json({ success: true, message: 'OTP verified successfully' });
@@ -480,13 +559,14 @@ router.post('/verify-otp', applyVerifyOtpRateLimiter, async (req, res) => {
   }
 });
 
-// Apply helmet for security headers
+// Apply helmet for security headers (redundant with server.js, but kept for completeness)
 router.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "https://www.google.com/recaptcha/", "https://www.gstatic.com/recaptcha/"],
+      styleSrc: ["'self'"],
+      connectSrc: ["'self'", "https://www.google.com/recaptcha/"],
     },
   },
 }));
@@ -497,7 +577,7 @@ router.use((err, req, res, next) => {
   res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
 });
 
-// Graceful shutdown for Redis
+// Graceful shutdown for Redis (handled in server.js, but included for completeness)
 process.on('SIGTERM', () => {
   logger.info('Shutting down Redis connection');
   redis.quit(() => {

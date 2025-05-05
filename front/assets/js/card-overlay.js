@@ -470,40 +470,6 @@ document.addEventListener('DOMContentLoaded', function () {
         panelElement.appendChild(additionalInfo);
         break;
 
-      case "CNDA Pricelist":
-        description = "Come to the clinic for the latest pricelist and best deals.";
-        additionalInfo = document.createElement('div');
-        additionalInfo.className = 'mt-4';
-        additionalInfo.innerHTML = `
-          <ul class="list-disc list-inside text-gray-600 mb-4">
-            <li>Consultation</li>
-            <li>Oral Prophylaxis</li>
-            <li>Restorations Temporary Filling</li>
-            <li>Composite Filling</li>
-            <li>Surgery Extraction</li>
-            <li>Special Case</li>
-            <li>Prosthodontic</li>
-            <li>Casted Metal</li>
-            <li>Jacket Crown</li>
-            <li>Laminates</li>
-            <li>Veneers</li>
-            <li>Complete Denture</li>
-            <li>Flexite</li>
-            <li>Retainers</li>
-            <li>Repair of Denture</li>
-            <li>Fiber Post</li>
-            <li>Root Canal</li>
-            <li>Pediatrics</li>
-            <li>Sealant</li>
-            <li>Orthodontic</li>
-          </ul>
-          <div class="p-4 bg-blue-50 border-l-4 border-blue-500 text-blue-700 rounded-lg">
-            <p>Depending on the severity of the case.</p>
-          </div>
-        `;
-        panelElement.appendChild(additionalInfo);
-        break;
-
       case "Imelda":
         description = "Professional cleaning procedure to remove plaque and tartar. Available in light, moderate, and heavy treatments depending on your needs.";
         break;
