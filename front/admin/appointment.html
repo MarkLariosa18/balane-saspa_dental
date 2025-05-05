@@ -584,7 +584,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     // Check authentication
-    const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', { credentials: 'include' });
+    const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', { 
+      credentials: 'include',
+      headers: { 
+        'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
+        'X-CSRF-Token': await getCsrfToken()
+      }
+    });
     if (!authResponse.ok) {
       const errorData = await authResponse.json();
       throw new Error(errorData.message || 'Authentication check failed');
@@ -605,7 +611,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Fetch appointments
-    const appointmentsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', { credentials: 'include' });
+    const appointmentsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', { 
+      credentials: 'include',
+      headers: { 
+        'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
+        'X-CSRF-Token': await getCsrfToken()
+      }
+    });
     if (!appointmentsResponse.ok) throw new Error(`Failed to fetch appointments: ${appointmentsResponse.status}`);
     const appointmentsData = await appointmentsResponse.json();
     if (!appointmentsData.success) throw new Error(appointmentsData.message);
@@ -614,7 +626,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Fetch services
     try {
-      const servicesResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/services/all', { credentials: 'include' });
+      const servicesResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/services/all', { 
+        credentials: 'include',
+        headers: { 
+          'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
+          'X-CSRF-Token': await getCsrfToken()
+        }
+      });
       if (!servicesResponse.ok) throw new Error(`Failed to fetch services: ${servicesResponse.status}`);
       const servicesData = await servicesResponse.json();
       if (!servicesData.success) throw new Error(servicesData.message);
@@ -634,16 +652,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Validate appointment dates
     const invalidAppointments = allAppointments.filter(app => isNaN(new Date(app.appointment_date).getTime()));
-    if (invalidAppointments.length > 0) {
-      console.warn('Invalid appointment dates:', invalidAppointments);
-      Swal.fire({
-        icon: 'warning',
-        title: 'Invalid Data',
-        text: `${invalidAppointments.length} appointment(s) have invalid dates and will be excluded from the graph.`,
-        confirmButtonColor: '#4154f1'
-      });
-      allAppointments = allAppointments.filter(app => !isNaN(new Date(app.appointment_date).getTime()));
-    }
+if (invalidAppointments.length > 0) {
+  console.warn('Invalid appointment dates:', invalidAppointments);
+  Swal.fire({
+    icon: 'warning',
+    title: 'Invalid Data',
+    text: `${invalidAppointments.length} appointment(s) have invalid dates and will be excluded from the graph.`,
+    confirmButtonColor: '#4154f1'
+  });
+  allAppointments = allAppointments.filter(app => !isNaN(new Date(app.appointment_date).getTime()));
+}
 
     if (allAppointments.length === 0) {
       Swal.fire({
@@ -710,6 +728,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+async function getCsrfToken() {
+  try {
+    const response = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
+      credentials: 'include'
+    });
+    const data = await response.json();
+    return data.csrfToken;
+  } catch (error) {
+    console.error('Error fetching CSRF token:', error);
+    throw new Error('Failed to fetch CSRF token');
+  }
+}
+
 function getPatientName(patientData) {
   if (!patientData) return 'Unknown';
   const { first_name, middle_name, last_name } = patientData;
@@ -764,7 +795,7 @@ function renderAppointmentsGraph(appointments, services, year, selectedService) 
   try {
     const canvas = document.getElementById('appointmentsChart');
     if (!canvas) {
-      throw new Error('Canvas element #appointmentsChart not found');
+      throw new Error('Canvas element # AppointmentsChart not found');
     }
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -934,7 +965,7 @@ function renderAppointmentsGraph(appointments, services, year, selectedService) 
         : `Month with Highest Appointments for ${selectedService}: ${highestMonth} (${maxCount} appointments)`;
   } catch (error) {
     console.error('Error rendering graph:', error);
-    Swal.fire({
+    Swal.fly({
       icon: 'error',
       title: 'Graph Error',
       text: `Failed to render graph: ${error.message}`,
@@ -1057,7 +1088,6 @@ function exportGraphToCsv(appointments, year) {
   link.download = `appointments_graph_${year}.csv`;
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
   Swal.fire({
     icon: 'success',
     title: 'Export Successful',
