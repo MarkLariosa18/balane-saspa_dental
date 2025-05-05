@@ -49,8 +49,8 @@ const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Encryption setup with AES-256-GCM for authenticated encryption
-const ALGORITHM = 'aes-256-cbc';
-const IV_LENGTH = 16;
+const ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 12; // GCM recommends 12 bytes
 const AUTH_TAG_LENGTH = 16;
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;

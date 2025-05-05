@@ -149,6 +149,7 @@ io.on('connection', (socket) => {
     console.error(`Socket.IO error for ${socket.id}:`, error);
   });
 });
+
 app.use(
   helmet({
     contentSecurityPolicy: {

@@ -7,16 +7,17 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Encryption setup
+// Encryption config
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
-const IV_LENGTH = 16;
+const ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 12; // Recommended for GCM
+const AUTH_TAG_LENGTH = 16;
 
 if (!supabaseUrl || !supabaseKey || !ENCRYPTION_KEY) {
   console.error('Missing required environment variables');
   process.exit(1);
 }
 
-// Verify encryption key length (32 bytes = 64 hex characters)
 const keyBuffer = Buffer.from(ENCRYPTION_KEY, 'hex');
 if (keyBuffer.length !== 32) {
   console.error(`Invalid ENCRYPTION_KEY length: expected 32 bytes (64 hex chars), got ${keyBuffer.length} bytes`);
@@ -26,15 +27,16 @@ if (keyBuffer.length !== 32) {
 function encrypt(text) {
   if (!text) return null;
   const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv('aes-256-cbc', keyBuffer, iv);
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
+  const cipher = crypto.createCipheriv(ALGORITHM, keyBuffer, iv);
+  const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+
+  // Store iv, authTag, and ciphertext together: iv:tag:cipher
+  return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
 }
 
 async function migratePatientData() {
   try {
-    // Fetch all patients
     const { data: patients, error } = await supabase
       .from('patients')
       .select('*');
@@ -46,14 +48,13 @@ async function migratePatientData() {
       return;
     }
 
-    // Encrypt all fields except sex for each patient
     for (const patient of patients) {
       const encryptedData = {
         last_name: encrypt(patient.last_name),
         first_name: encrypt(patient.first_name),
         middle_name: patient.middle_name ? encrypt(patient.middle_name) : null,
         birthdate: encrypt(patient.birthdate),
-        sex: patient.sex, // Keep unencrypted
+        sex: patient.sex,
         nickname: patient.nickname ? encrypt(patient.nickname) : null,
         religion: patient.religion ? encrypt(patient.religion) : null,
         nationality: patient.nationality ? encrypt(patient.nationality) : null,
@@ -67,7 +68,6 @@ async function migratePatientData() {
         email: encrypt(patient.email)
       };
 
-      // Update the patient record
       const { error: updateError } = await supabase
         .from('patients')
         .update(encryptedData)
