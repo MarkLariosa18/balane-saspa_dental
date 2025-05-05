@@ -13,15 +13,15 @@
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
 
-  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <!-- CSS with CDN fallbacks -->
+  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" onerror="this.href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css'; console.warn('Failed to load local Bootstrap CSS, using CDN fallback');">
+  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet" onerror="this.href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css'; console.warn('Failed to load local Bootstrap Icons CSS, using CDN fallback');">
   <link href="assets/vendor/aos/aos.css" rel="stylesheet">
   <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
   <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
   <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
-
   <link href="assets/css/main.css" rel="stylesheet">
 
   <!-- SweetAlert2 CSS -->
@@ -642,7 +642,6 @@
                   <p class="card-des">Posterior</p>
                 </div>
               </div>
- en
             </div>
           </div>
 
@@ -962,7 +961,6 @@
   <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
   <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
   <script src="assets/vendor/php-email-form/validate.js"></script>
-  <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <!-- Custom Scripts -->
@@ -970,6 +968,8 @@
   <script src="common.js"></script>
   <script src="assets/js/see-more.js"></script>
   <script src="assets/js/card-overlay.js"></script>
+  <script src="assets/js/contact.js"></script>
+  <script src="assets/js/static-diagnostic.js"></script>
 
   <script>
     AOS.init({
@@ -1014,7 +1014,7 @@
 
       // Fetch CSRF token
       try {
-        const csrfResponse = await fetch('/csrf-token', { credentials: 'include' });
+        const csrfResponse = await fetch('/auth/csrf-token', { credentials: 'include' });
         if (!csrfResponse.ok) throw new Error('CSRF token fetch failed');
         const csrfData = await csrfResponse.json();
         document.getElementById('csrf-token').value = csrfData.csrfToken;
@@ -1159,7 +1159,7 @@
             grecaptcha.reset();
             // Refetch CSRF token
             try {
-              const res = await fetch('/csrf-token', { credentials: 'include' });
+              const res = await fetch('/auth/csrf-token', { credentials: 'include' });
               if (res.ok) {
                 const data = await res.json();
                 document.getElementById('csrf-token').value = data.csrfToken;
