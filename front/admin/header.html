@@ -481,62 +481,21 @@
   <script src="assets/js/notifications.js"></script>
 
   <script>
- (function() {
+(function() {
   console.log('Header script loaded');
 
+  let socket;
   let pendingRequests = [];
   let currentRequest = null;
   let pollingInterval = null;
   let consecutiveFetchFailures = 0;
   const MAX_CONSECUTIVE_FAILURES = 5;
 
-  // Decryption function for AES-256-GCM
-  async function decryptData(text) {
-    if (!text) return null;
-    const [ivText, encryptedText, authTagText] = text.split(':');
-    if (!ivText || !encryptedText || !authTagText) {
-      console.warn(`Invalid encrypted format: "${text}"`);
-      return text;
-    }
-    try {
-      const iv = Uint8Array.from(atob(ivText).split('').map(c => c.charCodeAt(0)));
-      const encrypted = Uint8Array.from(atob(encryptedText).split('').map(c => c.charCodeAt(0)));
-      const authTag = Uint8Array.from(atob(authTagText).split('').map(c => c.charCodeAt(0)));
-      const key = Uint8Array.from(atob('your-encryption-key-base64').split('').map(c => c.charCodeAt(0))); // Replace with actual base64-encoded key
-      const cryptoKey = await crypto.subtle.importKey(
-        'raw',
-        key,
-        { name: 'AES-GCM' },
-        false,
-        ['decrypt']
-      );
-      const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv, tagLength: 128 },
-        cryptoKey,
-        new Uint8Array([...encrypted, ...authTag])
-      );
-      const decoder = new TextDecoder();
-      const decryptedString = decoder.decode(decrypted);
-      if (!decryptedString || /[^ -~]/.test(decryptedString)) {
-        console.warn(`Invalid decryption result: "${decryptedString}"`);
-        return text;
-      }
-      return decryptedString;
-    } catch (error) {
-      console.error('Decryption failed:', error);
-      return text;
-    }
-  }
-
   async function checkAuth() {
     try {
-      const csrfToken = await getCsrfToken();
-      const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', {
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/check-auth', {
         credentials: 'include',
-        headers: {
-          'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'X-CSRF-Token': csrfToken
-        }
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
       });
       const data = await response.json();
       if (!data.isLoggedIn || data.role !== 'admin') {
@@ -544,7 +503,7 @@
           icon: 'error',
           title: 'Unauthorized',
           text: 'You are not authorized to access this page. Redirecting to login page.',
-          confirmButtonColor: '#4154f1',
+          confirmButtonColor: '#3b82f6',
           allowOutsideClick: false
         }).then(() => {
           window.location.href = '/pages-login.html';
@@ -558,7 +517,7 @@
         icon: 'error',
         title: 'Error',
         text: 'Authentication check failed. Redirecting to login page.',
-        confirmButtonColor: '#4154f1'
+        confirmButtonColor: '#3b82f6'
       }).then(() => {
         window.location.href = '/pages-login.html';
       });
@@ -568,15 +527,77 @@
 
   async function getCsrfToken() {
     try {
-      const response = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
-        credentials: 'include'
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
+        credentials: 'include',
+        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
       });
       const data = await response.json();
       return data.csrfToken;
     } catch (error) {
-      console.error('Error fetching CSRF token:', error);
-      throw new Error('Failed to fetch CSRF token');
+      console.error('Failed to fetch CSRF token:', error);
+      return null;
     }
+  }
+
+  function initializeWebSocket() {
+    try {
+      socket = new WebSocket('wss://balane-saspa-dental-1.onrender.com');
+      console.log('Attempting to connect to WebSocket at wss://balane-saspa-dental-1.onrender.com');
+    } catch (error) {
+      console.error('WebSocket initialization failed:', error);
+      return;
+    }
+
+    socket.onopen = () => {
+      console.log('WebSocket connection established');
+      consecutiveFetchFailures = 0;
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+        console.log('Polling stopped due to WebSocket connection');
+      }
+    };
+
+    socket.onmessage = (event) => {
+      console.log('WebSocket message received:', event.data);
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'cancel_request' || data.type === 'reschedule_request') {
+          console.log(`New ${data.type} received via WebSocket:`, data.request);
+          const request = data.request;
+          if (
+            request.status === 'pending' &&
+            !pendingRequests.some(req => req.id === request.id) &&
+            !isExpired(request)
+          ) {
+            pendingRequests.push(request);
+            updatePendingRequests();
+            document.getElementById('notificationDropdown').click();
+          }
+        } else if (data.type === 'cancel_response' || data.type === 'reschedule_response' || data.type === 'reject_response') {
+          console.log(`${data.type} received:`, data);
+          pendingRequests = pendingRequests.filter(req => req.id !== data.requestId);
+          updatePendingRequests();
+          if (window.location.pathname.includes('index.html')) {
+            window.location.reload();
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    socket.onclose = (event) => {
+      console.log('WebSocket connection closed:', event.code, event.reason);
+      setTimeout(() => {
+        console.log('Attempting to reconnect to WebSocket');
+        initializeWebSocket();
+      }, 5000);
+    };
   }
 
   function isExpired(request) {
@@ -587,324 +608,24 @@
     return appointmentTime < now;
   }
 
-  function getPatientName(patientData) {
-    if (!patientData) return 'Unknown';
-    const { first_name, middle_name, last_name } = patientData;
-    return [first_name, middle_name, last_name].filter(Boolean).join(' ').trim() || 'Unknown';
-  }
-
-  function handleRequestResponse(data) {
-    const requestId = data.requestId;
-    const requestIndex = pendingRequests.findIndex(req => req.id === requestId);
-    if (requestIndex !== -1) {
-      pendingRequests.splice(requestIndex, 1);
-      updatePendingRequests();
-      Swal.fire({
-        icon: data.status === 'approved' ? 'success' : 'error',
-        title: `${data.type.replace('_response', '').capitalize()} ${data.status.capitalize()}`,
-        text: `Request ${data.status} for ID ${requestId}.`,
-        confirmButtonColor: '#4154f1',
-        timer: 3000
-      });
-      if (window.location.pathname.includes('index.html')) {
-        window.location.reload();
-      }
-    }
-  }
-
-  String.prototype.capitalize = function() {
-    return this.charAt(0).toUpperCase() + this.slice(1);
-  };
-
-  function startPolling() {
-    if (!pollingInterval) {
-      console.log('Starting polling for pending requests');
-      pollingInterval = setInterval(() => {
-        console.log('Polling for pending requests');
-        fetchPendingRequests();
-      }, 10000);
-    }
-  }
-
-  function updatePendingRequests() {
-    const count = document.getElementById('notificationCount');
-    const headerCount = document.getElementById('notificationHeaderCount');
-    const list = document.getElementById('notificationsList');
-    const itemsContainer = list ? list.querySelector('.items-container') : null;
-
-    if (!count || !headerCount || !list || !itemsContainer) {
-      console.error('Notification elements not found');
-      return;
-    }
-
-    pendingRequests = pendingRequests.filter(req => !isExpired(req));
-    count.textContent = pendingRequests.length;
-    headerCount.textContent = pendingRequests.length;
-
-    itemsContainer.innerHTML = '';
-    if (pendingRequests.length === 0) {
-      itemsContainer.innerHTML = '<li class="notification-item">No pending requests</li><hr class="dropdown-divider">';
-    } else {
-      pendingRequests.forEach((request, index) => {
-        const patientName = getPatientName(request.patients);
-        const action = request.action || request.pending_action || 'Unknown';
-        itemsContainer.innerHTML += `
-          <li class="notification-item">
-            <div>
-              <h4 class="fw-semibold">${action.capitalize()} Request</h4>
-              <p class="text-muted">${patientName}</p>
-              <p class="text-muted">Current: ${request.appointments?.appointment_date ? new Date(request.appointments.appointment_date).toLocaleString() : 'N/A'}</p>
-              ${action === 'reschedule' ? `<p class="text-muted">New: ${request.new_appointment_date ? new Date(request.new_appointment_date).toLocaleString() : 'N/A'}</p>` : ''}
-              <p class="text-muted">Service: ${request.appointments?.services?.name || request.services?.name || 'N/A'}</p>
-              <a href="#" class="btn btn-sm btn-primary" onclick="showActionModal(${index}); return false;">Review</a>
-            </div>
-          </li>
-          <hr class="dropdown-divider">
-        `;
-      });
-    }
-  }
-
-  window.showActionModal = function(index) {
-    currentRequest = pendingRequests[index];
-    const patientName = getPatientName(currentRequest.patients);
-    const action = currentRequest.action || currentRequest.pending_action || 'Unknown';
-
-    const requestDetails = document.getElementById('requestDetails');
-    if (requestDetails) {
-      requestDetails.innerHTML = `
-        <p><strong>${action.capitalize()} Request</strong></p>
-        <p>Patient: ${patientName}</p>
-        <p>Current Date: ${currentRequest.appointments?.appointment_date ? new Date(currentRequest.appointments.appointment_date).toLocaleString() : 'N/A'}</p>
-        ${action === 'reschedule' ? `<p>New Date: ${currentRequest.new_appointment_date ? new Date(currentRequest.new_appointment_date).toLocaleString() : 'N/A'}</p>` : ''}
-        ${action === 'reschedule' ? `<p>New Notes: ${currentRequest.new_notes || 'N/A'}</p>` : ''}
-        ${action === 'cancel' ? `<p>Cancel Reason: ${currentRequest.cancel_reason || 'Not specified'}</p>` : ''}
-        <p>Service: ${currentRequest.appointments?.services?.name || currentRequest.services?.name || 'N/A'}</p>
-      `;
-    }
-
-    const actionModal = document.getElementById('actionModal');
-    if (actionModal) {
-      actionModal.style.display = 'none';
-      actionModal.classList.remove('show');
-      setTimeout(() => {
-        actionModal.style.display = 'flex';
-        actionModal.classList.add('show');
-      }, 10);
-    }
-  };
-
-  window.closeActionModal = function() {
-    const actionModal = document.getElementById('actionModal');
-    if (actionModal) {
-      actionModal.style.display = 'none';
-      actionModal.classList.remove('show');
-    }
-    currentRequest = null;
-  };
-
-  window.acceptRequest = async function() {
-    if (!currentRequest) return;
-    try {
-      const csrfToken = await getCsrfToken();
-      const response = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/requests/${currentRequest.id}/approve`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'X-CSRF-Token': csrfToken
-        },
-        credentials: 'include'
-      });
-      if (response.ok) {
-        pendingRequests = pendingRequests.filter(r => r.id !== currentRequest.id);
-        updatePendingRequests();
-        closeActionModal();
-        window.dispatchEvent(new CustomEvent('requestResponse', {
-          detail: {
-            type: `${currentRequest.action}_response`,
-            requestId: currentRequest.id,
-            status: 'approved',
-            userId: currentRequest.user_id
-          }
-        }));
-        Swal.fire({
-          icon: 'success',
-          title: 'Request Approved',
-          text: `${currentRequest.action.capitalize()} request approved successfully!`,
-          confirmButtonColor: '#4154f1',
-          timer: 2000
-        });
-      } else {
-        const error = await response.json();
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: `Failed to approve ${currentRequest.action} request: ${error.message}`,
-          confirmButtonColor: '#4154f1'
-        });
-      }
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Error processing request',
-        confirmButtonColor: '#4154f1'
-      });
-    }
-  };
-
-  window.rejectRequest = async function() {
-    if (!currentRequest) return;
-    try {
-      const csrfToken = await getCsrfToken();
-      const response = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/requests/${currentRequest.id}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'X-CSRF-Token': csrfToken
-        },
-        credentials: 'include',
-        body: JSON.stringify({ reject_reason: 'Admin decision' }) // Adjust as needed
-      });
-      if (response.ok) {
-        pendingRequests = pendingRequests.filter(r => r.id !== currentRequest.id);
-        updatePendingRequests();
-        closeActionModal();
-        window.dispatchEvent(new CustomEvent('requestResponse', {
-          detail: {
-            type: 'reject_response',
-            requestId: currentRequest.id,
-            status: 'rejected',
-            userId: currentRequest.user_id,
-            reject_reason: 'Admin decision'
-          }
-        }));
-        Swal.fire({
-          icon: 'success',
-          title: 'Request Rejected',
-          text: `${currentRequest.action.capitalize()} request rejected successfully!`,
-          confirmButtonColor: '#4154f1',
-          timer: 2000
-        });
-      } else {
-        const error = await response.json();
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: `Failed to reject ${currentRequest.action} request: ${error.message}`,
-          confirmButtonColor: '#4154f1'
-        });
-      }
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Error processing request',
-        confirmButtonColor: '#4154f1'
-      });
-    }
-  };
-
-  async function fetchPendingRequests() {
-    try {
-      const csrfToken = await getCsrfToken();
-      const response = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/requests', {
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'X-CSRF-Token': csrfToken
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.requests) {
-          const decryptedRequests = await Promise.all(data.requests.map(async req => ({
-            ...req,
-            appointments: {
-              ...req.appointments,
-              notes: req.appointments.notes ? await decryptData(req.appointments.notes) : null,
-              cancel_reason: req.appointments.cancel_reason ? await decryptData(req.appointments.cancel_reason) : null
-            },
-            new_notes: req.new_notes ? await decryptData(req.new_notes) : null,
-            new_cancel_reason: req.new_cancel_reason ? await decryptData(req.new_cancel_reason) : null
-          })));
-          pendingRequests = decryptedRequests.filter(req =>
-            req.status === 'pending' &&
-            !isExpired(req) &&
-            req.status !== 'cancelled' &&
-            req.status !== 'rejected'
-          );
-          updatePendingRequests();
-          consecutiveFetchFailures = 0;
-        }
-      } else {
-        consecutiveFetchFailures++;
-        if (consecutiveFetchFailures >= MAX_CONSECUTIVE_FAILURES) {
-          clearInterval(pollingInterval);
-          pollingInterval = null;
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Unable to fetch notifications due to repeated server errors. Please contact support.',
-            confirmButtonColor: '#4154f1'
-          });
-        }
-      }
-    } catch (error) {
-      consecutiveFetchFailures++;
-      if (consecutiveFetchFailures >= MAX_CONSECUTIVE_FAILURES) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Unable to fetch notifications due to repeated server errors. Please contact support.',
-          confirmButtonColor: '#4154f1'
-        });
-      }
-    }
-  }
-
-  // Listen for Socket.IO events dispatched by parent page
-  window.addEventListener('rescheduleRequest', async (event) => {
-    const request = event.detail;
-    if (
-      request.status === 'pending' &&
-      !pendingRequests.some(req => req.id === request.id) &&
-      !isExpired(request)
-    ) {
-      pendingRequests.push(request);
-      updatePendingRequests();
-      document.getElementById('notificationDropdown')?.click();
-    }
-  });
-
-  window.addEventListener('cancelRequest', async (event) => {
-    const request = event.detail;
-    if (
-      request.status === 'pending' &&
-      !pendingRequests.some(req => req.id === request.id) &&
-      !isExpired(request)
-    ) {
-      pendingRequests.push(request);
-      updatePendingRequests();
-      document.getElementById('notificationDropdown')?.click();
-    }
-  });
-
-  window.addEventListener('requestResponse', (event) => {
-    handleRequestResponse(event.detail);
-  });
-
   $(document).ready(async () => {
-    console.log('DOM loaded in header, initializing notifications');
+    console.log('DOM loaded in header, initializing WebSocket and notifications');
     if (!(await checkAuth())) return;
     initializeSidebarToggle();
+    initializeWebSocket();
     fetchPendingRequests();
-    startPolling(); // Start polling by default, parent page will stop it if Socket.IO connects
+
+    setTimeout(() => {
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        console.warn('WebSocket not available, falling back to polling...');
+        if (!pollingInterval) {
+          pollingInterval = setInterval(() => {
+            console.log('Polling for pending requests');
+            fetchPendingRequests();
+          }, 10000);
+        }
+      }
+    }, 1000);
   });
 
   function initializeSidebarToggle() {
@@ -936,6 +657,320 @@
       }
     });
   }
+
+  function updatePendingRequests() {
+    const count = document.getElementById('notificationCount');
+    const headerCount = document.getElementById('notificationHeaderCount');
+    const list = document.getElementById('notificationsList');
+    const itemsContainer = list ? list.querySelector('.items-container') : null;
+
+    if (!count || !headerCount || !list || !itemsContainer) {
+      console.error('Notification elements not found');
+      return;
+    }
+
+    pendingRequests = pendingRequests.filter(req => !isExpired(req));
+    count.textContent = pendingRequests.length;
+    headerCount.textContent = pendingRequests.length;
+
+    const existingItems = itemsContainer.querySelectorAll('.notification-item');
+    existingItems.forEach(item => item.remove());
+
+    const existingDividers = itemsContainer.querySelectorAll('.dropdown-divider');
+    existingDividers.forEach((divider, index) => {
+      if (index > 0) divider.remove();
+    });
+
+    if (pendingRequests.length === 0) {
+      const noItems = document.createElement('li');
+      noItems.className = 'notification-item';
+      noItems.textContent = 'No pending requests';
+      itemsContainer.appendChild(noItems);
+      itemsContainer.appendChild(document.createElement('hr')).className = 'dropdown-divider';
+    } else {
+      pendingRequests.forEach((request, index) => {
+        const patientData = request.patients || {};
+        const patientName = `${patientData.first_name || ''} ${patientData.last_name || ''}`.trim() || 'Unknown';
+        const action = request.action || request.pending_action || 'Unknown';
+
+        const item = document.createElement('li');
+        item.className = 'notification-item';
+        item.innerHTML = `
+          <div>
+            <h4 class="fw-semibold">${action.charAt(0).toUpperCase() + action.slice(1)} Request</h4>
+            <p class="text-muted">${patientName}</p>
+            <p class="text-muted">Current: ${request.appointments?.appointment_date ? new Date(request.appointments.appointment_date).toLocaleString() : 'N/A'}</p>
+            ${action === 'reschedule' ? `<p class="text-muted">New: ${request.new_appointment_date ? new Date(request.new_appointment_date).toLocaleString() : 'N/A'}</p>` : ''}
+            <p class="text-muted">Service: ${request.appointments?.services?.name || request.services?.name || 'N/A'}</p>
+            <a href="#" class="btn btn-sm btn-primary" onclick="showActionModal(${index}); return false;">Review</a>
+          </div>
+        `;
+        itemsContainer.appendChild(item);
+        itemsContainer.appendChild(document.createElement('hr')).className = 'dropdown-divider';
+      });
+    }
+  }
+
+  function showActionModal(index) {
+    currentRequest = pendingRequests[index];
+    const patientData = currentRequest.patients || {};
+    const patientName = `${patientData.first_name || ''} ${patientData.last_name || ''}`.trim() || 'Unknown';
+    const action = currentRequest.action || currentRequest.pending_action || 'Unknown';
+
+    const requestDetails = document.getElementById('requestDetails');
+    if (requestDetails) {
+      requestDetails.innerHTML = `
+        <p><strong>${action.charAt(0).toUpperCase() + action.slice(1)} Request</strong></p>
+        <p>Patient: ${patientName}</p>
+        <p>Current Date: ${currentRequest.appointments?.appointment_date ? new Date(currentRequest.appointments.appointment_date).toLocaleString() : 'N/A'}</p>
+        ${action === 'reschedule' ? `<p>New Date: ${currentRequest.new_appointment_date ? new Date(currentRequest.new_appointment_date).toLocaleString() : 'N/A'}</p>` : ''}
+        ${action === 'reschedule' ? `<p>New Notes: ${currentRequest.new_notes || 'N/A'}</p>` : ''}
+        ${action === 'cancel' ? `<p>Cancel Reason: ${currentRequest.cancel_reason || 'Not specified'}</p>` : ''}
+        <p>Service: ${currentRequest.appointments?.services?.name || currentRequest.services?.name || 'N/A'}</p>
+      `;
+    }
+
+    const actionModal = document.getElementById('actionModal');
+    if (actionModal) {
+      actionModal.style.display = 'none';
+      actionModal.classList.remove('show');
+      setTimeout(() => {
+        actionModal.style.display = 'flex';
+        actionModal.classList.add('show');
+      }, 10);
+    }
+
+    const dropdownElement = document.getElementById('notificationDropdown');
+    if (dropdownElement && bootstrap.Dropdown) {
+      const dropdown = bootstrap.Dropdown.getInstance(dropdownElement);
+      if (dropdown) {
+        dropdown.hide();
+      }
+    }
+  }
+
+  function closeActionModal() {
+    const actionModal = document.getElementById('actionModal');
+    if (actionModal) {
+      actionModal.style.display = 'none';
+      actionModal.classList.remove('show');
+    }
+    currentRequest = null;
+  }
+
+  async function acceptRequest() {
+    if (!currentRequest) return;
+    try {
+      const csrfToken = await getCsrfToken();
+      if (!csrfToken) {
+        throw new Error('Failed to fetch CSRF token');
+      }
+      const response = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/requests/${currentRequest.id}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
+          'CSRF-Token': csrfToken
+        },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        pendingRequests = pendingRequests.filter(r => r.id !== currentRequest.id);
+        updatePendingRequests();
+        closeActionModal();
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: `${currentRequest.action}_response`,
+            requestId: currentRequest.id,
+            status: 'approved'
+          }));
+        }
+        Swal.fire({
+          icon: 'success',
+          title: 'Request Approved',
+          text: `${currentRequest.action.charAt(0).toUpperCase() + currentRequest.action.slice(1)} request approved successfully!`,
+          confirmButtonColor: '#3b82f6',
+          timer: 2000
+        });
+        if (window.location.pathname.includes('index.html')) {
+          window.location.reload();
+        }
+      } else {
+        const error = await response.json();
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: `Failed to approve ${currentRequest.action} request: ${error.message}`,
+          confirmButtonColor: '#3b82f6'
+        });
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Error processing request: ' + error.message,
+        confirmButtonColor: '#3b82f6'
+      });
+    }
+  }
+
+  async function rejectRequest() {
+    if (!currentRequest) return;
+    try {
+      const csrfToken = await getCsrfToken();
+      if (!csrfToken) {
+        throw new Error('Failed to fetch CSRF token');
+      }
+      const response = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/requests/${currentRequest.id}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
+          'CSRF-Token': csrfToken
+        },
+        credentials: 'include'
+      });
+      if (response.ok) {
+        pendingRequests = pendingRequests.filter(r => r.id !== currentRequest.id);
+        updatePendingRequests();
+        closeActionModal();
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            type: `${currentRequest.action}_response`,
+            requestId: currentRequest.id,
+            status: 'rejected'
+          }));
+        }
+        Swal.fire({
+          icon: 'success',
+          title: 'Request Rejected',
+          text: `${currentRequest.action.charAt(0).toUpperCase() + currentRequest.action.slice(1)} request rejected successfully!`,
+          confirmButtonColor: '#3b82f6',
+          timer: 2000
+        });
+      } else {
+        const error = await response.json();
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: `Failed to reject ${currentRequest.action} request: ${error.message}`,
+          confirmButtonColor: '#3b82f6'
+        });
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Error processing request: ' + error.message,
+        confirmButtonColor: '#3b82f6'
+      });
+    }
+  }
+
+  async function fetchPendingRequests() {
+    try {
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/requests', {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('authToken')
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        pendingRequests = (data.requests || []).filter(req => 
+          req.status === 'pending' && 
+          !isExpired(req) &&
+          req.status !== 'cancelled' &&
+          req.status !== 'rejected'
+        );
+        updatePendingRequests();
+        consecutiveFetchFailures = 0;
+      } else {
+        consecutiveFetchFailures++;
+        if (consecutiveFetchFailures >= MAX_CONSECUTIVE_FAILURES) {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Unable to fetch notifications due to repeated server errors. Please contact support.',
+            confirmButtonColor: '#3b82f6'
+          });
+        }
+      }
+    } catch (error) {
+      consecutiveFetchFailures++;
+      if (consecutiveFetchFailures >= MAX_CONSECUTIVE_FAILURES) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Unable to fetch notifications due to repeated server errors. Please contact support.',
+          confirmButtonColor: '#3b82f6'
+        });
+      }
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      const csrfToken = await getCsrfToken();
+      if (!csrfToken) {
+        throw new Error('Failed to fetch CSRF token');
+      }
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/logout', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 
+          'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
+          'CSRF-Token': csrfToken
+        }
+      });
+      if (response.ok) {
+        document.cookie.split(";").forEach(function(c) {
+          const cookieName = c.trim().split('=')[0];
+          document.cookie = `${cookieName}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Strict`;
+        });
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.replace('/pages-login.html');
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'Logout failed. Please try again.',
+          confirmButtonColor: '#3b82f6'
+        });
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'An error occurred during logout.',
+        confirmButtonColor: '#3b82f6'
+      });
+    }
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', function(e) {
+    e.preventDefault();
+    Swal.fire({
+      title: 'Are you sure?',
+      text: 'Do you want to sign out of your account?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#ef4444',
+      confirmButtonText: 'Yes, sign out',
+      cancelButtonText: 'Cancel'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        handleLogout();
+      }
+    });
+  });
 })();
   </script>
 </body>
