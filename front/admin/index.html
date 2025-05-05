@@ -460,24 +460,37 @@
   <script type="text/javascript">
 $(document).ready(() => {
   // Load header and footer
-  $('#head_content').load('header.html', (response, status, xhr) => {
+  $('#head_content').load('/admin/header.html', (response, status, xhr) => {
     if (status === 'success') {
       console.log('Header loaded successfully');
       initSidebarToggle();
     } else {
       console.error('Failed to load header:', xhr.status, xhr.statusText);
+      $('#head_content').html(`
+        <header>
+          <nav class="sidebar">
+            <div class="overlay" id="sidebarOverlay"></div>
+            <ul>
+              <li><a href="/admin/index.html">Dashboard</a></li>
+            </ul>
+          </nav>
+          <button class="toggle-sidebar-btn">Toggle Sidebar</button>
+        </header>
+      `);
+      initSidebarToggle();
       Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Failed to load header. Please try again later.',
+        icon: 'warning',
+        title: 'Warning',
+        text: 'Failed to load header. Using fallback content.',
         confirmButtonColor: '#4154f1'
       });
     }
   });
 
-  $('#foot_content').load('footer.html', (response, status, xhr) => {
+  $('#foot_content').load('/admin/footer.html', (response, status, xhr) => {
     if (status !== 'success') {
       console.error('Failed to load footer:', xhr.status, xhr.statusText);
+      $('#foot_content').html('<footer><p>Default Footer Content</p></footer>');
     }
   });
 });
@@ -499,6 +512,8 @@ function initSidebarToggle() {
       overlay.classList.remove('active');
       overlay.style.display = 'none';
     });
+  } else {
+    console.error('Sidebar toggle elements missing:', { toggleSidebarBtn, sidebar, overlay });
   }
 }
 
@@ -511,9 +526,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   function initSocketIO() {
     socket = io('https://balane-saspa-dental-1.onrender.com', {
       withCredentials: true,
-      extraHeaders: {
-        'Authorization': 'Bearer ' + localStorage.getItem('authToken')
-      },
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -625,10 +637,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       credentials: 'include',
       headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
     });
+    if (!csrfResponse.ok) {
+      const errorData = await csrfResponse.json();
+      throw new Error(`Failed to fetch CSRF token: ${errorData.message || csrfResponse.status}`);
+    }
     const csrfData = await csrfResponse.json();
     const csrfToken = csrfData.csrfToken;
+    console.log('CSRF token fetched:', csrfToken);
 
-    const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', { 
+    const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/check-auth', { 
       credentials: 'include',
       headers: { 
         'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
@@ -637,9 +654,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     if (!authResponse.ok) {
       const errorData = await authResponse.json();
-      throw new Error(errorData.message || 'Authentication check failed');
+      throw new Error(`Authentication check failed: ${errorData.message || authResponse.status}`);
     }
     const authData = await authResponse.json();
+    console.log('Auth check response:', authData);
 
     if (!authData.isLoggedIn || authData.role !== 'admin') {
       Swal.fire({
@@ -671,17 +689,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       })
     ]);
 
-    if (!appointmentsResponse.ok) throw new Error(`Failed to fetch appointments: ${appointmentsResponse.status}`);
-    if (!requestsResponse.ok) throw new Error(`Failed to fetch requests: ${requestsResponse.status}`);
+    if (!appointmentsResponse.ok) {
+      const errorData = await appointmentsResponse.json();
+      throw new Error(`Failed to fetch appointments: ${errorData.message || appointmentsResponse.status}`);
+    }
+    if (!requestsResponse.ok) {
+      const errorData = await requestsResponse.json();
+      throw new Error(`Failed to fetch requests: ${errorData.message || requestsResponse.status}`);
+    }
 
     const appointmentsData = await appointmentsResponse.json();
     const requestsData = await requestsResponse.json();
+    console.log('Appointments data:', appointmentsData);
+    console.log('Requests data:', requestsData);
 
     if (!appointmentsData.success) throw new Error(appointmentsData.message);
     if (!requestsData.success) throw new Error(requestsData.message);
 
-    appointments = appointmentsData.appointments;
-    window.pendingRequests = requestsData.requests;
+    appointments = appointmentsData.appointments || [];
+    window.pendingRequests = requestsData.requests || [];
+
+    if (appointments.length === 0) {
+      console.warn('No appointments found in database');
+    }
+    if (window.pendingRequests.length === 0) {
+      console.warn('No pending requests found in database');
+    }
 
     updateCalendar(appointments);
     updateAppointmentCards(appointments);
@@ -705,6 +738,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 function updateCalendar(appointments) {
   const calendarGrid = document.getElementById('calendarGrid');
   const monthYear = document.getElementById('monthYear');
+  if (!calendarGrid || !monthYear) {
+    console.error('Calendar elements missing:', { calendarGrid, monthYear });
+    return;
+  }
+
   let currentDate = new Date();
   currentDate.setDate(1);
   const today = new Date();
@@ -819,7 +857,6 @@ async function confirmAppointment(appointmentId) {
     return;
   }
 
-  // Fetch CSRF token
   const csrfResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
     credentials: 'include',
     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
@@ -885,7 +922,6 @@ async function rejectAppointment(appointmentId) {
     return;
   }
 
-  // Fetch CSRF token
   const csrfResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
     credentials: 'include',
     headers: { 'Authorization': 'Bearer ' + localStorage.getItem('authToken') }
@@ -953,6 +989,11 @@ function showAppointmentsModal(appointments, date) {
   const closeBtn = document.getElementById('closeBtn');
   const closeModalBtn = document.getElementById('closeModalBtn');
   const today = new Date();
+
+  if (!modal || !title || !list || !closeBtn || !closeModalBtn) {
+    console.error('Modal elements missing:', { modal, title, list, closeBtn, closeModalBtn });
+    return;
+  }
 
   title.textContent = `Appointments on ${date.toLocaleDateString('en-US', { 
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' 
@@ -1053,13 +1094,22 @@ function updateAppointmentCards(appointments) {
 
   const overallCount = appointments.filter(app => app.status !== 'cancelled').length;
 
-  document.getElementById('todayCount').textContent = todayCount;
-  document.getElementById('tomorrowCount').textContent = tomorrowCount;
-  document.getElementById('overallCount').textContent = overallCount;
+  const todayCountEl = document.getElementById('todayCount');
+  const tomorrowCountEl = document.getElementById('tomorrowCount');
+  const overallCountEl = document.getElementById('overallCount');
+
+  if (todayCountEl) todayCountEl.textContent = todayCount;
+  if (tomorrowCountEl) tomorrowCountEl.textContent = tomorrowCount;
+  if (overallCountEl) overallCountEl.textContent = overallCount;
 }
 
 function updateRecentAppointments(appointments, filteredAppointments = null) {
   const tbody = document.getElementById('recentAppointmentsBody');
+  if (!tbody) {
+    console.error('Recent appointments tbody missing');
+    return;
+  }
+
   tbody.innerHTML = '';
 
   const appointmentsToDisplay = (filteredAppointments || [...appointments])
