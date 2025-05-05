@@ -5,10 +5,8 @@ const { createClient } = require('@supabase/supabase-js');
 const Redis = require('ioredis');
 const { RateLimiterRedis } = require('rate-limiter-flexible');
 const validator = require('validator');
-const helmet = require('helmet');
 const sanitizeHtml = require('sanitize-html');
 const axios = require('axios');
-const csrf = require('csurf');
 const cors = require('cors');
 const winston = require('winston');
 
@@ -20,24 +18,22 @@ const router = express.Router();
 // CORS configuration
 router.use(cors({
   origin: (origin, callback) => {
-    const allowedOrigins = [
-      'https://balane-saspa-dental-1.onrender.com',
-      'https://your-frontend-domain.com', // Replace with actual frontend domain
-      'http://localhost:3000',
-      'http://localhost:8080',
-    ];
+    const allowedOrigins = process.env.NODE_ENV === 'production'
+      ? [process.env.FRONTEND_URL]
+      : [process.env.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:8080'];
     if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
+      callback(null, origin || process.env.FRONTEND_URL);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ['GET', 'POST'],
   credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'X-CSRF-Token'],
 }));
 
-// CSRF protection middleware
-const csrfProtection = csrf({ cookie: { secure: process.env.NODE_ENV === 'production' } });
+// Handle CORS preflight
+router.options('*', cors());
 
 // Validate critical environment variables
 const requiredEnvVars = [
@@ -207,7 +203,7 @@ const applyOtpRateLimiter = async (req, res, next) => {
     next();
   } catch (error) {
     logger.warn(`OTP request rate limit exceeded for: ${key}`);
-    res.status(429).json({
+    return res.status(429).json({
       error: 'too_many_requests',
       message: 'Too many OTP requests, please try again later',
     });
@@ -221,7 +217,7 @@ const applyVerifyOtpRateLimiter = async (req, res, next) => {
     next();
   } catch (error) {
     logger.warn(`OTP verification rate limit exceeded for: ${key}`);
-    res.status(429).json({
+    return res.status(429).json({
       error: 'too_many_attempts',
       message: 'Too many OTP verification attempts, please try again later',
     });
@@ -233,111 +229,122 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// CSRF token endpoint
-router.get('/csrf-token', csrfProtection, (req, res) => {
-  try {
-    const csrfToken = req.csrfToken();
-    logger.info('CSRF token generated successfully');
-    res.status(200).json({ csrfToken });
-  } catch (error) {
-    logger.error('Error generating CSRF token:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to generate CSRF token' });
-  }
-});
-
 // Send email route
-router.post('/send-email', csrfProtection, async (req, res) => {
-  const { name, email, subject, message, 'g-recaptcha-response': recaptchaResponse } = req.body;
-
-  // Server-side validation
-  if (!name || !email || !subject || !message || !recaptchaResponse) {
-    logger.warn('Missing required fields in send-email request');
-    return res.status(400).json({ success: false, error: 'missing_fields', message: 'All fields are required, including reCAPTCHA.' });
-  }
-
-  // Sanitize inputs
-  const sanitizedName = sanitizeHtml(name, { allowedTags: [], allowedAttributes: {} });
-  const sanitizedEmail = sanitizeHtml(email, { allowedTags: [], allowedAttributes: {} });
-  const sanitizedSubject = sanitizeHtml(subject, { allowedTags: [], allowedAttributes: {} });
-  const sanitizedMessage = sanitizeHtml(message, { allowedTags: [], allowedAttributes: {} });
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(sanitizedEmail)) {
-    logger.warn(`Invalid email format: ${sanitizedEmail}`);
-    return res.status(400).json({ success: false, error: 'invalid_email', message: 'Invalid email address.' });
-  }
-
-  // Apply rate limiter
-  const rateLimitKey = sanitizedEmail.toLowerCase();
+router.post('/send-email', async (req, res) => {
   try {
-    await sendEmailRateLimiter.consume(rateLimitKey);
-  } catch (error) {
-    logger.warn(`Send email rate limit exceeded for: ${rateLimitKey}`);
-    return res.status(429).json({
-      success: false,
-      error: 'too_many_requests',
-      message: 'Too many email submissions. Please try again later.',
-    });
-  }
+    const { name, email, subject, message, 'g-recaptcha-response': recaptchaResponse, _csrf } = req.body;
 
-  // Verify reCAPTCHA
-  try {
-    const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
-    const response = await axios.post(recaptchaVerifyUrl, null, {
-      params: {
-        secret: process.env.RECAPTCHA_SECRET_KEY,
-        response: recaptchaResponse,
-        remoteip: req.ip,
-      },
+    logger.info('Received send-email request', {
+      email,
+      ip: req.ip,
+      name,
+      subject,
+      receivedCsrf: _csrf,
+      sessionID: req.sessionID,
+      body: req.body,
     });
 
-    const { success, 'error-codes': errorCodes } = response.data;
+    // Server-side validation
+    if (!name || !email || !subject || !message || !recaptchaResponse) {
+      logger.warn('Missing required fields in send-email request', { email, ip: req.ip, fields: { name, email, subject, message, recaptchaResponse } });
+      return res.status(400).json({ success: false, error: 'missing_fields', message: 'All fields are required, including reCAPTCHA.' });
+    }
 
-    if (!success) {
-      logger.warn(`reCAPTCHA verification failed: ${JSON.stringify(errorCodes)}`);
-      return res.status(400).json({
+    // Sanitize inputs
+    const sanitizedName = sanitizeHtml(name, { allowedTags: [], allowedAttributes: {} });
+    const sanitizedEmail = sanitizeHtml(email, { allowedTags: [], allowedAttributes: {} });
+    const sanitizedSubject = sanitizeHtml(subject, { allowedTags: [], allowedAttributes: {} });
+    const sanitizedMessage = sanitizeHtml(message, { allowedTags: [], allowedAttributes: {} });
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(sanitizedEmail)) {
+      logger.warn(`Invalid email format: ${sanitizedEmail}`, { ip: req.ip });
+      return res.status(400).json({ success: false, error: 'invalid_email', message: 'Invalid email address.' });
+    }
+
+    // Apply rate limiter
+    const rateLimitKey = sanitizedEmail.toLowerCase();
+    try {
+      await sendEmailRateLimiter.consume(rateLimitKey);
+    } catch (error) {
+      logger.warn(`Send email rate limit exceeded for: ${rateLimitKey}`, { ip: req.ip });
+      return res.status(429).json({
         success: false,
-        error: 'recaptcha_error',
-        message: 'reCAPTCHA verification failed. Please try again.',
+        error: 'too_many_requests',
+        message: 'Too many email submissions. Please try again later.',
       });
     }
-  } catch (error) {
-    logger.error('Error verifying reCAPTCHA:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'recaptcha_error',
-      message: 'Failed to verify reCAPTCHA. Please try again later.',
-    });
-  }
 
-  // Email options
-  const mailOptions = {
-    from: `"Balane-Saspa Dental Clinic" <${process.env.EMAIL_USER}>`,
-    to: 'marklariosa18@gmail.com',
-    replyTo: sanitizedEmail,
-    subject: `Contact Form: ${sanitizedSubject}`,
-    text: `
-      Name: ${sanitizedName}
-      Email: ${sanitizedEmail}
-      Subject: ${sanitizedSubject}
-      Message: ${sanitizedMessage}
-    `,
-    html: `
-      <h3>New Contact Form Submission</h3>
-      <p><strong>Name:</strong> ${sanitizedName}</p>
-      <p><strong>Email:</strong> ${sanitizedEmail}</p>
-      <p><strong>Subject:</strong> ${sanitizedSubject}</p>
-      <p><strong>Message:</strong> ${sanitizedMessage}</p>
-    `,
-  };
+    // Verify reCAPTCHA
+    try {
+      const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+      const response = await Promise.race([
+        axios.post(recaptchaVerifyUrl, null, {
+          params: {
+            secret: process.env.RECAPTCHA_SECRET_KEY,
+            response: recaptchaResponse,
+            remoteip: req.ip,
+          },
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('reCAPTCHA verification timeout')), 10000))
+      ]);
 
-  try {
-    await transporter.sendMail(mailOptions);
-    logger.info(`Email sent successfully from: ${sanitizedEmail}`);
-    res.status(200).json({ success: true, message: 'Email sent successfully.' });
+      const { success, 'error-codes': errorCodes } = response.data;
+
+      if (!success) {
+        logger.warn(`reCAPTCHA verification failed: ${JSON.stringify(errorCodes)}`, { email: sanitizedEmail, ip: req.ip });
+        return res.status(400).json({
+          success: false,
+          error: 'recaptcha_error',
+          message: `reCAPTCHA verification failed: ${errorCodes ? errorCodes.join(', ') : 'unknown error'}.`,
+        });
+      }
+      logger.info(`reCAPTCHA verified successfully for email: ${sanitizedEmail}`, { ip: req.ip });
+    } catch (error) {
+      logger.error('Error verifying reCAPTCHA:', { error: error.message, email: sanitizedEmail, ip: req.ip });
+      return res.status(500).json({
+        success: false,
+        error: 'recaptcha_error',
+        message: `Failed to verify reCAPTCHA: ${error.message}.`,
+      });
+    }
+
+    // Email options
+    const mailOptions = {
+      from: `"Balane-Saspa Dental Clinic" <${process.env.EMAIL_USER}>`,
+      to: 'dmdannsaspa@yahoo.com',
+      replyTo: sanitizedEmail,
+      subject: `Contact Form: ${sanitizedSubject}`,
+      text: `
+        Name: ${sanitizedName}
+        Email: ${sanitizedEmail}
+        Subject: ${sanitizedSubject}
+        Message: ${sanitizedMessage}
+      `,
+      html: `
+        <h3>New Contact Form Submission</h3>
+        <p><strong>Name:</strong> ${sanitizedName}</p>
+        <p><strong>Email:</strong> ${sanitizedEmail}</p>
+        <p><strong>Subject:</strong> ${sanitizedSubject}</p>
+        <p><strong>Message:</strong> ${sanitizedMessage}</p>
+      `,
+    };
+
+    // Send email with timeout
+    try {
+      await Promise.race([
+        transporter.sendMail(mailOptions),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Email send timeout')), 10000))
+      ]);
+      logger.info(`Email sent successfully from: ${sanitizedEmail} to dmdannsaspa@yahoo.com`, { ip: req.ip });
+      res.status(200).json({ success: true, message: 'Email sent successfully.' });
+    } catch (error) {
+      logger.error('Error sending email:', { error: error.message, code: error.code, email: sanitizedEmail, ip: req.ip });
+      res.status(500).json({ success: false, error: 'email_error', message: `Failed to send email: ${error.message}.` });
+    }
   } catch (error) {
-    logger.error('Error sending email:', error);
-    res.status(500).json({ success: false, error: 'server_error', message: 'Failed to send email. Please try again later.' });
+    logger.error('Unexpected error in send-email:', error);
+    res.status(500).json({ error: 'server_error', message: 'An unexpected error occurred' });
   }
 });
 
@@ -613,22 +620,15 @@ router.post('/verify-otp', applyVerifyOtpRateLimiter, async (req, res) => {
   }
 });
 
-// Apply helmet
-router.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-    },
-  },
-}));
-
 // Error handling middleware
 router.use((err, req, res, next) => {
   if (err.code === 'EBADCSRFTOKEN') {
-    logger.warn(`CSRF token validation failed: ${req.path}`);
-    return res.status(403).json({ error: 'invalid_csrf_token', message: 'Invalid CSRF token. Please refresh the page and try again.' });
+    logger.warn(`CSRF token validation failed: ${req.path}`, {
+      sessionID: req.sessionID,
+      body: req.body,
+      cookies: req.headers.cookie
+    });
+    return res.status(403).json({ error: 'csrf_error', message: 'Invalid CSRF token' });
   }
   logger.error('Route error:', { error: err.message, stack: err.stack, path: req.path });
   res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
@@ -643,6 +643,4 @@ process.on('SIGTERM', () => {
   });
 });
 
-module.exports = {
-  otpRoutes: router,
-};
+module.exports = router;
