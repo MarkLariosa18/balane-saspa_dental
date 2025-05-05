@@ -151,21 +151,44 @@ io.on('connection', (socket) => {
 });
 
 // Middleware
+const helmet = require('helmet');
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'", "https:"],
-      connectSrc: ["'self'", 'wss://balane-saspa-dental-1.onrender.com'],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdn.socket.io", "https://unpkg.com", "https://fonts.googleapis.com", "https://cdn.tailwindcss.com", "https://www.google.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "https://cdn.jsdelivr.net",
+        "https://cdn.socket.io",
+        "https://unpkg.com",
+        "https://fonts.googleapis.com",
+        "https://cdn.tailwindcss.com",
+        "https://www.google.com",
+        "https://code.jquery.com",  // jQuery
+      ],
+      styleSrc: [
+        "'self'",
+        "https://fonts.googleapis.com",
+        "https://cdn.tailwindcss.com",
+      ],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "https:"],
+      imgSrc: ["'self'", "data:", "https:"],  // allow icons, images, avatars
+      connectSrc: [
+        "'self'",
+        "wss://balane-saspa-dental-1.onrender.com"
+      ],
       frameSrc: ["'self'", "https:"],
-      scriptSrcAttr: ["'unsafe-inline'"],
+      objectSrc: ["'none'"],  // disable <object>, <embed>, etc.
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: [],
     },
   },
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  crossOriginEmbedderPolicy: false, // optional if causing issues with fonts/media
 }));
+
 
 app.use(compression());
 app.use(cors({

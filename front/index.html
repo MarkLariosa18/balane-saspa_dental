@@ -13,6 +13,7 @@
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
@@ -856,6 +857,9 @@
                   <button type="submit">Send Message</button>
                 </div>
               </div>
+              <div class="col-md-12">
+                <div class="g-recaptcha" data-sitekey="YOUR_RECAPTCHA_SITE_KEY"></div>
+              </div>
             </form>
           </div>
         </div>
@@ -958,7 +962,7 @@
 
       // Fetch CSRF token
       try {
-        const csrfResponse = await fetch('/csrf-token', { credentials: 'include' });
+        const csrfResponse = await fetch('auth/csrf-token', { credentials: 'include' });
         const csrfData = await csrfResponse.json();
         document.getElementById('csrf-token').value = csrfData.csrfToken;
       } catch (error) {
@@ -1035,6 +1039,20 @@
           return;
         }
 
+        const recaptchaResponse = formData.get('g-recaptcha-response');
+if (!recaptchaResponse) {
+  loading.style.display = 'none';
+  errorMessage.textContent = 'Please complete the reCAPTCHA.';
+  errorMessage.style.display = 'block';
+  Swal.fire({
+    icon: 'error',
+    title: 'Error',
+    text: 'Please complete the reCAPTCHA.',
+    confirmButtonColor: '#007bff'
+  });
+  return;
+}
+
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
@@ -1071,7 +1089,7 @@
             form.reset();
             // Refetch CSRF token after form reset
             try {
-              const res = await fetch('/csrf-token', { credentials: 'include' });
+              const res = await fetch('auth/csrf-token', { credentials: 'include' });
               const data = await res.json();
               document.getElementById('csrf-token').value = data.csrfToken;
             } catch (error) {

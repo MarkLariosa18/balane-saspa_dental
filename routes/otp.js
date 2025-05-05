@@ -9,6 +9,10 @@ const validator = require('validator');
 const helmet = require('helmet');
 const winston = require('winston');
 const sanitizeHtml = require('sanitize-html');
+const axios = require('axios');
+const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+const recaptchaVerifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${req.body['g-recaptcha-response']}`;
+const recaptchaResult = await axios.post(recaptchaVerifyUrl);
 
 require('dotenv').config();
 
@@ -191,6 +195,9 @@ function createOtpEmailTemplate(otp, subject, greeting, actionText) {
   `;
 }
 
+if (!recaptchaResult.data.success) {
+  return res.status(400).json({ success: false, message: 'reCAPTCHA verification failed.' });
+}
 // Contact Us form submission route
 router.post('/send-email', sendEmailRateLimiter, async (req, res) => {
   const { name, email, subject, message, _csrf } = req.body;
@@ -228,7 +235,7 @@ router.post('/send-email', sendEmailRateLimiter, async (req, res) => {
   // Email options
   const mailOptions = {
     from: `"Balane-Saspa Dental Clinic" <${process.env.EMAIL_USER}>`,
-    to: 'dmdannsaspa@yahoo.com',
+    to: 'marklariosa18@gmail.com',
     replyTo: emailToCheck,
     subject: `Contact Form: ${cleanSubject}`,
     text: `
