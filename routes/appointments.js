@@ -312,7 +312,7 @@ router.post('/', isAuthenticated, rateLimitAppointments, async (req, res) => {
     if (!user_id || !appointment_date || !service_id) {
       return res.status(400).json({ error: 'bad_request', message: 'User ID, appointment date, and service ID are required' });
     }
-    if (!validator.isUUID(user_id) || !validator.isISO8601(appointment_date)) {
+    if (!validator.isInt(user_id) || !validator.isISO8601(appointment_date)) {
       return res.status(400).json({ error: 'bad_request', message: 'Invalid user ID or appointment date format' });
     }
     if (notes && !validator.isLength(notes, { max: 500 })) {
@@ -499,7 +499,7 @@ router.get('/history/:userId?', isAuthenticated, async (req, res) => {
       return res.status(403).json({ error: 'forbidden', message: 'Cannot view other users\' history' });
     }
     if (userId) {
-      if (!validator.isUUID(userId)) {
+      if (!validator.isInt(userId)) {
         return res.status(400).json({ error: 'bad_request', message: 'Invalid user ID' });
       }
       query = query.eq('user_id', userId);
@@ -546,7 +546,7 @@ router.post('/:id/reschedule', isAuthenticated, cooldownCheck, async (req, res) 
   const { appointment_date, cancel_reason, notes } = req.body;
 
   try {
-    if (!validator.isUUID(id)) {
+    if (!validator.isInt(id)) {
       return res.status(400).json({ error: 'bad_request', message: 'Invalid appointment ID' });
     }
     if (!appointment_date || !cancel_reason) {
@@ -676,7 +676,7 @@ router.put('/:id', isAuthenticated, isAdmin, async (req, res) => {
   const { appointment_date, notes, status, cancel_reason } = req.body;
 
   try {
-    if (!validator.isUUID(id)) {
+    if (!validator.isInt(id)) {
       return res.status(400).json({ error: 'bad_request', message: 'Invalid appointment ID' });
     }
     if (!appointment_date) {
@@ -761,7 +761,7 @@ router.delete('/:id', isAuthenticated, cooldownCheck, async (req, res) => {
   const { cancel_reason } = req.body;
 
   try {
-    if (!validator.isUUID(id)) {
+    if (!validator.isInt(id)) {
       return res.status(400).json({ error: 'bad_request', message: 'Invalid appointment ID' });
     }
     if (!cancel_reason) {
@@ -920,7 +920,7 @@ router.get('/requests', isAuthenticated, isAdmin, async (req, res) => {
 router.post('/requests/:requestId/approve', isAuthenticated, isAdmin, async (req, res) => {
   const { requestId } = req.params;
   try {
-    if (!validator.isUUID(requestId)) {
+    if (!validator.isInt(requestId)) {
       return res.status(400).json({ error: 'bad_request', message: 'Invalid request ID' });
     }
 
@@ -1057,7 +1057,7 @@ router.post('/requests/:requestId/reject', isAuthenticated, isAdmin, async (req,
   const { requestId } = req.params;
   const { reject_reason } = req.body;
   try {
-    if (!validator.isUUID(requestId)) {
+    if (!validator.isInt(requestId)) {
       return res.status(400).json({ error: 'bad_request', message: 'Invalid request ID' });
     }
     if (!reject_reason) {
@@ -1166,7 +1166,7 @@ router.post('/bulk-update', isAuthenticated, isAdmin, async (req, res) => {
 
     const validUpdates = updates.every(
       (update) =>
-        validator.isUUID(update.id) &&
+        validator.isInt(update.id) &&
         ['pending', 'confirmed', 'cancelled', 'rejected', 'expired'].includes(update.status)
     );
     if (!validUpdates) {

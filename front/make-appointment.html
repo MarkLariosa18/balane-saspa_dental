@@ -501,14 +501,14 @@
       const serviceItem = document.createElement('div');
       serviceItem.className = 'service-item';
       serviceItem.textContent = service.name;
-      serviceItem.dataset.serviceId = service.id;
+      serviceItem.dataset.serviceId = String(service.id); // Ensure string
       serviceList.appendChild(serviceItem);
       serviceDescriptions[service.id] = service.description;
 
       serviceItem.addEventListener('click', () => {
         document.querySelectorAll('.service-item').forEach(item => item.classList.remove('selected'));
         serviceItem.classList.add('selected');
-        serviceInput.value = service.id;
+        serviceInput.value = String(service.id); // Ensure string
         serviceDescriptionText.innerHTML = serviceDescriptions[service.id].replace(/\n/g, '<br>');
         serviceDescription.style.display = 'block';
       });
@@ -523,12 +523,12 @@
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 5000,
-      auth: { userId }
+      auth: { userId: String(userId) } // Ensure string
     });
 
     socket.on('connect', () => {
       console.log(`Socket.IO connected: ${socket.id}`);
-      socket.emit('join', { userId });
+      socket.emit('join', { userId: String(userId) });
     });
 
     socket.on('welcome', (data) => {
@@ -890,9 +890,9 @@
 
         const isoAppointmentDate = convertToISO(appointmentDate);
         const payload = {
-          user_id: authData.userId,
+          user_id: String(authData.userId), // Ensure string
           appointment_date: isoAppointmentDate,
-          service_id: serviceId,
+          service_id: String(serviceId), // Ensure string
           notes: notes || null,
         };
 
