@@ -395,7 +395,7 @@
 
   const fetchCsrfToken = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/csrf-token`, {
+      const response = await fetch(`${BASE_URL}/auth/csrf-token`, {
         credentials: 'include'
       });
       if (!response.ok) throw new Error(`Failed to fetch CSRF token: ${response.statusText}`);
