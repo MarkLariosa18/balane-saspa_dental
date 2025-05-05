@@ -6,14 +6,38 @@ const Redis = require('ioredis');
 const { RateLimiterRedis } = require('rate-limiter-flexible');
 const validator = require('validator');
 const helmet = require('helmet');
-const winston = require('winston');
 const sanitizeHtml = require('sanitize-html');
 const axios = require('axios');
+const csrf = require('csurf');
+const cors = require('cors');
+const winston = require('winston');
 
 require('dotenv').config();
 
 // Initialize router
 const router = express.Router();
+
+// CORS configuration
+router.use(cors({
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'https://balane-saspa-dental-1.onrender.com',
+      'https://your-frontend-domain.com', // Replace with actual frontend domain
+      'http://localhost:3000',
+      'http://localhost:8080',
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST'],
+  credentials: true,
+}));
+
+// CSRF protection middleware
+const csrfProtection = csrf({ cookie: { secure: process.env.NODE_ENV === 'production' } });
 
 // Validate critical environment variables
 const requiredEnvVars = [
@@ -24,7 +48,8 @@ const requiredEnvVars = [
   'EMAIL_PASSWORD',
   'REDIS_URL',
   'NODE_ENV',
-  'RECAPTCHA_SECRET_KEY'
+  'RECAPTCHA_SECRET_KEY',
+  'SESSION_SECRET'
 ];
 requiredEnvVars.forEach((varName) => {
   if (!process.env[varName]) {
@@ -47,7 +72,7 @@ const logger = winston.createLogger({
   ],
 });
 
-// Initialize Redis with enhanced configuration
+// Initialize Redis
 const redis = new Redis(process.env.REDIS_URL, {
   retryStrategy: (times) => Math.min(times * 50, 2000),
   maxRetriesPerRequest: 10,
@@ -72,7 +97,7 @@ if (encryptionKey.length !== 32) {
 }
 logger.info('Encryption key initialized successfully');
 
-// Encryption functions with GCM
+// Encryption functions
 function encrypt(text) {
   if (!text) return null;
   try {
@@ -106,7 +131,6 @@ function decrypt(text) {
     let decrypted = decipher.update(Buffer.from(encryptedText, 'hex'));
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     const decryptedString = decrypted.toString('utf8');
-
     if (!decryptedString || /[^ -~]/.test(decryptedString)) {
       logger.warn(`Invalid decryption result: "${decryptedString}"`);
       return text;
@@ -118,7 +142,7 @@ function decrypt(text) {
   }
 }
 
-// Configure nodemailer with secure options
+// Configure nodemailer
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -132,7 +156,7 @@ const transporter = nodemailer.createTransport({
   secure: true,
 });
 
-// Verify email transporter on startup
+// Verify email transporter
 transporter.verify((error, success) => {
   if (error) {
     logger.error('Email transporter verification failed:', error);
@@ -141,6 +165,7 @@ transporter.verify((error, success) => {
   logger.info('Email transporter verified successfully');
 });
 
+// Rate limiters
 const sendEmailRateLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'otp:sendEmail',
@@ -149,7 +174,6 @@ const sendEmailRateLimiter = new RateLimiterRedis({
   blockDuration: 15 * 60,
 });
 
-// Rate limiter for OTP requests
 const otpRateLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'otp:request',
@@ -158,7 +182,6 @@ const otpRateLimiter = new RateLimiterRedis({
   blockDuration: 15 * 60,
 });
 
-// Rate limiter for OTP verification
 const verifyOtpRateLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'otp:verify',
@@ -167,7 +190,7 @@ const verifyOtpRateLimiter = new RateLimiterRedis({
   blockDuration: 15 * 60,
 });
 
-// Middleware to check if user is authenticated
+// Authentication middleware
 const isAuthenticated = (req, res, next) => {
   if (!req.session || !req.session.isLoggedIn || !req.session.userId) {
     logger.warn(`Unauthorized access attempt: ${req.method} ${req.path}`);
@@ -176,7 +199,7 @@ const isAuthenticated = (req, res, next) => {
   next();
 };
 
-// Middleware to apply OTP rate limiter
+// OTP rate limiter middleware
 const applyOtpRateLimiter = async (req, res, next) => {
   const key = req.body.email ? req.body.email.toLowerCase() : req.ip;
   try {
@@ -191,7 +214,6 @@ const applyOtpRateLimiter = async (req, res, next) => {
   }
 };
 
-// Middleware to apply OTP verification rate limiter
 const applyVerifyOtpRateLimiter = async (req, res, next) => {
   const key = req.body.email ? req.body.email.toLowerCase() : req.ip;
   try {
@@ -211,8 +233,20 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Send email route with reCAPTCHA verification
-router.post('/send-email', async (req, res) => {
+// CSRF token endpoint
+router.get('/csrf-token', csrfProtection, (req, res) => {
+  try {
+    const csrfToken = req.csrfToken();
+    logger.info('CSRF token generated successfully');
+    res.status(200).json({ csrfToken });
+  } catch (error) {
+    logger.error('Error generating CSRF token:', error);
+    res.status(500).json({ error: 'server_error', message: 'Failed to generate CSRF token' });
+  }
+});
+
+// Send email route
+router.post('/send-email', csrfProtection, async (req, res) => {
   const { name, email, subject, message, 'g-recaptcha-response': recaptchaResponse } = req.body;
 
   // Server-side validation
@@ -312,7 +346,6 @@ router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
   try {
     const { email } = req.body;
 
-    // Validate email
     if (!email || !validator.isEmail(email)) {
       logger.warn(`Invalid email for OTP request: ${email}`);
       return res.status(400).json({ error: 'invalid_email', message: 'Please provide a valid email address' });
@@ -320,7 +353,6 @@ router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
 
     const emailToCheck = email.toLowerCase();
 
-    // Check if email exists in the database
     const { data, error } = await supabase
       .from('patients')
       .select('email');
@@ -340,7 +372,6 @@ router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
       }
     }
 
-    // Generate and store OTP in Redis
     const otp = generateOTP();
     const otpData = {
       otp,
@@ -354,7 +385,6 @@ router.post('/send-otp', applyOtpRateLimiter, async (req, res) => {
       15 * 60 * 1000
     );
 
-    // Send email with OTP
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: emailToCheck,
@@ -390,7 +420,6 @@ router.post('/send-otp-password-change-admin', applyOtpRateLimiter, isAuthentica
   try {
     const userId = req.session.userId;
 
-    // Verify the user is an admin
     const { data: adminData, error: adminError } = await supabase
       .from('admin')
       .select('id')
@@ -402,7 +431,6 @@ router.post('/send-otp-password-change-admin', applyOtpRateLimiter, isAuthentica
       return res.status(403).json({ error: 'forbidden', message: 'You are not authorized to perform this action' });
     }
 
-    // Use admin email from environment
     const email = process.env.EMAIL_USER;
     if (!email) {
       logger.error('Admin email not configured in environment variables');
@@ -412,7 +440,6 @@ router.post('/send-otp-password-change-admin', applyOtpRateLimiter, isAuthentica
     const emailToCheck = email.toLowerCase();
     const otp = generateOTP();
 
-    // Store OTP in Redis
     const otpData = {
       otp,
       expiry: Date.now() + 15 * 60 * 1000,
@@ -452,12 +479,11 @@ router.post('/send-otp-password-change-admin', applyOtpRateLimiter, isAuthentica
   }
 });
 
-// Send OTP route for user (patient) password change
+// Send OTP route for user password change
 router.post('/send-otp-password-change-user', applyOtpRateLimiter, isAuthenticated, async (req, res) => {
   try {
     const userId = req.session.userId;
 
-    // Fetch user email from patients table
     const { data: userData, error: userError } = await supabase
       .from('patients')
       .select('email')
@@ -469,7 +495,6 @@ router.post('/send-otp-password-change-user', applyOtpRateLimiter, isAuthenticat
       return res.status(403).json({ error: 'forbidden', message: 'You are not authorized to perform this action' });
     }
 
-    // Verify the user is a patient
     const { data: patientData, error: patientError } = await supabase
       .from('patients')
       .select('id')
@@ -490,7 +515,6 @@ router.post('/send-otp-password-change-user', applyOtpRateLimiter, isAuthenticat
     const emailToCheck = email.toLowerCase();
     const otp = generateOTP();
 
-    // Store OTP in Redis
     const otpData = {
       otp,
       expiry: Date.now() + 15 * 60 * 1000,
@@ -535,7 +559,6 @@ router.post('/verify-otp', applyVerifyOtpRateLimiter, async (req, res) => {
   try {
     const { email: providedEmail, otp, purpose } = req.body;
 
-    // Validate inputs
     if (!otp || !purpose) {
       logger.warn('OTP verification attempt with missing fields');
       return res.status(400).json({ error: 'missing_fields', message: 'OTP and purpose are required' });
@@ -549,7 +572,6 @@ router.post('/verify-otp', applyVerifyOtpRateLimiter, async (req, res) => {
       return res.status(400).json({ error: 'invalid_purpose', message: 'Invalid OTP purpose' });
     }
 
-    // Use EMAIL_USER from .env if email is null (for admin)
     const email = providedEmail || process.env.EMAIL_USER;
     if (!email || !validator.isEmail(email)) {
       logger.warn('OTP verification attempt with invalid or missing email');
@@ -566,26 +588,22 @@ router.post('/verify-otp', applyVerifyOtpRateLimiter, async (req, res) => {
 
     const storedOTPData = JSON.parse(storedOTPDataRaw);
 
-    // Check if OTP is expired
     if (Date.now() > storedOTPData.expiry) {
       await redis.del(`otp:${lowerEmail}`);
       logger.warn(`Expired OTP for email: ${lowerEmail}`);
       return res.status(400).json({ error: 'expired_otp', message: 'OTP has expired. Please request a new one' });
     }
 
-    // Check if OTP purpose matches
     if (storedOTPData.purpose !== purpose) {
       logger.warn(`OTP purpose mismatch for email: ${lowerEmail}, expected: ${storedOTPData.purpose}, got: ${purpose}`);
       return res.status(400).json({ error: 'invalid_purpose', message: 'OTP purpose does not match the requested action' });
     }
 
-    // Verify OTP
     if (storedOTPData.otp !== otp) {
       logger.warn(`Invalid OTP for email: ${lowerEmail}`);
       return res.status(400).json({ error: 'invalid_otp', message: 'Invalid OTP' });
     }
 
-    // OTP is valid, remove it from Redis (one-time use)
     await redis.del(`otp:${lowerEmail}`);
     logger.info(`OTP verified successfully for email: ${lowerEmail}, purpose: ${purpose}`);
     res.status(200).json({ success: true, message: 'OTP verified successfully' });
@@ -595,7 +613,7 @@ router.post('/verify-otp', applyVerifyOtpRateLimiter, async (req, res) => {
   }
 });
 
-// Apply helmet for security headers
+// Apply helmet
 router.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -608,11 +626,15 @@ router.use(helmet({
 
 // Error handling middleware
 router.use((err, req, res, next) => {
+  if (err.code === 'EBADCSRFTOKEN') {
+    logger.warn(`CSRF token validation failed: ${req.path}`);
+    return res.status(403).json({ error: 'invalid_csrf_token', message: 'Invalid CSRF token. Please refresh the page and try again.' });
+  }
   logger.error('Route error:', { error: err.message, stack: err.stack, path: req.path });
   res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
 });
 
-// Graceful shutdown for Redis
+// Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('Shutting down Redis connection');
   redis.quit(() => {

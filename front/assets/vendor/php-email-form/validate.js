@@ -1,85 +1,111 @@
-/**
-* PHP Email Form Validation - v3.10
-* URL: https://bootstrapmade.com/php-email-form/
-* Author: BootstrapMade.com
-*/
-(function () {
-  "use strict";
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.querySelector('#contact-form'); // Adjust to your form's ID
+  const submitButton = form.querySelector('button[type="submit"]') || form.querySelector('input[type="submit"]');
+  let csrfToken = null;
 
-  let forms = document.querySelectorAll('.php-email-form');
-
-  forms.forEach( function(e) {
-    e.addEventListener('submit', function(event) {
-      event.preventDefault();
-
-      let thisForm = this;
-
-      let action = thisForm.getAttribute('action');
-      let recaptcha = thisForm.getAttribute('data-recaptcha-site-key');
-      
-      if( ! action ) {
-        displayError(thisForm, 'The form action property is not set!');
-        return;
+  // Fetch CSRF token
+  async function fetchCsrfToken() {
+    try {
+      const response = await fetch('/api/csrf-token', {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
       }
-      thisForm.querySelector('.loading').classList.add('d-block');
-      thisForm.querySelector('.error-message').classList.remove('d-block');
-      thisForm.querySelector('.sent-message').classList.remove('d-block');
+      const data = await response.json();
+      csrfToken = data.csrfToken;
+      console.log('CSRF token fetched:', csrfToken);
+    } catch (error) {
+      console.error('Error fetching CSRF token:', error);
+      alert('Failed to initialize form. Please refresh the page.');
+    }
+  }
 
-      let formData = new FormData( thisForm );
+  // Initialize reCAPTCHA
+  function initializeRecaptcha() {
+    if (typeof grecaptcha === 'undefined') {
+      console.error('reCAPTCHA script not loaded');
+      alert('reCAPTCHA failed to load. Please refresh the page.');
+    }
+  }
 
-      if ( recaptcha ) {
-        if(typeof grecaptcha !== "undefined" ) {
-          grecaptcha.ready(function() {
-            try {
-              grecaptcha.execute(recaptcha, {action: 'php_email_form_submit'})
-              .then(token => {
-                formData.set('recaptcha-response', token);
-                php_email_form_submit(thisForm, action, formData);
-              })
-            } catch(error) {
-              displayError(thisForm, error);
-            }
-          });
+  // Handle form submission
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (!submitButton) {
+      console.error('Submit button not found');
+      return;
+    }
+    submitButton.disabled = true;
+    submitButton.textContent = 'Sending...';
+
+    if (!csrfToken) {
+      alert('Form not initialized. Please refresh the page.');
+      submitButton.disabled = false;
+      submitButton.textContent = 'Send Message';
+      return;
+    }
+
+    let recaptchaResponse;
+    try {
+      recaptchaResponse = await new Promise((resolve, reject) => {
+        grecaptcha.ready(() => {
+          grecaptcha.execute('your-recaptcha-site-key', { action: 'submit' })
+            .then(token => resolve(token))
+            .catch(error => reject(error));
+        });
+      });
+    } catch (error) {
+      console.error('reCAPTCHA error:', error);
+      alert('reCAPTCHA verification failed. Please try again.');
+      submitButton.disabled = false;
+      submitButton.textContent = 'Send Message';
+      return;
+    }
+
+    const formData = new FormData(form);
+    formData.append('_csrf', csrfToken);
+    formData.append('g-recaptcha-response', recaptchaResponse);
+
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert('Email sent successfully!');
+        form.reset();
+        grecaptcha.reset();
+      } else {
+        console.error('Server response:', data);
+        if (data.error === 'invalid_csrf_token') {
+          alert('Invalid CSRF token. Please refresh the page and try again.');
+        } else if (data.error === 'recaptcha_error') {
+          alert('reCAPTCHA verification failed. Please try again.');
+        } else if (data.error === 'too_many_requests') {
+          alert('Too many submissions. Please try again later.');
         } else {
-          displayError(thisForm, 'The reCaptcha javascript API url is not loaded!')
+          alert(data.message || 'Failed to send email. Please try again.');
         }
-      } else {
-        php_email_form_submit(thisForm, action, formData);
       }
-    });
-  });
-
-  function php_email_form_submit(thisForm, action, formData) {
-    fetch(action, {
-      method: 'POST',
-      body: formData,
-      headers: {'X-Requested-With': 'XMLHttpRequest'}
-    })
-    .then(response => {
-      if( response.ok ) {
-        return response.text();
-      } else {
-        throw new Error(`${response.status} ${response.statusText} ${response.url}`); 
-      }
-    })
-    .then(data => {
-      thisForm.querySelector('.loading').classList.remove('d-block');
-      if (data.trim() == 'OK') {
-        thisForm.querySelector('.sent-message').classList.add('d-block');
-        thisForm.reset(); 
-      } else {
-        throw new Error(data ? data : 'Form submission failed and no error message returned from: ' + action); 
-      }
-    })
-    .catch((error) => {
-      displayError(thisForm, error);
-    });
+    } catch (error) {
+      console.error('Error sending email:', error);
+      alert('An error occurred. Please try again later.');
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Send Message';
+    }
   }
 
-  function displayError(thisForm, error) {
-    thisForm.querySelector('.loading').classList.remove('d-block');
-    thisForm.querySelector('.error-message').innerHTML = error;
-    thisForm.querySelector('.error-message').classList.add('d-block');
-  }
+  // Initialize
+  fetchCsrfToken();
+  initializeRecaptcha();
 
-})();
+  // Attach submit handler
+  form.addEventListener('submit', handleSubmit);
+});
