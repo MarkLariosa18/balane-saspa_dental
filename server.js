@@ -167,7 +167,7 @@ app.use(
           'https://formsubmit.co',
           'https://cdn.jsdelivr.net/npm/sweetalert2@11' // Add SweetAlert
         ],
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://cdn.tailwindcss.com', "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://cdn.tailwindcss.com', ],
         imgSrc: ["'self'", 'data:'], // allow inline images or icons if needed
         formAction: ["'self'", 'https://formsubmit.co'], // allow form submissions
         frameAncestors: ["'self'"], // prevent clickjacking
