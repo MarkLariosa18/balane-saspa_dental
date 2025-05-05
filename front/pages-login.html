@@ -227,17 +227,20 @@
 
       // Utility functions
       const showLoading = () => {
+        console.log('Showing loading overlay');
         document.getElementById('loading-overlay').style.display = 'flex';
         document.getElementById('loginButton').disabled = true;
       };
 
       const hideLoading = () => {
+        console.log('Hiding loading overlay');
         document.getElementById('loading-overlay').style.display = 'none';
         document.getElementById('loginButton').disabled = false;
       };
 
       const showAlert = (title, text, icon = 'info') => {
         hideLoading();
+        console.log(`Showing alert: ${title} - ${text} (${icon})`);
         return Swal.fire({
           title,
           text,
@@ -275,6 +278,7 @@
       let csrfToken = null;
       try {
         showLoading();
+        console.log('Fetching CSRF token...');
         const response = await fetch(`${API_BASE_URL}/csrf-token`, {
           method: 'GET',
           credentials: 'include'
@@ -305,6 +309,7 @@
         const now = Date.now();
         if (loginAttempts >= MAX_ATTEMPTS && now < lockoutUntil) {
           const remainingTime = Math.ceil((lockoutUntil - now) / 1000 / 60);
+          console.log(`Lockout active: ${remainingTime} minutes remaining`);
           showAlert('Too Many Attempts', `Please wait ${remainingTime} minute(s) before trying again.`, 'error');
           loginButton.disabled = true;
           return true;
@@ -314,6 +319,7 @@
           localStorage.setItem('loginAttempts', 0);
           localStorage.removeItem('lockoutUntil');
           loginButton.disabled = false;
+          console.log('Lockout cleared');
         }
         return false;
       };
@@ -321,6 +327,7 @@
       // Attempt auto-login with remember token
       try {
         showLoading();
+        console.log('Attempting auto-login...');
         const response = await fetch(`${API_BASE_URL}/auto-login`, {
           method: 'POST',
           headers: {
@@ -335,8 +342,10 @@
           console.log('Auto-login successful:', result);
           await showAlert('Auto-Login Successful', 'Redirecting to your dashboard...', 'success');
           if (result.role === 'admin') {
+            console.log('Redirecting to /admin/index.html');
             window.location.href = '/admin/index.html';
           } else {
+            console.log('Redirecting to /profile.html');
             window.location.href = '/profile.html';
           }
           return;
@@ -361,10 +370,12 @@
 
         if (!form.checkValidity()) {
           form.classList.add('was-validated');
+          console.log('Form validation failed');
           return;
         }
 
         if (!isValidIdentifier(identifier)) {
+          console.log('Invalid identifier format:', identifier);
           await showAlert('Invalid Input', 'Please enter a valid username (3-50 alphanumeric characters or underscore) or email address.', 'error');
           return;
         }
@@ -372,6 +383,7 @@
         try {
           showLoading();
           loginButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Logging in...';
+          console.log('Sending login request:', { identifier, remember });
 
           const response = await fetch(`${API_BASE_URL}/login`, {
             method: 'POST',
@@ -384,10 +396,12 @@
           });
 
           const result = await response.json();
+          console.log('Login response:', response.status, result);
 
           if (!response.ok) {
             loginAttempts++;
             localStorage.setItem('loginAttempts', loginAttempts);
+            console.log(`Login attempt failed (${loginAttempts}/${MAX_ATTEMPTS})`);
             if (loginAttempts >= MAX_ATTEMPTS) {
               lockoutUntil = Date.now() + LOCKOUT_TIME;
               localStorage.setItem('lockoutUntil', lockoutUntil);
@@ -395,10 +409,13 @@
               return;
             }
             if (result.error === 'invalid_csrf_token') {
+              console.log('CSRF token invalid');
               await showAlert('Session Error', 'Invalid session. Please refresh the page.', 'error');
             } else if (result.error === 'too_many_requests') {
+              console.log('Too many requests');
               await showAlert('Too Many Attempts', result.message, 'error');
             } else {
+              console.log('Login error:', result.message);
               await showAlert('Login Failed', result.message || 'Invalid username/email or password', 'error');
             }
             loginButton.innerHTML = 'Login';
@@ -411,15 +428,26 @@
             console.log('Login successful:', result);
             await showAlert('Login Successful', 'Redirecting to your dashboard...', 'success');
             if (result.role === 'admin') {
+              console.log('Redirecting to /admin/index.html');
               window.location.href = '/admin/index.html';
+            } else if (result.role === 'patient') {
+              console.log('Redirecting to /profile.html');
+              window.location.href = '/profile.html';
             } else {
+              console.warn('Unexpected role:', result.role);
+              console.log('Falling back to /profile.html');
               window.location.href = '/profile.html';
             }
+          } else {
+            console.log('Login failed: success flag not set', result);
+            await showAlert('Login Failed', result.message || 'Unexpected response from server', 'error');
+            loginButton.innerHTML = 'Login';
           }
         } catch (error) {
           console.error('Login error:', error);
           loginAttempts++;
           localStorage.setItem('loginAttempts', loginAttempts);
+          console.log(`Login attempt failed (${loginAttempts}/${MAX_ATTEMPTS})`);
           if (loginAttempts >= MAX_ATTEMPTS) {
             lockoutUntil = Date.now() + LOCKOUT_TIME;
             localStorage.setItem('lockoutUntil', lockoutUntil);
@@ -461,6 +489,7 @@
 
         try {
           showLoading();
+          console.log('Sending forgot password request:', { identifier });
           const response = await fetch(`${API_BASE_URL}/forgot-password`, {
             method: 'POST',
             headers: {
@@ -472,13 +501,17 @@
           });
 
           const result = await response.json();
+          console.log('Forgot password response:', response.status, result);
 
           if (!response.ok) {
             if (result.error === 'invalid_csrf_token') {
+              console.log('CSRF token invalid');
               await showAlert('Session Error', 'Invalid session. Please refresh the page.', 'error');
             } else if (result.error === 'too_many_requests') {
+              console.log('Too many requests');
               await showAlert('Too Many Requests', result.message, 'error');
             } else {
+              console.log('Forgot password error:', result.message);
               await showAlert('Error', result.message || 'Failed to send OTP', 'error');
             }
             return;
@@ -505,6 +538,7 @@
 
           if (!otp) return;
 
+          console.log('Sending OTP verification request:', { identifier, otp });
           const verifyResponse = await fetch(`${API_BASE_URL}/verify-otp`, {
             method: 'POST',
             headers: {
@@ -516,11 +550,14 @@
           });
 
           const verifyResult = await verifyResponse.json();
+          console.log('OTP verification response:', verifyResponse.status, verifyResult);
 
           if (!verifyResponse.ok) {
             if (verifyResult.error === 'invalid_csrf_token') {
+              console.log('CSRF token invalid');
               await showAlert('Session Error', 'Invalid session. Please refresh the page.', 'error');
             } else {
+              console.log('OTP verification error:', verifyResult.message);
               await showAlert('Error', verifyResult.message || 'Invalid OTP', 'error');
             }
             return;
@@ -554,6 +591,7 @@
 
           if (!passwords) return;
 
+          console.log('Sending password reset request:', { identifier, otp });
           const resetResponse = await fetch(`${API_BASE_URL}/reset-password`, {
             method: 'POST',
             headers: {
@@ -565,11 +603,14 @@
           });
 
           const resetResult = await resetResponse.json();
+          console.log('Password reset response:', resetResponse.status, resetResult);
 
           if (!resetResponse.ok) {
             if (resetResult.error === 'invalid_csrf_token') {
+              console.log('CSRF token invalid');
               await showAlert('Session Error', 'Invalid session. Please refresh the page.', 'error');
             } else {
+              console.log('Password reset error:', resetResult.message);
               await showAlert('Error', resetResult.message || 'Failed to reset password', 'error');
             }
             return;
