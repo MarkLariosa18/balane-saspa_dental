@@ -448,7 +448,7 @@
   const fetchUserAppointments = async () => {
     try {
       console.log('Fetching user appointments');
-      const response = await withTimeout(fetch(`${BASE_URL}/apointments/appointments`, {
+      const response = await withTimeout(fetch(`${BASE_URL}/api/appointments`, {
         credentials: 'include'
       }));
       if (!response.ok) {
