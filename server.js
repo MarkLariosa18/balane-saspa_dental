@@ -150,7 +150,6 @@ io.on('connection', (socket) => {
   });
 });
 
-
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -163,30 +162,48 @@ app.use(helmet({
         "https://fonts.googleapis.com",
         "https://cdn.tailwindcss.com",
         "https://www.google.com",
-        "https://code.jquery.com", 
-        "https://www.google.com/recaptcha/api.js" // jQuery
+        "https://www.gstatic.com", // Added for reCAPTCHA
+        "https://www.recaptcha.net", // Added for reCAPTCHA
+        "https://code.jquery.com",
+        "https://www.google.com/recaptcha/api.js",
+        // "'unsafe-inline'", // Uncomment for debugging, remove later
       ],
       styleSrc: [
         "'self'",
         "https://fonts.googleapis.com",
         "https://cdn.tailwindcss.com",
+        "'unsafe-inline'", // Needed for reCAPTCHA inline styles
       ],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https:"],  // allow icons, images, avatars
+      imgSrc: ["'self'", "data:", "https:"],
       connectSrc: [
         "'self'",
-        "wss://balane-saspa-dental-1.onrender.com"
+        "wss://balane-saspa-dental-1.onrender.com",
+        "https://www.google.com", // Added for reCAPTCHA API
+        "https://www.recaptcha.net", // Added for reCAPTCHA API
       ],
-      frameSrc: ["'self'", "https:"],
-      objectSrc: ["'none'"],  // disable <object>, <embed>, etc.
+      frameSrc: [
+        "'self'",
+        "https://www.google.com", // Ensure reCAPTCHA iframes
+        "https://www.recaptcha.net",
+      ],
+      objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
       upgradeInsecureRequests: [],
+      // Report CSP violations (optional for debugging)
+      reportUri: '/csp-violation-report',
     },
   },
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-  crossOriginEmbedderPolicy: false, // optional if causing issues with fonts/media
+  crossOriginEmbedderPolicy: false,
 }));
+
+// CSP violation report endpoint (optional)
+app.post('/csp-violation-report', express.json(), (req, res) => {
+  console.log('CSP Violation:', req.body);
+  res.status(204).end();
+});
 
 
 app.use(compression());
