@@ -56,23 +56,36 @@ function encryptEmail(email) {
 }
 
 // Decrypt function
+
 function decryptEmail(encryptedEmail) {
   try {
-    const [ivHex, encryptedHex] = encryptedEmail.split(':');
-    if (!ivHex || !encryptedHex) {
+    const [ivHex, authTagHex, encryptedHex] = encryptedEmail.split(':');
+    if (!ivHex || !authTagHex || !encryptedHex) {
       throw new Error('Invalid encrypted email format');
     }
+
     const iv = Buffer.from(ivHex, 'hex');
+    const authTag = Buffer.from(authTagHex, 'hex');
     const encrypted = Buffer.from(encryptedHex, 'hex');
+
+    if (iv.length !== ivLength || authTag.length !== authTagLength) {
+      throw new Error('Invalid IV or auth tag length');
+    }
+
     const decipher = crypto.createDecipheriv(algorithm, ENCRYPTION_KEY, iv);
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-    return decrypted.toString();
+    decipher.setAuthTag(authTag);
+
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final()
+    ]);
+
+    return decrypted.toString('utf8');
   } catch (error) {
-    logger.error('Email decryption error:', error);
+    console.error('Email decryption error:', error.message);
     throw new Error('Failed to decrypt email');
   }
 }
-
 // Initialize Winston logger
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
