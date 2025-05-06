@@ -245,127 +245,60 @@ router.get('/csrf-token', (req, res) => {
 });
 
 // Login endpoint
-router.post('/login', applyLoginRateLimiter, async (req, res) => {
-  const { identifier, password, remember } = req.body;
+router.post('/login', async (req, res) => {
+  const { username, password, remember } = req.body;
 
   try {
-    if (!identifier || !password) {
-      logger.warn(`Login attempt with missing credentials: ${identifier || 'unknown'}`);
-      return res.status(400).json({ error: 'bad_request', message: 'Username/email and password are required' });
+    // Validate input
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username and password are required' });
     }
 
+    // Step 1: Check admin table first
     let user = null;
     let role = null;
     let table = null;
 
-    // Check admin table
-    const { data: adminByUsername, error: adminError } = await supabase
+    const { data: admin, error: adminError } = await supabase
       .from('admin')
       .select('id, username, password')
-      .eq('username', identifier)
+      .eq('username', username)
       .single();
 
-    if (adminByUsername && !adminError) {
-      const passwordMatch = await bcrypt.compare(password, adminByUsername.password);
+    if (admin && !adminError) {
+      const passwordMatch = await bcrypt.compare(password, admin.password);
       if (!passwordMatch) {
-        logger.warn(`Failed login attempt for admin: ${identifier}`);
-        return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
+        return res.status(401).json({ success: false, message: 'Invalid username or password' });
       }
-      user = adminByUsername;
+      user = admin;
       role = 'admin';
       table = 'admin';
     } else {
-      // Check users table by username
-      const { data: userByUsername, error: userUsernameError } = await supabase
+      // Step 2: Check users table for patients
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id, username, password')
-        .eq('username', identifier)
+        .eq('username', username)
         .single();
 
-      if (userByUsername && !userUsernameError) {
-        const passwordMatch = await bcrypt.compare(password, userByUsername.password);
-        if (!passwordMatch) {
-          logger.warn(`Failed login attempt for user: ${identifier}`);
-          return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
-        }
-        const { data: patientData, error: patientError } = await supabase
-          .from('patients')
-          .select('id, email')
-          .eq('id', userByUsername.id)
-          .single();
-
-        if (!patientData || patientError) {
-          logger.warn(`Login attempt for non-patient user: ${identifier}`);
-          return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
-        }
-        // Decrypt the email
-        try {
-          const decryptedEmail = decryptEmail(patientData.email);
-          user = { ...userByUsername, email: decryptedEmail };
-        } catch (decryptError) {
-          logger.error(`Email decryption failed for userId ${userByUsername.id}:`, decryptError);
-          return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-        }
-      } else if (validator.isEmail(identifier)) {
-        // Check patients table by email
-        const { data: patients, error: patientEmailError } = await supabase
-          .from('patients')
-          .select('id, email');
-
-        if (patientEmailError) {
-          logger.error('Error fetching patients:', patientEmailError);
-          return res.status(500).json({ error: 'server_error', message: 'Server error' });
-        }
-
-        let patientByEmail = null;
-        for (const patient of patients) {
-          try {
-            const decryptedEmail = decryptEmail(patient.email);
-            if (decryptedEmail === identifier) {
-              patientByEmail = patient;
-              break;
-            }
-          } catch (decryptError) {
-            logger.warn(`Skipping decryption error for patientId ${patient.id}:`, decryptError);
-            continue;
-          }
-        }
-
-        if (patientByEmail) {
-          const { data: userById, error: userIdError } = await supabase
-            .from('users')
-            .select('id, username, password')
-            .eq('id', patientByEmail.id)
-            .single();
-
-          if (userById && !userIdError) {
-            const passwordMatch = await bcrypt.compare(password, userById.password);
-            if (!passwordMatch) {
-              logger.warn(`Failed login attempt for user: ${identifier}`);
-              return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
-            }
-            try {
-              const decryptedEmail = decryptEmail(patientByEmail.email);
-              user = { ...userById, email: decryptedEmail };
-            } catch (decryptError) {
-              logger.error(`Email decryption failed for userId ${userById.id}:`, decryptError);
-              return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-            }
-          }
-        }
+      if (userError || !userData) {
+        return res.status(401).json({ success: false, message: 'Invalid username or password' });
       }
 
-      if (!user) {
-        logger.warn(`Failed login attempt for user: ${identifier}`);
-        return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
+      const passwordMatch = await bcrypt.compare(password, userData.password);
+      if (!passwordMatch) {
+        return res.status(401).json({ success: false, message: 'Invalid username or password' });
       }
+      user = userData;
       role = 'patient';
       table = 'users';
     }
 
+    // Step 3: Set session (do not store role in session)
     req.session.isLoggedIn = true;
     req.session.userId = user.id;
 
+    // Step 4: Handle "Remember Me"
     if (remember) {
       const rememberToken = crypto.randomBytes(32).toString('hex');
       const { error: tokenError } = await supabase
@@ -375,33 +308,32 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
 
       if (tokenError) throw tokenError;
 
-      req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+      // Long-lived session (30 days)
+      req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
       res.cookie('remember_token', rememberToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
         maxAge: 30 * 24 * 60 * 60 * 1000,
         path: '/',
       });
     } else {
-      req.session.cookie.maxAge = 60 * 60 * 1000;
+      // Short-lived session (1 hour)
+      req.session.cookie.maxAge = 60 * 60 * 1000; // 1 hour
       const { error: clearTokenError } = await supabase
         .from(table)
         .update({ remember_token: null })
         .eq('id', user.id);
 
       if (clearTokenError) throw clearTokenError;
-      res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
+      res.clearCookie('remember_token');
     }
 
-    logger.info(`Successful login for ${role}: ${identifier} (userId: ${user.id})`);
     res.json({ success: true, message: 'Login successful', role, remember: !!remember });
   } catch (error) {
-    logger.error('Login error:', error);
-    res.status(500).json({ error: 'server_error', message: 'Server error' });
+    console.error('Login error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
-
 // Check authentication status
 router.get('/check-auth', async (req, res) => {
   try {
