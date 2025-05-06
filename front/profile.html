@@ -1338,7 +1338,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       full_name: profileData.full_name || 'N/A',
       email: profileData.email || 'N/A',
       phone: profileData.phone || 'N/A',
-      dob: profileData.dob ? new Date(profileData.dob).toISOString().split('T')[0] : 'N/A',
+      dob: profileData.dob || 'N/A',
       gender: profileData.gender || 'N/A',
       address: profileData.address || 'N/A',
       religion: profileData.religion || 'N/A',
