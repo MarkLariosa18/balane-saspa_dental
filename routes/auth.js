@@ -160,7 +160,7 @@ transporter.verify((error, success) => {
 const loginRateLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'login:attempt',
-  points: 5,
+  points: 999,
   duration: 15 * 60,
   blockDuration: 15 * 60,
 });
