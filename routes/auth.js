@@ -13,9 +13,9 @@ const cors = require('cors');
 
 require('dotenv').config();
 
-// Encryption/Decryption utilities
-const ALGORITHM = 'aes-256-gcm'; // Upgraded to GCM for authenticated encryption
-const IV_LENGTH = 12; // GCM recommends 12 bytes for IV
+// Encryption settings
+const ALGORITHM = 'aes-256-cbc';
+const IV_LENGTH = 16;
 
 // Validate critical environment variables
 const requiredEnvVars = [
@@ -42,50 +42,72 @@ if (ENCRYPTION_KEY.length !== 32) {
   process.exit(1);
 }
 
-// Encrypt function
-function encryptEmail(email) {
+// Encryption functions
+function encrypt(text) {
+  if (!text) return null;
   try {
-    const iv = crypto.randomBytes(ivLength);
-    const cipher = crypto.createCipheriv(algorithm, ENCRYPTION_KEY, iv);
-    const encrypted = Buffer.concat([cipher.update(email), cipher.final()]);
-    return iv.toString('hex') + ':' + encrypted.toString('hex');
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv(ALGORITHM, encryptionKey, iv);
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return `${iv.toString('hex')}:${encrypted}`;
   } catch (error) {
-    logger.error('Email encryption error:', error);
-    throw new Error('Failed to encrypt email');
+    console.error('Encryption error:', error);
+    throw new Error('Encryption failed');
   }
 }
 
-// Decrypt function
-
-function decryptEmail(encryptedEmail) {
+function decrypt(text) {
+  if (!text) return null;
+  const [ivText, encryptedText] = text.split(':');
+  if (!ivText || !encryptedText) {
+    console.warn(`Data appears unencrypted or invalid format: "${text}". Returning as-is.`);
+    return text;
+  }
   try {
-    const [ivHex, authTagHex, encryptedHex] = encryptedEmail.split(':');
-    if (!ivHex || !authTagHex || !encryptedHex) {
-      throw new Error('Invalid encrypted email format');
+    const iv = Buffer.from(ivText, 'hex');
+    if (iv.length !== IV_LENGTH) {
+      throw new Error(`Invalid IV length: expected ${IV_LENGTH} bytes, got ${iv.length}`);
+    }
+    const encrypted = Buffer.from(encryptedText, 'hex');
+    const decipher = crypto.createDecipheriv(ALGORITHM, encryptionKey, iv);
+    let decrypted = decipher.update(encrypted);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    let decryptedString = decrypted.toString('utf8');
+
+    if (decryptedString.includes(':')) {
+      console.log(`First decryption produced encrypted output: "${decryptedString}". Attempting second pass.`);
+      const [secondIvText, secondEncryptedText] = decryptedString.split(':');
+      const secondIv = Buffer.from(secondIvText, 'hex');
+      const secondEncrypted = Buffer.from(secondEncryptedText, 'hex');
+      const secondDecipher = crypto.createDecipheriv(ALGORITHM, encryptionKey, secondIv);
+      let secondDecrypted = secondDecipher.update(secondEncrypted);
+      secondDecrypted = Buffer.concat([secondDecrypted, secondDecipher.final()]);
+      decryptedString = secondDecrypted.toString('utf8');
+
+      if (!decryptedString || decryptedString.includes(':') || /[^ -~]/.test(decryptedString)) {
+        console.warn(`Second decryption produced invalid output: "${decryptedString}". Returning original: "${text}"`);
+        return text;
+      }
+      return decryptedString;
     }
 
-    const iv = Buffer.from(ivHex, 'hex');
-    const authTag = Buffer.from(authTagHex, 'hex');
-    const encrypted = Buffer.from(encryptedHex, 'hex');
-
-    if (iv.length !== ivLength || authTag.length !== authTagLength) {
-      throw new Error('Invalid IV or auth tag length');
+    if (!decryptedString || /[^ -~]/.test(decryptedString)) {
+      console.warn(`Single decryption produced invalid output: "${decryptedString}". Returning original: "${text}"`);
+      return text;
     }
-
-    const decipher = crypto.createDecipheriv(algorithm, ENCRYPTION_KEY, iv);
-    decipher.setAuthTag(authTag);
-
-    const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final()
-    ]);
-
-    return decrypted.toString('utf8');
+    return decryptedString;
   } catch (error) {
-    console.error('Email decryption error:', error.message);
-    throw new Error('Failed to decrypt email');
+    console.error('Decryption failed:', {
+      error: error.message,
+      input: text,
+      ivLength: ivText?.length,
+      keySnippet: ENCRYPTION_KEY.slice(0, 8) + '...'
+    });
+    return text;
   }
 }
+
 // Initialize Winston logger
 const logger = winston.createLogger({
   level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
