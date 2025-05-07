@@ -558,7 +558,6 @@
                           <select name="gender" class="form-select" id="gender">
                             <option value="male">Male</option>
                             <option value="female">Female</option>
-                            <option value="other">Other</option>
                           </select>
                         </div>
                       </div>
@@ -844,7 +843,7 @@
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
 <script>
- AOS.init();
+AOS.init();
 
 let profileData;
 let allHistory = [];
@@ -1273,6 +1272,32 @@ function setupCancelAppointmentModal() {
 }
 
 document.addEventListener('DOMContentLoaded', async function() {
+  // Helper function to validate date strings
+  function isValidDate(dateString) {
+    // Handle null, undefined, empty, or non-date text values
+    if (!dateString || typeof dateString !== 'string' || dateString.trim() === '' || dateString.toLowerCase() === 'n/a') {
+      console.log(`Invalid date string: ${dateString} (rejected as empty or non-date)`);
+      return false;
+    }
+    // Try parsing the date string
+    const date = new Date(dateString);
+    // Check if the date is valid and not NaN
+    if (date instanceof Date && !isNaN(date.getTime())) {
+      // Ensure the date is reasonable (e.g., between 1900 and today)
+      const today = new Date();
+      const minDate = new Date('1900-01-01');
+      if (date <= today && date >= minDate) {
+        console.log(`Valid date string: ${dateString} (parsed as ${date.toISOString()})`);
+        return true;
+      } else {
+        console.log(`Invalid date string: ${dateString} (out of range)`);
+        return false;
+      }
+    }
+    console.log(`Invalid date string: ${dateString} (failed parsing)`);
+    return false;
+  }
+
   try {
     console.log('DOMContentLoaded started');
     console.log('BASE_URL:', BASE_URL);
@@ -1328,12 +1353,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.querySelectorAll('#navmenu a').forEach(link => link.classList.remove('active'));
     document.querySelector('#profile-link a').classList.add('active');
 
-    // Handle null or undefined values
+    // Handle null or undefined values with proper date validation
     const safeProfileData = {
       full_name: profileData.full_name || 'N/A',
       email: profileData.email || 'N/A',
       phone: profileData.phone || 'N/A',
-      dob: profileData.dob ? new Date(profileData.dob).toISOString().split('T')[0] : 'N/A',
+      dob: isValidDate(profileData.dob) ? new Date(profileData.dob).toISOString().split('T')[0] : 'N/A',
       gender: profileData.gender || 'N/A',
       address: profileData.address || 'N/A',
       religion: profileData.religion || 'N/A',
@@ -1357,7 +1382,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     document.getElementById('fullName').value = safeProfileData.full_name !== 'N/A' ? safeProfileData.full_name : '';
     document.getElementById('dob').value = safeProfileData.dob !== 'N/A' ? safeProfileData.dob : '';
-    document.getElementById('gender').value = safeProfileData.gender !== 'N/A' ? safeProfileData.gender : 'other';
+    document.getElementById('gender').value = safeProfileData.gender !== 'N/A' ? safeProfileData.gender : '';
     document.getElementById('Address').value = safeProfileData.address !== 'N/A' ? safeProfileData.address : '';
     document.getElementById('religion').value = safeProfileData.religion !== 'N/A' ? safeProfileData.religion : '';
     document.getElementById('nationality').value = safeProfileData.nationality !== 'N/A' ? safeProfileData.nationality : '';
@@ -1678,13 +1703,12 @@ async function saveProfile() {
   console.log('Profile data to save:', profileData);
 
   // Client-side validation
-
   if (!profileData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
     showError('A valid email address is required.');
     return;
   }
-  if (profileData.dob && !/^\d{4}-\d{2}-\d{2}$/.test(profileData.dob)) {
-    showError('Date of birth must be in YYYY-MM-DD format.');
+  if (profileData.dob && !isValidDate(profileData.dob)) {
+    showError('Date of birth must be a valid date in YYYY-MM-DD format.');
     return;
   }
   if (profileData.phone && !/^\+?\d{7,15}$/.test(profileData.phone)) {

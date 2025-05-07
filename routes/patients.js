@@ -552,7 +552,7 @@ router.get('/allPatients', isAuthenticated, applyRateLimiter(allPatientsLimiter)
       last_name: decrypt(patient.last_name),
       middle_name: decrypt(patient.middle_name) || '',
       birthdate: decrypt(patient.birthdate),
-      sex: patient.sex === 'M' ? 'Male' : patient.sex === 'F' ? 'Female' : 'Other',
+      sex: patient.sex === 'M' ? 'Male' : patient.sex === 'F' ? 'Female' : '',
       age: calculateAge(decrypt(patient.birthdate)),
       nickname: decrypt(patient.nickname) || '',
       religion: decrypt(patient.religion) || '',
