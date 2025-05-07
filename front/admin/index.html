@@ -456,6 +456,10 @@
   <script src="assets/js/main.js"></script>
   <script src="assets/js/calendar.js"></script>
   <script src="assets/js/load-header.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 
   <script type="text/javascript">
 $(document).ready(() => {
@@ -506,25 +510,67 @@ document.addEventListener('DOMContentLoaded', async () => {
   let appointments = [];
   window.pendingRequests = [];
 
-  // Initialize WebSocket
-  let ws;
-  function initWebSocket() {
-    ws = new WebSocket('wss://balane-saspa-dental-1.onrender.com');
-    ws.onopen = () => console.log('WebSocket connected');
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      handleWebSocketMessage(message);
-    };
-    ws.onclose = () => {
-      console.log('WebSocket disconnected. Reconnecting in 5s...');
-      setTimeout(initWebSocket, 5000);
-    };
-    ws.onerror = (error) => console.error('WebSocket error:', error);
-  }
-  initWebSocket();
+  // Initialize Socket.IO
+  let socket;
+  function initSocketIO() {
+    socket = io('https://balane-saspa-dental-1.onrender.com', {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 10000,
+      randomizationFactor: 0.5
+    });
 
-  async function handleWebSocketMessage(message) {
-    console.log('Received WebSocket message:', message);
+    socket.on('connect', () => {
+      console.log('Socket.IO connected');
+      socket.emit('join', { userId: socket.userId });
+    });
+
+    socket.on('welcome', (data) => {
+      console.log('Socket.IO welcome message:', data);
+    });
+
+    socket.on('reschedule_request', (message) => {
+      console.log('Received Socket.IO reschedule_request:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('cancel_request', (message) => {
+      console.log('Received Socket.IO cancel_request:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('confirm_response', (message) => {
+      console.log('Received Socket.IO confirm_response:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('reschedule_response', (message) => {
+      console.log('Received Socket.IO reschedule_response:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('reject_response', (message) => {
+      console.log('Received Socket.IO reject_response:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO error:', error);
+      setTimeout(initSocketIO, 5000);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket.IO disconnected. Reconnecting in 5s...');
+      setTimeout(initSocketIO, 5000);
+    });
+  }
+  initSocketIO();
+
+  async function handleSocketIOMessage(message) {
+    console.log('Processing Socket.IO message:', message);
     switch (message.type) {
       case 'reschedule_request':
       case 'cancel_request':
@@ -638,7 +684,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         credentials: 'include',
         headers: { 
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'CSRF-Token': csrfToken
+          'CSRF-Token': await getCsrfToken()
         }
       })
     ]);
@@ -685,6 +731,111 @@ async function getCsrfToken() {
     console.error('Error fetching CSRF token:', error);
     throw new Error('Failed to fetch CSRF token');
   }
+}
+
+function updateCalendar(appointments) {
+  const calendarGrid = document.getElementById('calendarGrid');
+  const monthYear = document.getElementById('monthYear');
+  let currentDate = new Date();
+  currentDate.setDate(1);
+  const today = new Date();
+
+  function renderCalendar() {
+    calendarGrid.innerHTML = '';
+    const month = currentDate.getMonth();
+    const year = currentDate.getFullYear();
+    
+    monthYear.textContent = `${currentDate.toLocaleString('default', { month: 'long' })} ${year}`;
+
+    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
+      const div = document.createElement('div');
+      div.className = 'calendar-day-label';
+      div.textContent = day;
+      calendarGrid.appendChild(div);
+    });
+
+    const firstDay = new Date(year, month, 1).getDay();
+    for (let i = 0; i < firstDay; i++) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'calendar-day';
+      calendarGrid.appendChild(emptyDiv);
+    }
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'calendar-day';
+      
+      if (date < today) dayDiv.classList.add('past-date');
+      if (date.toDateString() === today.toDateString()) dayDiv.classList.add('current-day');
+
+      const dayNumber = document.createElement('span');
+      dayNumber.className = 'day-number';
+      dayNumber.textContent = day;
+      dayDiv.appendChild(dayNumber);
+
+      const dayAppointments = appointments.filter(app => {
+        const appDate = new Date(app.appointment_date);
+        return appDate.getDate() === day && 
+               appDate.getMonth() === month && 
+               appDate.getFullYear() === year &&
+               (app.status.toLowerCase() === 'pending' || app.status.toLowerCase() === 'confirmed');
+      });
+
+      if (dayAppointments.length > 0) {
+        dayDiv.classList.add('has-appointments');
+        const appointmentsList = document.createElement('div');
+        appointmentsList.className = 'appointments-list';
+
+        dayAppointments.sort((a, b) => {
+          const statusOrder = { 'confirmed': 1, 'pending': 2 };
+          return statusOrder[a.status.toLowerCase()] - statusOrder[b.status.toLowerCase()];
+        });
+
+        dayAppointments.forEach(app => {
+          const time = new Date(app.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const patientName = getPatientName(app.patients);
+          const appDiv = document.createElement('div');
+          appDiv.className = `appointment ${app.status.toLowerCase()}`;
+          appDiv.innerHTML = `
+            ${time} - ${patientName}
+            <span class="tooltip">${time} - ${patientName} (${app.services?.name || 'N/A'})</span>
+          `;
+          appointmentsList.appendChild(appDiv);
+        });
+        
+        dayDiv.appendChild(appointmentsList);
+        dayDiv.addEventListener('click', () => showAppointmentsModal(dayAppointments, date));
+      }
+
+      calendarGrid.appendChild(dayDiv);
+    }
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar();
+  });
+
+  document.getElementById('nextBtn').addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar();
+  });
+
+  document.getElementById('todayBtn').addEventListener('click', () => {
+    currentDate = new Date();
+    currentDate.setDate(1);
+    renderCalendar();
+  });
+
+  renderCalendar();
+}
+
+function getPatientName(patientData) {
+  if (!patientData) return 'Unknown';
+  const { first_name, middle_name, last_name } = patientData;
+  return [first_name, middle_name, last_name].filter(Boolean).join(' ').trim() || 'Unknown';
 }
 
 async function confirmAppointment(appointmentId) {
@@ -810,111 +961,6 @@ async function rejectAppointment(appointmentId) {
       }
     }
   });
-}
-
-function updateCalendar(appointments) {
-  const calendarGrid = document.getElementById('calendarGrid');
-  const monthYear = document.getElementById('monthYear');
-  let currentDate = new Date();
-  currentDate.setDate(1);
-  const today = new Date();
-
-  function renderCalendar() {
-    calendarGrid.innerHTML = '';
-    const month = currentDate.getMonth();
-    const year = currentDate.getFullYear();
-    
-    monthYear.textContent = `${currentDate.toLocaleString('default', { month: 'long' })} ${year}`;
-
-    ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach(day => {
-      const div = document.createElement('div');
-      div.className = 'calendar-day-label';
-      div.textContent = day;
-      calendarGrid.appendChild(div);
-    });
-
-    const firstDay = new Date(year, month, 1).getDay();
-    for (let i = 0; i < firstDay; i++) {
-      const emptyDiv = document.createElement('div');
-      emptyDiv.className = 'calendar-day';
-      calendarGrid.appendChild(emptyDiv);
-    }
-
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      const dayDiv = document.createElement('div');
-      dayDiv.className = 'calendar-day';
-      
-      if (date < today) dayDiv.classList.add('past-date');
-      if (date.toDateString() === today.toDateString()) dayDiv.classList.add('current-day');
-
-      const dayNumber = document.createElement('span');
-      dayNumber.className = 'day-number';
-      dayNumber.textContent = day;
-      dayDiv.appendChild(dayNumber);
-
-      const dayAppointments = appointments.filter(app => {
-        const appDate = new Date(app.appointment_date);
-        return appDate.getDate() === day && 
-               appDate.getMonth() === month && 
-               appDate.getFullYear() === year &&
-               (app.status.toLowerCase() === 'pending' || app.status.toLowerCase() === 'confirmed');
-      });
-
-      if (dayAppointments.length > 0) {
-        dayDiv.classList.add('has-appointments');
-        const appointmentsList = document.createElement('div');
-        appointmentsList.className = 'appointments-list';
-
-        dayAppointments.sort((a, b) => {
-          const statusOrder = { 'confirmed': 1, 'pending': 2 };
-          return statusOrder[a.status.toLowerCase()] - statusOrder[b.status.toLowerCase()];
-        });
-
-        dayAppointments.forEach(app => {
-          const time = new Date(app.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const patientName = getPatientName(app.patients);
-          const appDiv = document.createElement('div');
-          appDiv.className = `appointment ${app.status.toLowerCase()}`;
-          appDiv.innerHTML = `
-            ${time} - ${patientName}
-            <span class="tooltip">${time} - ${patientName} (${app.services?.name || 'N/A'})</span>
-          `;
-          appointmentsList.appendChild(appDiv);
-        });
-        
-        dayDiv.appendChild(appointmentsList);
-        dayDiv.addEventListener('click', () => showAppointmentsModal(dayAppointments, date));
-      }
-
-      calendarGrid.appendChild(dayDiv);
-    }
-  }
-
-  document.getElementById('prevBtn').addEventListener('click', () => {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    renderCalendar();
-  });
-
-  document.getElementById('nextBtn').addEventListener('click', () => {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderCalendar();
-  });
-
-  document.getElementById('todayBtn').addEventListener('click', () => {
-    currentDate = new Date();
-    currentDate.setDate(1);
-    renderCalendar();
-  });
-
-  renderCalendar();
-}
-
-function getPatientName(patientData) {
-  if (!patientData) return 'Unknown';
-  const { first_name, middle_name, last_name } = patientData;
-  return [first_name, middle_name, last_name].filter(Boolean).join(' ').trim() || 'Unknown';
 }
 
 function showAppointmentsModal(appointments, date) {

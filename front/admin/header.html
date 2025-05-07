@@ -479,6 +479,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
   <script src="assets/js/notifications.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <script>
 (function() {
@@ -541,65 +544,104 @@
     }
   }
 
-  function initializeWebSocket() {
+  function initializeSocketIO() {
     try {
-      socket = new WebSocket('wss://balane-saspa-dental-1.onrender.com');
-      console.log('Attempting to connect to WebSocket at wss://balane-saspa-dental-1.onrender.com');
+      socket = io('https://balane-saspa-dental-1.onrender.com', {
+        withCredentials: true,
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 5000,
+        reconnectionDelayMax: 10000,
+        randomizationFactor: 0.5
+      });
+      console.log('Attempting to connect to Socket.IO at https://balane-saspa-dental-1.onrender.com');
     } catch (error) {
-      console.error('WebSocket initialization failed:', error);
+      console.error('Socket.IO initialization failed:', error);
+      startPolling();
       return;
     }
 
-    socket.onopen = () => {
-      console.log('WebSocket connection established');
+    socket.on('connect', () => {
+      console.log('Socket.IO connection established');
       consecutiveFetchFailures = 0;
       if (pollingInterval) {
         clearInterval(pollingInterval);
         pollingInterval = null;
-        console.log('Polling stopped due to WebSocket connection');
+        console.log('Polling stopped due to Socket.IO connection');
       }
-    };
+      socket.emit('join', { userId: socket.userId });
+    });
 
-    socket.onmessage = (event) => {
-      console.log('WebSocket message received:', event.data);
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'cancel_request' || data.type === 'reschedule_request') {
-          console.log(`New ${data.type} received via WebSocket:`, data.request);
-          const request = data.request;
-          if (
-            request.status === 'pending' &&
-            !pendingRequests.some(req => req.id === request.id) &&
-            !isExpired(request)
-          ) {
-            pendingRequests.push(request);
-            updatePendingRequests();
-            document.getElementById('notificationDropdown').click();
-          }
-        } else if (data.type === 'cancel_response' || data.type === 'reschedule_response' || data.type === 'reject_response') {
-          console.log(`${data.type} received:`, data);
-          pendingRequests = pendingRequests.filter(req => req.id !== data.requestId);
-          updatePendingRequests();
-          if (window.location.pathname.includes('index.html')) {
-            window.location.reload();
-          }
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
+    socket.on('welcome', (data) => {
+      console.log('Socket.IO welcome message:', data);
+    });
 
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+    socket.on('cancel_request', (data) => {
+      console.log('New cancel_request received via Socket.IO:', data);
+      handleRequest(data);
+    });
 
-    socket.onclose = (event) => {
-      console.log('WebSocket connection closed:', event.code, event.reason);
-      setTimeout(() => {
-        console.log('Attempting to reconnect to WebSocket');
-        initializeWebSocket();
-      }, 5000);
-    };
+    socket.on('reschedule_request', (data) => {
+      console.log('New reschedule_request received via Socket.IO:', data);
+      handleRequest(data);
+    });
+
+    socket.on('cancel_response', (data) => {
+      console.log('cancel_response received:', data);
+      handleResponse(data);
+    });
+
+    socket.on('reschedule_response', (data) => {
+      console.log('reschedule_response received:', data);
+      handleResponse(data);
+    });
+
+    socket.on('reject_response', (data) => {
+      console.log('reject_response received:', data);
+      handleResponse(data);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO connection error:', error);
+      startPolling();
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('Socket.IO disconnected:', reason);
+      startPolling();
+    });
+  }
+
+  function handleRequest(data) {
+    const request = data.request;
+    if (
+      request.status === 'pending' &&
+      !pendingRequests.some(req => req.id === request.id) &&
+      !isExpired(request)
+    ) {
+      pendingRequests.push(request);
+      updatePendingRequests();
+      document.getElementById('notificationDropdown').click();
+    }
+  }
+
+  function handleResponse(data) {
+    pendingRequests = pendingRequests.filter(req => req.id !== data.requestId);
+    updatePendingRequests();
+    if (window.location.pathname.includes('index.html')) {
+      window.location.reload();
+    }
+  }
+
+  function startPolling() {
+    if (!pollingInterval) {
+      console.warn('Socket.IO not connected, falling back to polling...');
+      pollingInterval = setInterval(() => {
+        console.log('Polling for pending requests');
+        fetchPendingRequests();
+      }, 10000);
+    }
   }
 
   function isExpired(request) {
@@ -611,21 +653,15 @@
   }
 
   $(document).ready(async () => {
-    console.log('DOM loaded in header, initializing WebSocket and notifications');
+    console.log('DOM loaded in header, initializing Socket.IO and notifications');
     if (!(await checkAuth())) return;
     initializeSidebarToggle();
-    initializeWebSocket();
+    initializeSocketIO();
     fetchPendingRequests();
 
     setTimeout(() => {
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        console.warn('WebSocket not available, falling back to polling...');
-        if (!pollingInterval) {
-          pollingInterval = setInterval(() => {
-            console.log('Polling for pending requests');
-            fetchPendingRequests();
-          }, 10000);
-        }
+      if (!socket || !socket.connected) {
+        startPolling();
       }
     }, 1000);
   });
@@ -734,13 +770,13 @@
 
     const actionModal = document.getElementById('actionModal');
     if (actionModal) {
-    actionModal.style.display = 'none';
-    actionModal.classList.remove('show');
-    setTimeout(() => {
+      actionModal.style.display = 'none';
+      actionModal.classList.remove('show');
+      setTimeout(() => {
         actionModal.style.display = 'flex';
         actionModal.classList.add('show');
-    }, 10);
-}
+      }, 10);
+    }
 
     const dropdownElement = document.getElementById('notificationDropdown');
     if (dropdownElement && bootstrap.Dropdown) {
@@ -777,12 +813,11 @@
         pendingRequests = pendingRequests.filter(r => r.id !== currentRequest.id);
         updatePendingRequests();
         closeActionModal();
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: `${currentRequest.action}_response`,
+        if (socket && socket.connected) {
+          socket.emit(`${currentRequest.action}_response`, {
             requestId: currentRequest.id,
             status: 'approved'
-          }));
+          });
         }
         Swal.fire({
           icon: 'success',
@@ -830,12 +865,11 @@
         pendingRequests = pendingRequests.filter(r => r.id !== currentRequest.id);
         updatePendingRequests();
         closeActionModal();
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: `${currentRequest.action}_response`,
+        if (socket && socket.connected) {
+          socket.emit(`${currentRequest.action}_response`, {
             requestId: currentRequest.id,
             status: 'rejected'
-          }));
+          });
         }
         Swal.fire({
           icon: 'success',
