@@ -28,11 +28,11 @@ const logger = winston.createLogger({
 });
 
 // Encryption/Decryption utilities
-const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 12;
-const AUTH_TAG_LENGTH = 16;
+const ALGORITHM = 'aes-256-gcm'; // Upgraded to GCM for authenticated encryption
+const IV_LENGTH = 12; // GCM recommends 12 bytes for IV
+const AUTH_TAG_LENGTH = 16; // GCM auth tag length
 
-// Validate environment variables
+// Validate critical environment variables
 const requiredEnvVars = [
   'SUPABASE_URL',
   'SUPABASE_KEY',
@@ -50,6 +50,7 @@ requiredEnvVars.forEach((varName) => {
   }
 });
 
+// Validate encryption key
 const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 if (ENCRYPTION_KEY.length !== 32) {
   logger.error(`Invalid ENCRYPTION_KEY length: expected 32 bytes, got ${ENCRYPTION_KEY.length}`);
@@ -109,7 +110,7 @@ const redis = new Redis(process.env.REDIS_URL, {
   maxRetriesPerRequest: 10,
 });
 
-// Initialize Supabase
+// Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -128,6 +129,7 @@ const transporter = nodemailer.createTransport({
   secure: true,
 });
 
+// Verify email transporter
 transporter.verify((error, success) => {
   if (error) {
     logger.error('Email transporter verification failed:', error);
@@ -172,6 +174,7 @@ router.use(cors({
   credentials: true,
 }));
 
+// Apply helmet
 router.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -277,6 +280,7 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
           logger.warn(`Login attempt for non-patient user: ${identifier}`);
           return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
         }
+        // Decrypt the email
         try {
           const decryptedEmail = decrypt(patientData.email);
           user = { ...userByUsername, email: decryptedEmail };
@@ -341,22 +345,8 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
       table = 'users';
     }
 
-    // Regenerate session to prevent session fixation
-    await new Promise((resolve, reject) => {
-      req.session.regenerate((err) => {
-        if (err) {
-          logger.error('Session regeneration error:', err);
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
-
-    // Set session data
     req.session.isLoggedIn = true;
     req.session.userId = user.id;
-    req.session.role = role;
 
     if (remember) {
       const rememberToken = crypto.randomBytes(32).toString('hex');
@@ -500,21 +490,8 @@ router.post('/auto-login', async (req, res) => {
       table = 'users';
     }
 
-    // Regenerate session for auto-login
-    await new Promise((resolve, reject) => {
-      req.session.regenerate((err) => {
-        if (err) {
-          logger.error('Session regeneration error during auto-login:', err);
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
-
     req.session.isLoggedIn = true;
     req.session.userId = user.id;
-    req.session.role = role;
     req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
 
     logger.info(`Successful auto-login for ${role}: userId ${user.id}`);
