@@ -149,7 +149,6 @@ io.on('connection', (socket) => {
     console.error(`Socket.IO error for ${socket.id}:`, error);
   });
 });
-
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -163,23 +162,37 @@ app.use(
         ],
         scriptSrc: [
           "'self'",
-          "'unsafe-inline'", // Allows inline event handlers and inline scripts
+          "'unsafe-inline'",
           'https://cdn.jsdelivr.net',
           'https://cdn.socket.io',
           'https://code.jquery.com',
           'https://cdn.tailwindcss.com',
           'https://formsubmit.co',
-          'https://cdn.jsdelivr.net/npm/sweetalert2@11' // Add SweetAlert
+          'https://cdn.jsdelivr.net/npm/sweetalert2@11',
+          'https://unpkg.com'
         ],
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://cdn.tailwindcss.com'],
-        imgSrc: ["'self'", 'data:'], // allow inline images or icons if needed
-        formAction: ["'self'", 'https://formsubmit.co'], // allow form submissions
-        frameAncestors: ["'self'"], // prevent clickjacking
-      },
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          'https://cdn.jsdelivr.net',
+          'https://cdn.tailwindcss.com',
+          'https://fonts.googleapis.com',
+          'https://unpkg.com'
+        ],
+        fontSrc: [
+          "'self'",
+          'https://fonts.gstatic.com'
+        ],
+        imgSrc: ["'self'", 'data:'],
+        formAction: ["'self'", 'https://formsubmit.co'],
+        frameSrc: ["'self'", 'https://www.google.com'],
+        frameAncestors: ["'self'"]
+      }
     },
-    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
   })
 );
+
 
 app.use(compression());
 app.use(cors({
