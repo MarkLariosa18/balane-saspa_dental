@@ -28,6 +28,14 @@
   <!-- SweetAlert2 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 
+  <!-- Socket.IO Client -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Fallback for Chart.js -->
+  <script>window.Chart || document.write('<script src="assets/vendor/chart.js/chart.min.js"><\/script>');</script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
   <style>
     .graph-container {
       margin: 20px 0;
@@ -254,12 +262,6 @@
       }
     }
   </style>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Fallback for Chart.js -->
-  <script>window.Chart || document.write('<script src="assets/vendor/chart.js/chart.min.js"><\/script>');</script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
@@ -368,7 +370,7 @@
         credentials: 'include',
         headers: { 
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'X-CSRF-Token': await getCsrfToken()
+          'CSRF-Token': await getCsrfToken()
         }
       });
       const data = await response.json();
@@ -401,7 +403,7 @@
 
   async function getCsrfToken() {
     try {
-      const response = await fetch('https://balane-saspa-dental-1.onrender.com/csrf-token', {
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
         credentials: 'include'
       });
       const data = await response.json();
@@ -412,65 +414,90 @@
     }
   }
 
-  function initializeWebSocket() {
-    try {
-      socket = new WebSocket('wss://balane-saspa-dental-1.onrender.com');
-      console.log('Attempting to connect to WebSocket at wss://balane-saspa-dental-1.onrender.com');
-    } catch (error) {
-      console.error('WebSocket initialization failed:', error);
-      return;
-    }
+  function initializeSocketIO() {
+    socket = io('https://balane-saspa-dental-1.onrender.com', {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 10000,
+      randomizationFactor: 0.5
+    });
 
-    socket.onopen = () => {
-      console.log('WebSocket connection established');
+    socket.on('connect', () => {
+      console.log('Socket.IO connection established');
       consecutiveFetchFailures = 0;
       if (pollingInterval) {
         clearInterval(pollingInterval);
         pollingInterval = null;
-        console.log('Polling stopped due to WebSocket connection');
+        console.log('Polling stopped due to Socket.IO connection');
       }
-    };
+      socket.emit('join', { userId: socket.userId });
+    });
 
-    socket.onmessage = (event) => {
-      console.log('WebSocket message received:', event.data);
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'cancel_request' || data.type === 'reschedule_request') {
-          console.log(`New ${data.type} received via WebSocket:`, data.request);
-          const request = data.request;
-          if (
-            request.status === 'pending' &&
-            !pendingRequests.some(req => req.id === request.id) &&
-            !isExpired(request)
-          ) {
-            pendingRequests.push(request);
-            updatePendingRequests();
-            document.getElementById('notificationDropdown').click();
-          }
-        } else if (data.type === 'cancel_response' || data.type === 'reschedule_response' || data.type === 'reject_response') {
-          console.log(`${data.type} received:`, data);
-          pendingRequests = pendingRequests.filter(req => req.id !== data.requestId);
-          updatePendingRequests();
-          if (window.location.pathname.includes('index.html')) {
-            window.location.reload();
-          }
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+    socket.on('welcome', (data) => {
+      console.log('Socket.IO welcome message:', data);
+    });
+
+    socket.on('cancel_request', (message) => {
+      console.log('Received Socket.IO cancel_request:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('reschedule_request', (message) => {
+      console.log('Received Socket.IO reschedule_request:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('cancel_response', (message) => {
+      console.log('Received Socket.IO cancel_response:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('reschedule_response', (message) => {
+      console.log('Received Socket.IO reschedule_response:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('reject_response', (message) => {
+      console.log('Received Socket.IO reject_response:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO error:', error);
+      setTimeout(initializeSocketIO, 5000);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket.IO disconnected. Reconnecting in 5s...');
+      setTimeout(initializeSocketIO, 5000);
+    });
+  }
+
+  function handleSocketIOMessage(data) {
+    console.log('Processing Socket.IO message:', data);
+    if (data.type === 'cancel_request' || data.type === 'reschedule_request') {
+      console.log(`New ${data.type} received via Socket.IO:`, data.request);
+      const request = data.request;
+      if (
+        request.status === 'pending' &&
+        !pendingRequests.some(req => req.id === request.id) &&
+        !isExpired(request)
+      ) {
+        pendingRequests.push(request);
+        updatePendingRequests();
+        document.getElementById('notificationDropdown').click();
       }
-    };
-
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    socket.onclose = (event) => {
-      console.log('WebSocket connection closed:', event.code, event.reason);
-      setTimeout(() => {
-        console.log('Attempting to reconnect to WebSocket');
-        initializeWebSocket();
-      }, 5000);
-    };
+    } else if (data.type === 'cancel_response' || data.type === 'reschedule_response' || data.type === 'reject_response') {
+      console.log(`${data.type} received:`, data);
+      pendingRequests = pendingRequests.filter(req => req.id !== data.requestId);
+      updatePendingRequests();
+      if (window.location.pathname.includes('index.html')) {
+        window.location.reload();
+      }
+    }
   }
 
   function isExpired(request) {
@@ -482,15 +509,15 @@
   }
 
   $(document).ready(async () => {
-    console.log('DOM loaded in header, initializing WebSocket and notifications');
+    console.log('DOM loaded in header, initializing Socket.IO and notifications');
     if (!(await checkAuth())) return;
     initializeSidebarToggle();
-    initializeWebSocket();
+    initializeSocketIO();
     fetchPendingRequests();
 
     setTimeout(() => {
-      if (!socket || socket.readyState !== WebSocket.OPEN) {
-        console.warn('WebSocket not available, falling back to polling...');
+      if (!socket || !socket.connected) {
+        console.warn('Socket.IO not connected, falling back to polling...');
         if (!pollingInterval) {
           pollingInterval = setInterval(() => {
             console.log('Polling for pending requests');
@@ -640,7 +667,7 @@
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'X-CSRF-Token': csrfToken
+          'CSRF-Token': csrfToken
         },
         credentials: 'include'
       });
@@ -648,12 +675,11 @@
         pendingRequests = pendingRequests.filter(r => r.id !== currentRequest.id);
         updatePendingRequests();
         closeActionModal();
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: `${currentRequest.action}_response`,
+        if (socket && socket.connected) {
+          socket.emit(`${currentRequest.action}_response`, {
             requestId: currentRequest.id,
             status: 'approved'
-          }));
+          });
         }
         Swal.fire({
           icon: 'success',
@@ -693,7 +719,7 @@
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'X-CSRF-Token': csrfToken
+          'CSRF-Token': csrfToken
         },
         credentials: 'include'
       });
@@ -701,12 +727,11 @@
         pendingRequests = pendingRequests.filter(r => r.id !== currentRequest.id);
         updatePendingRequests();
         closeActionModal();
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(JSON.stringify({
-            type: `${currentRequest.action}_response`,
+        if (socket && socket.connected) {
+          socket.emit(`${currentRequest.action}_response`, {
             requestId: currentRequest.id,
             status: 'rejected'
-          }));
+          });
         }
         Swal.fire({
           icon: 'success',
@@ -742,7 +767,7 @@
         headers: {
           'Accept': 'application/json',
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'X-CSRF-Token': csrfToken
+          'CSRF-Token': csrfToken
         }
       });
       if (response.ok) {
@@ -791,7 +816,7 @@
         credentials: 'include',
         headers: { 
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'X-CSRF-Token': csrfToken
+          'CSRF-Token': csrfToken
         }
       });
       if (response.ok) {

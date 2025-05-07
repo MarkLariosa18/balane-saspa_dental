@@ -174,33 +174,37 @@ function encrypt(text) {
 }
 
 function decrypt(text) {
-  if (!text) return null;
-  
-  const [ivText, encryptedText, authTagText] = text.split(':');
-  if (!ivText || !encryptedText || !authTagText) {
-    logger.warn(`Invalid encrypted format: "${text}"`);
-    return text;
+  if (!text || typeof text !== 'string') {
+    logger.warn(`Decrypt called with invalid input: ${text}`);
+    return null;
   }
+  const parts = text.split(':');
+  if (parts.length !== 3) {
+    logger.warn(`Invalid encrypted format: "${text}" (expected iv:encrypted:authTag)`);
+    return null;
+  }
+  const [ivText, encryptedText, authTagText] = parts;
   try {
     const iv = Buffer.from(ivText, 'hex');
     const authTag = Buffer.from(authTagText, 'hex');
-    if (iv.length !== IV_LENGTH || authTag.length !== AUTHsides_tag_length) {
-      throw new Error(`Invalid IV or auth tag length`);
+    const encrypted = Buffer.from(encryptedText, 'hex');
+    if (iv.length !== IV_LENGTH || authTag.length !== AUTH_TAG_LENGTH) {
+      logger.warn(`Invalid IV or auth tag length: iv=${iv.length}, authTag=${authTag.length}`);
+      return null;
     }
     const decipher = crypto.createDecipheriv(ALGORITHM, encryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
     decipher.setAuthTag(authTag);
-    let decrypted = decipher.update(Buffer.from(encryptedText, 'hex'));
+    let decrypted = decipher.update(encrypted);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     const decryptedString = decrypted.toString('utf8');
-
     if (!decryptedString || /[^ -~]/.test(decryptedString)) {
       logger.warn(`Invalid decryption result: "${decryptedString}"`);
-      return text;
+      return null;
     }
     return decryptedString;
   } catch (error) {
     logger.error('Decryption failed:', { error: error.message, input: text });
-    return text;
+    return null;
   }
 }
 

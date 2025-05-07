@@ -24,6 +24,11 @@
 
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 
+  <!-- Socket.IO Client -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
   <style>
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(8px); }
@@ -208,9 +213,6 @@
       }
     }
   </style>
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body>
@@ -299,7 +301,7 @@
   <script src="assets/js/main.js"></script>
 
   <script>
- $(document).ready(function() {
+$(document).ready(function() {
   const itemsPerPage = 10;
   let currentPage = 1;
   let combinedData = [];
@@ -308,6 +310,20 @@
   let sortDirection = 'asc';
   let isShowingAll = false;
   let patients = [];
+  let socket;
+
+  async function getCsrfToken() {
+    try {
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      return data.csrfToken;
+    } catch (error) {
+      console.error('Error fetching CSRF token:', error);
+      throw new Error('Failed to fetch CSRF token');
+    }
+  }
 
   function calculateAge(birthdate) {
     if (!birthdate) return 'N/A';
@@ -371,31 +387,66 @@
     });
   }
 
-  function initWebSocket() {
-    const ws = new WebSocket('wss://balane-saspa-dental-1.onrender.com');
-    ws.onopen = () => console.log('WebSocket connected for appointments');
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      handleWebSocketMessage(message);
-    };
-    ws.onclose = () => {
-      console.log('WebSocket disconnected. Reconnecting in 5s...');
-      setTimeout(initWebSocket, 5000);
-    };
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
+  function initSocketIO() {
+    socket = io('https://balane-saspa-dental-1.onrender.com', {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 10000,
+      randomizationFactor: 0.5
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket.IO connected for appointments');
+      socket.emit('join', { userId: socket.userId });
+    });
+
+    socket.on('welcome', (data) => {
+      console.log('Socket.IO welcome message:', data);
+    });
+
+    socket.on('appointment_added', (message) => {
+      console.log('Received Socket.IO appointment_added:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('appointment_updated', (message) => {
+      console.log('Received Socket.IO appointment_updated:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('appointment_deleted', (message) => {
+      console.log('Received Socket.IO appointment_deleted:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('reject_response', (message) => {
+      console.log('Received Socket.IO reject_response:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket.IO error:', error);
       Swal.fire({
         icon: 'warning',
         title: 'Connection Issue',
-        text: 'WebSocket connection lost. Attempting to reconnect...',
+        text: 'Socket.IO connection lost. Attempting to reconnect...',
         confirmButtonColor: '#4154f1',
         timer: 3000
       });
-    };
+      setTimeout(initSocketIO, 5000);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket.IO disconnected. Reconnecting in 5s...');
+      setTimeout(initSocketIO, 5000);
+    });
   }
 
-  function handleWebSocketMessage(message) {
-    console.log('Received WebSocket message:', message);
+  function handleSocketIOMessage(message) {
+    console.log('Processing Socket.IO message:', message);
     switch (message.type) {
       case 'appointment_added':
         const newItem = {
@@ -687,67 +738,81 @@
     populateTable(filteredData, currentPage);
   }
 
-  function fetchPatients(callback) {
-    console.log('Fetching patients from /patients/allPatients');
-    $.ajax({
-      url: 'https://balane-saspa-dental-1.onrender.com/patients/allPatients',
-      method: 'GET',
-      headers: {
-        'Authorization': 'Bearer ' + localStorage.getItem('authToken')
-      },
-      success: function(response) {
-        console.log('Raw patients response:', response);
-        patients = response || [];
-        console.log('Patients fetched:', patients);
-        callback(patients);
-      },
-      error: function(xhr, status, error) {
-        console.error('Error fetching patients:', status, error, 'Response:', xhr.responseText);
-        $('#appointmentTableBody').html('<tr><td colspan="9">Failed to load patient data - ' + status + ': ' + xhr.responseText + '</td></tr>');
-        callback([]);
+  async function fetchPatients() {
+    try {
+      console.log('Fetching patients from /patients/allPatients');
+      const csrfToken = await getCsrfToken();
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/patients/allPatients', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'CSRF-Token': csrfToken
+        },
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
       }
-    });
+      const patientsData = await response.json();
+      console.log('Patients fetched:', patientsData);
+      return patientsData || [];
+    } catch (error) {
+      console.error('Error fetching patients:', error);
+      $('#appointmentTableBody').html(`<tr><td colspan="9">Failed to load patient data - ${error.message}</td></tr>`);
+      return [];
+    }
   }
 
-  function fetchAppointments(callback) {
-    console.log('Fetching appointments from /api/appointments/all');
-    $.ajax({
-      url: 'https://balane-saspa-dental-1.onrender.com/api/appointments/all',
-      method: 'GET',
-      headers: {
-        'Authorization': 'Bearer ' + localStorage.getItem('authToken')
-      },
-      success: function(response) {
-        const appointments = response.appointments || [];
-        console.log('Raw appointments response:', response);
-        console.log('Appointments fetched:', appointments);
-        callback(appointments);
-      },
-      error: function(xhr, status, error) {
-        console.error('Error fetching appointments:', status, error, 'Response:', xhr.responseText);
-        $('#appointmentTableBody').html('<tr><td colspan="9">Failed to load appointment data - ' + status + ': ' + xhr.responseText + '</td></tr>');
-        callback([]);
+  async function fetchAppointments() {
+    try {
+      console.log('Fetching appointments from /api/appointments/all');
+      const csrfToken = await getCsrfToken();
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'CSRF-Token': csrfToken
+        },
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
       }
-    });
+      const data = await response.json();
+      const appointments = data.appointments || [];
+      console.log('Appointments fetched:', appointments);
+      return appointments;
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      $('#appointmentTableBody').html(`<tr><td colspan="9">Failed to load appointment data - ${error.message}</td></tr>`);
+      return [];
+    }
   }
 
-  function testEncryption() {
-    console.log('Testing encryption via /api/appointments/test-encryption');
-    $.ajax({
-      url: 'https://balane-saspa-dental-1.onrender.com/api/appointments/test-encryption',
-      method: 'GET',
-      success: function(response) {
-        console.log('Encryption test:', response);
-      },
-      error: function(xhr, status, error) {
-        console.error('Encryption test failed:', status, error, 'Response:', xhr.responseText);
-      }
-    });
+  async function testEncryption() {
+    try {
+      console.log('Testing encryption via /api/appointments/test-encryption');
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/test-encryption', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      const data = await response.json();
+      console.log('Encryption test:', data);
+    } catch (error) {
+      console.error('Encryption test failed:', error);
+    }
   }
 
   async function checkAuth() {
     try {
-      const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', { credentials: 'include' });
+      const csrfToken = await getCsrfToken();
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', {
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'CSRF-Token': csrfToken
+        }
+      });
       const data = await response.json();
       if (!data.isLoggedIn || data.role !== 'admin') {
         Swal.fire({
@@ -779,14 +844,12 @@
   async function initializeData() {
     if (!(await checkAuth())) return;
     testEncryption();
-    fetchPatients(function(patientsData) {
-      fetchAppointments(function(appointments) {
-        combinedData = mergeData(patientsData, appointments);
-        updateServiceFilter();
-        filterAndPopulateTable();
-        initWebSocket();
-      });
-    });
+    const patientsData = await fetchPatients();
+    const appointments = await fetchAppointments();
+    combinedData = mergeData(patientsData, appointments);
+    updateServiceFilter();
+    filterAndPopulateTable();
+    initSocketIO();
   }
 
   $('.sortable').on('click', function() {
