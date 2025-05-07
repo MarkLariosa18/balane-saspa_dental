@@ -4,15 +4,15 @@ const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const Redis = require('ioredis');
-const { RateLimiterRedis } = require('rate-limiter-flexible'); // Upgraded rate limiting
-const validator = require('validator'); // Added for input validation
-const helmet = require('helmet'); // Added for security headers
-const winston = require('winston'); // Added for structured logging
+const { RateLimiterRedis } = require('rate-limiter-flexible');
+const validator = require('validator');
+const helmet = require('helmet');
+const winston = require('winston');
 
 require('dotenv').config();
 
 // Initialize router
-router.use(express.json({ limit: '10kb' })); // Limit payload size for security
+router.use(express.json({ limit: '10kb' }));
 
 // Validate critical environment variables
 const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_KEY', 'ENCRYPTION_KEY', 'REDIS_URL', 'NODE_ENV'];
@@ -37,7 +37,7 @@ const logger = winston.createLogger({
   ],
 });
 
-// Initialize Redis with enhanced configuration
+// Initialize Redis
 const redis = new Redis(process.env.REDIS_URL, {
   retryStrategy: (times) => Math.min(times * 50, 2000),
   maxRetriesPerRequest: 10,
@@ -48,9 +48,9 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Encryption setup with AES-256-GCM for authenticated encryption
+// Encryption setup
 const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 12; // GCM recommends 12 bytes
+const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
@@ -61,7 +61,6 @@ if (encryptionKey.length !== 32) {
 }
 logger.info('Encryption key initialized successfully');
 
-// Encryption functions
 function encrypt(text) {
   if (!text) return null;
   try {
@@ -72,45 +71,51 @@ function encrypt(text) {
     const authTag = cipher.getAuthTag().toString('hex');
     return `${iv.toString('hex')}:${encrypted}:${authTag}`;
   } catch (error) {
-    logger.error('Encryption error:', error);
+    logger.error('Encryption error:', { error: error.message, input: text });
     throw new Error('Encryption failed');
   }
 }
 
 function decrypt(text) {
-  if (!text) return null;
-  const [ivText, authTagText, encryptedText] = text.split(':');
-  if (!ivText || !encryptedText || !authTagText) {
-    logger.warn(`Invalid encrypted format: "${text}"`);
-    return text;
+  if (!text || typeof text !== 'string') {
+    logger.warn(`Decrypt called with invalid input: ${text}`);
+    return null;
   }
+  const parts = text.split(':');
+  if (parts.length !== 3) {
+    logger.warn(`Invalid encrypted format: "${text}" (expected iv:encrypted:authTag)`);
+    return null;
+  }
+  const [ivText, encryptedText, authTagText] = parts;
   try {
     const iv = Buffer.from(ivText, 'hex');
     const authTag = Buffer.from(authTagText, 'hex');
+    const encrypted = Buffer.from(encryptedText, 'hex');
     if (iv.length !== IV_LENGTH || authTag.length !== AUTH_TAG_LENGTH) {
-      throw new Error(`Invalid IV or auth tag length`);
+      logger.warn(`Invalid IV or auth tag length: iv=${iv.length}, authTag=${authTag.length}`);
+      return null;
     }
     const decipher = crypto.createDecipheriv(ALGORITHM, encryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
     decipher.setAuthTag(authTag);
-    let decrypted = decipher.update(Buffer.from(encryptedText, 'hex'));
+    let decrypted = decipher.update(encrypted);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     const decryptedString = decrypted.toString('utf8');
     if (!decryptedString || /[^ -~]/.test(decryptedString)) {
       logger.warn(`Invalid decryption result: "${decryptedString}"`);
-      return text;
+      return null;
     }
     return decryptedString;
   } catch (error) {
     logger.error('Decryption failed:', { error: error.message, input: text });
-    return text;
+    return null;
   }
 }
 
-// Rate limiters using RateLimiterRedis
+// Rate limiters
 const checkUsernameLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'rl:username',
-  points: 50, // 50 requests per hour
+  points: 50,
   duration: 60 * 60,
   blockDuration: 60 * 60,
 });
@@ -118,7 +123,7 @@ const checkUsernameLimiter = new RateLimiterRedis({
 const registrationLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'rl:register',
-  points: 5, // 5 requests per hour
+  points: 5,
   duration: 60 * 60,
   blockDuration: 60 * 60,
 });
@@ -126,7 +131,7 @@ const registrationLimiter = new RateLimiterRedis({
 const profileGetLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'rl:profile:get',
-  points: 100, // 100 requests per 15 minutes
+  points: 100,
   duration: 15 * 60,
   blockDuration: 15 * 60,
   keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
@@ -135,7 +140,7 @@ const profileGetLimiter = new RateLimiterRedis({
 const profileUpdateLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'rl:profile:update',
-  points: 10, // 10 requests per hour
+  points: 10,
   duration: 60 * 60,
   blockDuration: 60 * 60,
   keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
@@ -144,7 +149,7 @@ const profileUpdateLimiter = new RateLimiterRedis({
 const allPatientsLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'rl:allpatients',
-  points: 50, // 50 requests per hour
+  points: 50,
   duration: 60 * 60,
   blockDuration: 60 * 60,
   keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
@@ -153,7 +158,7 @@ const allPatientsLimiter = new RateLimiterRedis({
 const changePasswordLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'rl:password',
-  points: 5, // 5 requests per hour
+  points: 5,
   duration: 60 * 60,
   blockDuration: 60 * 60,
   keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
@@ -162,7 +167,7 @@ const changePasswordLimiter = new RateLimiterRedis({
 const adminProfileLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'rl:adminprofile',
-  points: 100, // 100 requests per 15 minutes
+  points: 100,
   duration: 15 * 60,
   blockDuration: 15 * 60,
   keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
@@ -171,7 +176,7 @@ const adminProfileLimiter = new RateLimiterRedis({
 const adminUpdateLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'rl:adminupdate',
-  points: 5, // 5 requests per hour
+  points: 5,
   duration: 60 * 60,
   blockDuration: 60 * 60,
   keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
@@ -270,7 +275,7 @@ const handleAdminUpdate = (io, data) => {
   }
 };
 
-// Username availability check endpoint (public)
+// Username availability check endpoint
 router.get('/check-username', applyRateLimiter(checkUsernameLimiter), async (req, res) => {
   try {
     const { username } = req.query;
@@ -293,7 +298,7 @@ router.get('/check-username', applyRateLimiter(checkUsernameLimiter), async (req
   }
 });
 
-// Full patient registration endpoint (public)
+// Full patient registration endpoint
 router.post('/', applyRateLimiter(registrationLimiter), async (req, res) => {
   try {
     const {
@@ -455,7 +460,6 @@ router.post('/', applyRateLimiter(registrationLimiter), async (req, res) => {
       .single();
     if (patientError) {
       logger.error('Patient insertion error:', patientError);
-      // Rollback user insertion
       await supabase.from('users').delete().eq('id', userData.id);
       if (patientError.code === '23505') {
         return res.status(400).json({ error: 'email_exists', message: 'Email already exists' });
@@ -492,34 +496,66 @@ router.get('/profile', isAuthenticated, applyRateLimiter(profileGetLimiter), asy
       .eq('id', userId)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      logger.error('Database query error:', { error: error.message, userId });
+      throw error;
+    }
     if (!data) {
       logger.warn(`No patient found for userId: ${userId}`);
       return res.status(404).json({ error: 'not_found', message: 'Patient profile not found' });
     }
 
-    const safeDecrypt = (value) => decrypt(value) || 'Not provided';
+    // Validate data before decryption
+    const requiredFields = ['first_name', 'last_name', 'email', 'mobile_no', 'birthdate', 'home_address'];
+    const missingFields = requiredFields.filter(field => !data[field]);
+    if (missingFields.length > 0) {
+      logger.warn(`Missing required fields for userId ${userId}: ${missingFields.join(', ')}`);
+    }
+
+    // Decrypt and validate fields
+    const safeDecrypt = (value, fieldName) => {
+      const decrypted = decrypt(value);
+      if (decrypted === null) {
+        logger.warn(`Failed to decrypt ${fieldName} for userId ${userId}: "${value}"`);
+        return 'Not provided';
+      }
+      return decrypted;
+    };
 
     const profileData = {
-      full_name: `${safeDecrypt(data.first_name)} ${safeDecrypt(data.last_name)}`,
-      email: safeDecrypt(data.email),
-      phone: safeDecrypt(data.mobile_no),
-      dob: safeDecrypt(data.birthdate),
+      full_name: `${safeDecrypt(data.first_name, 'first_name')} ${safeDecrypt(data.last_name, 'last_name')}`.trim(),
+      email: safeDecrypt(data.email, 'email'),
+      phone: safeDecrypt(data.mobile_no, 'mobile_no'),
+      dob: safeDecrypt(data.birthdate, 'birthdate'),
       gender: data.sex === 'M' ? 'male' : data.sex === 'F' ? 'female' : 'other',
-      address: safeDecrypt(data.home_address),
-      religion: safeDecrypt(data.religion) || 'N/A',
-      nationality: safeDecrypt(data.nationality) || 'N/A',
-      home_number: safeDecrypt(data.home_no) || 'N/A',
+      address: safeDecrypt(data.home_address, 'home_address'),
+      religion: safeDecrypt(data.religion, 'religion') || 'N/A',
+      nationality: safeDecrypt(data.nationality, 'nationality') || 'N/A',
+      home_number: safeDecrypt(data.home_no, 'home_no') || 'N/A',
       blood_type: 'N/A',
       allergies: 'None',
       medical_conditions: 'None',
       emergency_contact: 'N/A',
     };
 
+    // Validate decrypted data
+    if (!profileData.full_name || profileData.full_name === 'Not provided Not provided') {
+      logger.warn(`Invalid full_name after decryption for userId ${userId}`);
+      profileData.full_name = 'Not provided';
+    }
+    if (!validator.isEmail(profileData.email)) {
+      logger.warn(`Invalid email after decryption for userId ${userId}: ${profileData.email}`);
+      profileData.email = 'Not provided';
+    }
+    if (!validator.isISO8601(profileData.dob, { strict: true })) {
+      logger.warn(`Invalid dob after decryption for userId ${userId}: ${profileData.dob}`);
+      profileData.dob = 'Not provided';
+    }
+
     logger.info(`Profile data retrieved for userId: ${userId}`);
     res.status(200).json(profileData);
   } catch (error) {
-    logger.error('Error fetching profile:', error);
+    logger.error('Error fetching profile:', { error: error.message, userId: req.session.userId });
     res.status(500).json({ error: 'server_error', message: 'Failed to fetch profile' });
   }
 });
@@ -548,23 +584,23 @@ router.get('/allPatients', isAuthenticated, applyRateLimiter(allPatientsLimiter)
 
     const decryptedPatients = data.map((patient) => ({
       id: patient.id,
-      first_name: decrypt(patient.first_name),
-      last_name: decrypt(patient.last_name),
+      first_name: decrypt(patient.first_name) || '',
+      last_name: decrypt(patient.last_name) || '',
       middle_name: decrypt(patient.middle_name) || '',
-      birthdate: decrypt(patient.birthdate),
+      birthdate: decrypt(patient.birthdate) || '',
       sex: patient.sex === 'M' ? 'Male' : patient.sex === 'F' ? 'Female' : '',
       age: calculateAge(decrypt(patient.birthdate)),
       nickname: decrypt(patient.nickname) || '',
       religion: decrypt(patient.religion) || '',
       nationality: decrypt(patient.nationality) || '',
-      home_address: decrypt(patient.home_address),
+      home_address: decrypt(patient.home_address) || '',
       home_no: decrypt(patient.home_no) || '',
       occupation: decrypt(patient.occupation) || '',
       office_no: decrypt(patient.office_no) || '',
       dental_insurance: decrypt(patient.dental_insurance) || '',
       fax_no: decrypt(patient.fax_no) || '',
-      mobile_no: decrypt(patient.mobile_no),
-      email: decrypt(patient.email),
+      mobile_no: decrypt(patient.mobile_no) || '',
+      email: decrypt(patient.email) || '',
       effective_date: patient.effective_date,
     }));
 
@@ -843,7 +879,7 @@ router.put('/admin-update', isAuthenticated, applyRateLimiter(adminUpdateLimiter
     // Fetch current admin data
     const { data: adminData, error: fetchError } = await supabase
       .from('admin')
-      .select  .select('username, password')
+      .select('username, password')
       .eq('id', userId)
       .single();
 
