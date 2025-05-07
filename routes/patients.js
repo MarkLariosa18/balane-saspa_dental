@@ -347,8 +347,8 @@ router.post('/', applyRateLimiter(registrationLimiter), async (req, res) => {
     if (!validator.isISO8601(birthdate)) {
       return res.status(400).json({ error: 'invalid_data', message: 'Invalid birthdate format' });
     }
-    if (!validator.isMobilePhone(mobile_no, 'any')) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid mobile number' });
+    if (!validator.isMobilePhone(mobile_no, 'en-PH')) {
+      return res.status(400).json({ error: 'invalid_data', message: 'Invalid Philippine mobile number. Use +639xxxxxxxxx or 09xxxxxxxxx format.' });
     }
     if (middle_name && !validator.isLength(middle_name, { max: 50 })) {
       return res.status(400).json({ error: 'invalid_data', message: 'Middle name too long' });
@@ -645,8 +645,8 @@ router.put('/profile', isAuthenticated, applyRateLimiter(profileUpdateLimiter), 
     if (!['male', 'female', 'other'].includes(gender)) {
       return res.status(400).json({ error: 'invalid_data', message: 'Invalid gender' });
     }
-    if (!validator.isMobilePhone(phone, 'any')) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid phone number' });
+    if (!validator.isMobilePhone(phone, 'en-PH')) {
+      return res.status(400).json({ error: 'invalid_data', message: 'Invalid Philippine mobile number. Use +639xxxxxxxxx or 09xxxxxxxxx format.' });
     }
     if (!validator.isLength(fullName, { min: 2, max: 100 })) {
       return res.status(400).json({ error: 'invalid_data', message: 'Full name must be 2-100 characters' });
