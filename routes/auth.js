@@ -664,15 +664,10 @@ router.post('/verify-otp', async (req, res) => {
 
       let patientByEmail = null;
       for (const patient of patients) {
-        try {
-          const decryptedEmail = decrypt(patient.email);
-          if (decryptedEmail === identifier) {
-            patientByEmail = patient;
-            break;
-          }
-        } catch (decryptError) {
-          logger.warn(`Skipping decryption error for patientId ${patient.id}:`, decryptError);
-          continue;
+        const decryptedEmail = decrypt(patient.email);
+        if (decryptedEmail && decryptedEmail.toLowerCase() === identifier.toLowerCase()) {
+          patientByEmail = patient;
+          break;
         }
       }
 
@@ -684,13 +679,12 @@ router.post('/verify-otp', async (req, res) => {
           .single();
 
         if (userById && !userIdError) {
-          try {
-            const decryptedEmail = decrypt(patientByEmail.email);
-            user = { ...userById, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userById.id}:`, decryptError);
+          const decryptedEmail = decrypt(patientByEmail.email);
+          if (!decryptedEmail) {
+            logger.error(`Email decryption failed for userId ${userById.id}`);
             return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
           }
+          user = { ...userById, email: decryptedEmail };
         }
       }
     } else {
@@ -709,13 +703,12 @@ router.post('/verify-otp', async (req, res) => {
           .single();
 
         if (patientById && !patientIdError) {
-          try {
-            const decryptedEmail = decrypt(patientById.email);
-            user = { ...userByUsername, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userByUsername.id}:`, decryptError);
+          const decryptedEmail = decrypt(patientById.email);
+          if (!decryptedEmail) {
+            logger.error(`Email decryption failed for userId ${userByUsername.id}`);
             return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
           }
+          user = { ...userByUsername, email: decryptedEmail };
         }
       }
     }
@@ -728,12 +721,15 @@ router.post('/verify-otp', async (req, res) => {
     const otpKey = `otp:${user.id}:password_reset`;
     const storedOtp = await redis.get(otpKey);
 
-    if (!storedOtp || storedOtp !== otp) {
-      logger.warn(`Invalid OTP for userId ${user.id}`);
+    if (!storedOtp) {
+      logger.warn(`OTP not found or expired for userId ${user.id}, key: ${otpKey}`);
       return res.status(400).json({ error: 'invalid_otp', message: 'Invalid or expired OTP' });
     }
 
-    await redis.del(otpKey);
+    if (storedOtp !== otp) {
+      logger.warn(`Invalid OTP provided for userId ${user.id}: provided ${otp}, expected ${storedOtp}`);
+      return res.status(400).json({ error: 'invalid_otp', message: 'Invalid or expired OTP' });
+    }
 
     logger.info(`OTP verified for userId ${user.id}`);
     res.json({ success: true, message: 'OTP verified' });
@@ -776,15 +772,10 @@ router.post('/reset-password', async (req, res) => {
 
       let patientByEmail = null;
       for (const patient of patients) {
-        try {
-          const decryptedEmail = decrypt(patient.email);
-          if (decryptedEmail === identifier) {
-            patientByEmail = patient;
-            break;
-          }
-        } catch (decryptError) {
-          logger.warn(`Skipping decryption error for patientId ${patient.id}:`, decryptError);
-          continue;
+        const decryptedEmail = decrypt(patient.email);
+        if (decryptedEmail && decryptedEmail.toLowerCase() === identifier.toLowerCase()) {
+          patientByEmail = patient;
+          break;
         }
       }
 
@@ -796,13 +787,12 @@ router.post('/reset-password', async (req, res) => {
           .single();
 
         if (userById && !userIdError) {
-          try {
-            const decryptedEmail = decrypt(patientByEmail.email);
-            user = { ...userById, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userById.id}:`, decryptError);
+          const decryptedEmail = decrypt(patientByEmail.email);
+          if (!decryptedEmail) {
+            logger.error(`Email decryption failed for userId ${userById.id}`);
             return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
           }
+          user = { ...userById, email: decryptedEmail };
         }
       }
     } else {
@@ -821,13 +811,12 @@ router.post('/reset-password', async (req, res) => {
           .single();
 
         if (patientById && !patientIdError) {
-          try {
-            const decryptedEmail = decrypt(patientById.email);
-            user = { ...userByUsername, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userByUsername.id}:`, decryptError);
+          const decryptedEmail = decrypt(patientById.email);
+          if (!decryptedEmail) {
+            logger.error(`Email decryption failed for userId ${userByUsername.id}`);
             return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
           }
+          user = { ...userByUsername, email: decryptedEmail };
         }
       }
     }
@@ -840,8 +829,13 @@ router.post('/reset-password', async (req, res) => {
     const otpKey = `otp:${user.id}:password_reset`;
     const storedOtp = await redis.get(otpKey);
 
-    if (!storedOtp || storedOtp !== otp) {
-      logger.warn(`Invalid OTP for password reset: userId ${user.id}`);
+    if (!storedOtp) {
+      logger.warn(`OTP not found or expired for userId ${user.id}, key: ${otpKey}`);
+      return res.status(400).json({ error: 'invalid_otp', message: 'Invalid or expired OTP' });
+    }
+
+    if (storedOtp !== otp) {
+      logger.warn(`Invalid OTP provided for userId ${user.id}: provided ${otp}, expected ${storedOtp}`);
       return res.status(400).json({ error: 'invalid_otp', message: 'Invalid or expired OTP' });
     }
 
