@@ -150,7 +150,6 @@ io.on('connection', (socket) => {
   });
 });
 
-
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -164,7 +163,8 @@ app.use(
         ],
         scriptSrc: [
           "'self'",
-          "'unsafe-inline'",
+          "'unsafe-inline'", // Consider removing for stronger CSP if possible
+          "'unsafe-eval'", // Some versions of TinyMCE or jQuery plugins require this
           'https://cdn.jsdelivr.net',
           'https://cdn.socket.io',
           'https://code.jquery.com',
@@ -173,7 +173,8 @@ app.use(
           'https://cdn.jsdelivr.net/npm/sweetalert2@11',
           'https://unpkg.com',
           'https://cdnjs.cloudflare.com',
-          'https://cdn.tiny.cloud' // tinymce CDN
+          'https://cdn.tiny.cloud',
+          'https://balane-saspa-dental-1.onrender.com' // for load-header.js
         ],
         scriptSrcAttr: ["'unsafe-inline'"],
         styleSrc: [
@@ -188,7 +189,7 @@ app.use(
         fontSrc: [
           "'self'",
           'https://fonts.gstatic.com',
-          'https://cdn.jsdelivr.net', // bootstrap-icons font
+          'https://cdn.jsdelivr.net',
           'data:'
         ],
         imgSrc: ["'self'", 'data:'],
@@ -200,6 +201,7 @@ app.use(
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
   })
 );
+
 
 
 app.use(compression());

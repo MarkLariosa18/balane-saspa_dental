@@ -891,7 +891,23 @@ async function fetchCsrfToken() {
 }
 
 function clearSessionCookie() {
-  document.cookie = 'connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  // Explicitly clear the connect.sid cookie with path and domain
+  document.cookie = 'connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=' + window.location.hostname;
+}
+
+function clearAllCookies() {
+  // Clear all cookies to ensure no residual auth state
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const name = cookie.split('=')[0].trim();
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+  }
+}
+
+function clearStorage() {
+  // Clear localStorage and sessionStorage to remove any auto-remember data
+  localStorage.clear();
+  sessionStorage.clear();
 }
 
 function initializeWebSocket() {
@@ -914,7 +930,7 @@ function initializeWebSocket() {
     reconnectionDelay: 5000,
     withCredentials: true,
     extraHeaders: {
-      Cookie: document.cookie // Ensure connect.sid is sent
+      Cookie: document.cookie
     }
   });
 
@@ -1149,7 +1165,6 @@ function setupEditAppointmentModal() {
       return;
     }
 
-    // Format date as ISO 8601
     const isoDateString = selectedDate.toISOString();
 
     const requestData = {
@@ -1274,16 +1289,12 @@ function setupCancelAppointmentModal() {
 document.addEventListener('DOMContentLoaded', async function() {
   // Helper function to validate date strings
   function isValidDate(dateString) {
-    // Handle null, undefined, empty, or non-date text values
     if (!dateString || typeof dateString !== 'string' || dateString.trim() === '' || dateString.toLowerCase() === 'n/a') {
       console.log(`Invalid date string: ${dateString} (rejected as empty or non-date)`);
       return false;
     }
-    // Try parsing the date string
     const date = new Date(dateString);
-    // Check if the date is valid and not NaN
     if (date instanceof Date && !isNaN(date.getTime())) {
-      // Ensure the date is reasonable (e.g., between 1900 and today)
       const today = new Date();
       const minDate = new Date('1900-01-01');
       if (date <= today && date >= minDate) {
@@ -1317,12 +1328,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (!authResponse.ok) {
       const errorData = await authResponse.json();
       console.error('Check-auth error:', errorData);
+      clearAllCookies();
+      clearStorage();
       throw new Error(errorData.message || 'Authentication check failed');
     }
     const authData = await authResponse.json();
     console.log('Check-auth data:', authData);
     if (!authData.isLoggedIn) {
       console.log('Not logged in, redirecting...');
+      clearAllCookies();
+      clearStorage();
       showError('You are not logged in. Redirecting to login page.');
       setTimeout(() => {
         window.location.replace('pages-login.html');
@@ -1339,12 +1354,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (!profileResponse.ok) {
       const errorData = await profileResponse.json();
       console.error('Profile error:', errorData);
+      clearAllCookies();
+      clearStorage();
       throw new Error(errorData.message || 'Failed to fetch profile');
     }
     profileData = await profileResponse.json();
     console.log('Profile data:', profileData);
 
-    // Initialize Socket.IO after successful fetches
     console.log('Initializing Socket.IO...');
     setTimeout(initializeWebSocket, 1000);
 
@@ -1353,7 +1369,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.querySelectorAll('#navmenu a').forEach(link => link.classList.remove('active'));
     document.querySelector('#profile-link a').classList.add('active');
 
-    // Handle null or undefined values with proper date validation
     const safeProfileData = {
       full_name: profileData.full_name || 'N/A',
       email: profileData.email || 'N/A',
@@ -1393,7 +1408,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     await fetchAppointments();
     await fetchHistory();
 
-    // Bind saveProfile using event delegation to handle dynamic buttons
     document.body.addEventListener('click', async (e) => {
       if (e.target.matches('#saveProfileBtn, #save-changes, #saveChanges, [data-action="save-profile"]')) {
         console.log('Save profile button clicked:', e.target.id || e.target.dataset.action);
@@ -1402,7 +1416,6 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
     });
 
-    // Bind form submission
     const profileForm = document.getElementById('profile-edit-form');
     if (profileForm) {
       profileForm.addEventListener('submit', async (e) => {
@@ -1422,6 +1435,8 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   } catch (err) {
     console.error('DOMContentLoaded error:', err);
+    clearAllCookies();
+    clearStorage();
     showError('An error occurred. Redirecting to login page: ' + err.message);
     setTimeout(() => {
       window.location.replace('pages-login.html');
@@ -1454,11 +1469,18 @@ document.addEventListener('DOMContentLoaded', async function() {
     try {
       await fetchCsrfToken();
       const response = await fetch(`${BASE_URL}/logout`, {
-        method: 'GET',
+        method: 'POST', // Changed to POST for proper session invalidation
+        headers: {
+          'Content-Type': 'application/json',
+          'CSRF-Token': csrfToken
+        },
         credentials: 'include'
       });
       if (response.ok) {
-        clearSessionCookie();
+        // Clear all client-side authentication state
+        clearAllCookies();
+        clearStorage();
+        if (socket) socket.disconnect(); // Disconnect Socket.IO
         const modal = bootstrap.Modal.getInstance(document.getElementById('logoutModal'));
         if (modal) modal.hide();
         showSuccess('You have been successfully logged out.');
@@ -1466,11 +1488,19 @@ document.addEventListener('DOMContentLoaded', async function() {
           window.location.replace('index.html');
         }, 1000);
       } else {
-        showError('Logout failed. Please try again.');
+        const errorData = await response.json();
+        showError('Logout failed: ' + (errorData.message || 'Please try again.'));
       }
     } catch (err) {
       console.error('Logout error:', err);
-      showError('An error occurred during logout.');
+      // Clear client-side state even if server request fails
+      clearAllCookies();
+      clearStorage();
+      if (socket) socket.disconnect();
+      showError('An error occurred during logout. Forcing client-side cleanup.');
+      setTimeout(() => {
+        window.location.replace('index.html');
+      }, 1000);
     }
   }
 
@@ -1702,7 +1732,6 @@ async function saveProfile() {
   const profileData = Object.fromEntries(formData);
   console.log('Profile data to save:', profileData);
 
-  // Client-side validation
   if (!profileData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
     showError('A valid email address is required.');
     return;
@@ -1848,7 +1877,8 @@ async function changePassword() {
         credentials: 'include'
       });
       if (changePasswordResponse.ok) {
-        clearSessionCookie();
+        clearAllCookies();
+        clearStorage();
         showSuccess('Password changed successfully! Please log in again.');
         otpModal.hide();
         setTimeout(() => {
