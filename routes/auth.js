@@ -13,6 +13,20 @@ const cors = require('cors');
 
 require('dotenv').config();
 
+// Initialize Winston logger
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' }),
+  ],
+});
+
 // Encryption/Decryption utilities
 const ALGORITHM = 'aes-256-gcm'; // Upgraded to GCM for authenticated encryption
 const IV_LENGTH = 12; // GCM recommends 12 bytes for IV
@@ -31,7 +45,7 @@ const requiredEnvVars = [
 ];
 requiredEnvVars.forEach((varName) => {
   if (!process.env[varName]) {
-    console.error(`Missing required environment variable: ${varName}`);
+    logger.error(`Missing required environment variable: ${varName}`);
     process.exit(1);
   }
 });
@@ -39,7 +53,7 @@ requiredEnvVars.forEach((varName) => {
 // Validate encryption key
 const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 if (ENCRYPTION_KEY.length !== 32) {
-  console.error(`Invalid ENCRYPTION_KEY length: expected 32 bytes, got ${ENCRYPTION_KEY.length}`);
+  logger.error(`Invalid ENCRYPTION_KEY length: expected 32 bytes, got ${ENCRYPTION_KEY.length}`);
   process.exit(1);
 }
 logger.info('Encryption key initialized successfully');
@@ -89,20 +103,6 @@ function decrypt(text) {
     return text;
   }
 }
-
-// Initialize Winston logger
-const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
-});
 
 // Initialize Redis
 const redis = new Redis(process.env.REDIS_URL, {
@@ -743,6 +743,10 @@ router.post('/reset-password', async (req, res) => {
   const { identifier, otp, newPassword } = req.body;
 
   try {
+    if (!identifier || !otp || !newPassword) {
+      logger.warn('Password reset attempt with missing fields');
+      return res.status(400).json({ error: 'bad_request', message: 'Identifier, OTP, and new password are required' });
+    }
     if (!/^\d{6}$/.test(otp)) {
       logger.warn('Invalid OTP format');
       return res.status(400).json({ error: 'bad_request', message: 'Invalid OTP format' });
