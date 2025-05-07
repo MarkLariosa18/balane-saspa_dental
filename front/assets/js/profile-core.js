@@ -362,7 +362,7 @@ async function changePassword() {
 async function performLogout() {
   try {
     await fetchCsrfToken();
-    const response = await fetch(`${BASE_URL}/logout`, {
+    const response = await fetch(`${BASE_URL}/auth/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
