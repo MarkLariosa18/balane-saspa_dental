@@ -501,14 +501,14 @@
       const serviceItem = document.createElement('div');
       serviceItem.className = 'service-item';
       serviceItem.textContent = service.name;
-      serviceItem.dataset.serviceId = String(service.id); // Ensure string
+      serviceItem.dataset.serviceId = String(service.id);
       serviceList.appendChild(serviceItem);
       serviceDescriptions[service.id] = service.description;
 
       serviceItem.addEventListener('click', () => {
         document.querySelectorAll('.service-item').forEach(item => item.classList.remove('selected'));
         serviceItem.classList.add('selected');
-        serviceInput.value = String(service.id); // Ensure string
+        serviceInput.value = String(service.id);
         serviceDescriptionText.innerHTML = serviceDescriptions[service.id].replace(/\n/g, '<br>');
         serviceDescription.style.display = 'block';
       });
@@ -523,7 +523,7 @@
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 5000,
-      auth: { userId: String(userId) } // Ensure string
+      auth: { userId: String(userId) }
     });
 
     socket.on('connect', () => {
@@ -649,17 +649,25 @@
         const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
         const timePicker = instance.calendarContainer.parentNode.querySelector('.time-picker');
         const timeSlots = timePicker.querySelectorAll('.time-slot');
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const isToday = dateStrPart === todayStr;
+        const currentHour = now.getHours();
 
         timeSlots.forEach(slot => {
           const hour = parseInt(slot.dataset.hour);
           const timeStr = `${dateStrPart} ${hour.toString().padStart(2, '0')}:00`;
           const isBooked = bookedTimes.includes(timeStr);
+          const isPast = isToday && hour <= currentHour;
 
           slot.classList.remove('selected', 'disabled');
           slot.style.pointerEvents = 'auto';
 
           if (isBooked) {
             console.log(`Disabling slot: ${timeStr} (Booked)`);
+            slot.classList.add('disabled');
+          } else if (isPast) {
+            console.log(`Disabling slot: ${timeStr} (Past time)`);
             slot.classList.add('disabled');
           } else {
             console.log(`Enabling slot: ${timeStr} (Available)`);
@@ -863,7 +871,6 @@
         }, authData.userId);
       } catch (err) {
         console.error('Socket.IO initialization failed:', err);
-        // Allow page to continue loading even if Socket.IO fails
       }
 
       document.getElementById('appointment-form').addEventListener('submit', async function(e) {
@@ -890,9 +897,9 @@
 
         const isoAppointmentDate = convertToISO(appointmentDate);
         const payload = {
-          user_id: String(authData.userId), // Ensure string
+          user_id: String(authData.userId),
           appointment_date: isoAppointmentDate,
-          service_id: String(serviceId), // Ensure string
+          service_id: String(serviceId),
           notes: notes || null,
         };
 
