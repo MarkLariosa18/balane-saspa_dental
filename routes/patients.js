@@ -802,7 +802,6 @@ router.put('/change-password', isAuthenticated, applyRateLimiter(changePasswordL
   }
 });
 
-// Fetch admin profile (protected, admin-specific)
 router.get('/admin-profile', isAuthenticated, applyRateLimiter(adminProfileLimiter), async (req, res) => {
   try {
     const userId = req.session.userId;
@@ -813,7 +812,7 @@ router.get('/admin-profile', isAuthenticated, applyRateLimiter(adminProfileLimit
 
     const { data, error } = await supabase
       .from('admin')
-      .select('username, email')
+      .select('username')
       .eq('id', userId)
       .single();
 
@@ -824,10 +823,7 @@ router.get('/admin-profile', isAuthenticated, applyRateLimiter(adminProfileLimit
     }
 
     logger.info(`Admin profile fetched for userId: ${userId}`);
-    res.status(200).json({
-      username: data.username,
-      email: decrypt(data.email) || 'Not provided',
-    });
+    res.status(200).json({ username: data.username });
   } catch (error) {
     logger.error('Error fetching admin profile:', error);
     res.status(500).json({ error: 'server_error', message: 'Failed to fetch admin profile' });
