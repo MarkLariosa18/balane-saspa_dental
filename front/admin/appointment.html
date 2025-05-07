@@ -360,7 +360,6 @@
   let socket;
   let pendingRequests = [];
   let currentRequest = null;
-  let pollingInterval = null;
   let consecutiveFetchFailures = 0;
   const MAX_CONSECUTIVE_FAILURES = 5;
 
@@ -415,24 +414,25 @@
   }
 
   function initializeSocketIO() {
-    socket = io('https://balane-saspa-dental-1.onrender.com', {
-      withCredentials: true,
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 5000,
-      reconnectionDelayMax: 10000,
-      randomizationFactor: 0.5
-    });
+    try {
+      socket = io('https://balane-saspa-dental-1.onrender.com', {
+        withCredentials: true,
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 5000,
+        reconnectionDelayMax: 10000,
+        randomizationFactor: 0.5
+      });
+      console.log('Attempting to connect to Socket.IO at https://balane-saspa-dental-1.onrender.com');
+    } catch (error) {
+      console.error('Socket.IO initialization failed:', error);
+      return;
+    }
 
     socket.on('connect', () => {
       console.log('Socket.IO connection established');
       consecutiveFetchFailures = 0;
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-        console.log('Polling stopped due to Socket.IO connection');
-      }
       socket.emit('join', { userId: socket.userId });
     });
 
@@ -440,18 +440,18 @@
       console.log('Socket.IO welcome message:', data);
     });
 
-    socket.on('cancel_request', (message) => {
-      console.log('Received Socket.IO cancel_request:', message);
-      handleSocketIOMessage(message);
-    });
-
     socket.on('reschedule_request', (message) => {
       console.log('Received Socket.IO reschedule_request:', message);
       handleSocketIOMessage(message);
     });
 
-    socket.on('cancel_response', (message) => {
-      console.log('Received Socket.IO cancel_response:', message);
+    socket.on('cancel_request', (message) => {
+      console.log('Received Socket.IO cancel_request:', message);
+      handleSocketIOMessage(message);
+    });
+
+    socket.on('confirm_response', (message) => {
+      console.log('Received Socket.IO confirm_response:', message);
       handleSocketIOMessage(message);
     });
 
@@ -476,27 +476,30 @@
     });
   }
 
-  function handleSocketIOMessage(data) {
-    console.log('Processing Socket.IO message:', data);
-    if (data.type === 'cancel_request' || data.type === 'reschedule_request') {
-      console.log(`New ${data.type} received via Socket.IO:`, data.request);
-      const request = data.request;
-      if (
-        request.status === 'pending' &&
-        !pendingRequests.some(req => req.id === request.id) &&
-        !isExpired(request)
-      ) {
-        pendingRequests.push(request);
+  function handleSocketIOMessage(message) {
+    try {
+      if (message.type === 'cancel_request' || message.type === 'reschedule_request') {
+        console.log(`New ${message.type} received via Socket.IO:`, message.request);
+        const request = message.request;
+        if (
+          request.status === 'pending' &&
+          !pendingRequests.some(req => req.id === request.id) &&
+          !isExpired(request)
+        ) {
+          pendingRequests.push(request);
+          updatePendingRequests();
+          document.getElementById('notificationDropdown').click();
+        }
+      } else if (message.type === 'confirm_response' || message.type === 'reschedule_response' || message.type === 'reject_response') {
+        console.log(`${message.type} received:`, message);
+        pendingRequests = pendingRequests.filter(req => req.id !== message.requestId);
         updatePendingRequests();
-        document.getElementById('notificationDropdown').click();
+        if (window.location.pathname.includes('index.html')) {
+          window.location.reload();
+        }
       }
-    } else if (data.type === 'cancel_response' || data.type === 'reschedule_response' || data.type === 'reject_response') {
-      console.log(`${data.type} received:`, data);
-      pendingRequests = pendingRequests.filter(req => req.id !== data.requestId);
-      updatePendingRequests();
-      if (window.location.pathname.includes('index.html')) {
-        window.location.reload();
-      }
+    } catch (error) {
+      console.error('Error processing Socket.IO message:', error);
     }
   }
 
@@ -514,18 +517,6 @@
     initializeSidebarToggle();
     initializeSocketIO();
     fetchPendingRequests();
-
-    setTimeout(() => {
-      if (!socket || !socket.connected) {
-        console.warn('Socket.IO not connected, falling back to polling...');
-        if (!pollingInterval) {
-          pollingInterval = setInterval(() => {
-            console.log('Polling for pending requests');
-            fetchPendingRequests();
-          }, 10000);
-        }
-      }
-    }, 1000);
   });
 
   function initializeSidebarToggle() {
@@ -675,12 +666,10 @@
         pendingRequests = pendingRequests.filter(r => r.id !== currentRequest.id);
         updatePendingRequests();
         closeActionModal();
-        if (socket && socket.connected) {
-          socket.emit(`${currentRequest.action}_response`, {
-            requestId: currentRequest.id,
-            status: 'approved'
-          });
-        }
+        socket.emit(`${currentRequest.action}_response`, {
+          requestId: currentRequest.id,
+          status: 'approved'
+        });
         Swal.fire({
           icon: 'success',
           title: 'Request Approved',
@@ -727,12 +716,10 @@
         pendingRequests = pendingRequests.filter(r => r.id !== currentRequest.id);
         updatePendingRequests();
         closeActionModal();
-        if (socket && socket.connected) {
-          socket.emit(`${currentRequest.action}_response`, {
-            requestId: currentRequest.id,
-            status: 'rejected'
-          });
-        }
+        socket.emit(`${currentRequest.action}_response`, {
+          requestId: currentRequest.id,
+          status: 'rejected'
+        });
         Swal.fire({
           icon: 'success',
           title: 'Request Rejected',
@@ -783,8 +770,6 @@
       } else {
         consecutiveFetchFailures++;
         if (consecutiveFetchFailures >= MAX_CONSECUTIVE_FAILURES) {
-          clearInterval(pollingInterval);
-          pollingInterval = null;
           Swal.fire({
             icon: 'error',
             title: 'Error',
@@ -796,8 +781,6 @@
     } catch (error) {
       consecutiveFetchFailures++;
       if (consecutiveFetchFailures >= MAX_CONSECUTIVE_FAILURES) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
         Swal.fire({
           icon: 'error',
           title: 'Error',
