@@ -43,8 +43,9 @@ const redis = new Redis(process.env.REDIS_URL, {
 });
 
 // Encryption settings
-const ALGORITHM = 'aes-256-cbc';
-const IV_LENGTH = 16;
+const ALGORITHM = 'aes-256-gcm'; // Upgraded to GCM for authenticated encryption
+const IV_LENGTH = 12; // GCM recommends 12 bytes for IV
+const AUTH_TAG_LENGTH = 16; // GCM auth tag length
 
 // Validate encryption key
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
@@ -156,68 +157,49 @@ const cooldownCheck = async (req, res, next) => {
   }
 };
 
-// Encryption functions
+// Encryption functions with GCM
 function encrypt(text) {
   if (!text) return null;
   try {
     const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, encryptionKey, iv);
+    const cipher = crypto.createCipheriv(ALGORITHM, encryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    return `${iv.toString('hex')}:${encrypted}`;
+    const authTag = cipher.getAuthTag().toString('hex');
+    return `${iv.toString('hex')}:${encrypted}:${authTag}`;
   } catch (error) {
-    console.error('Encryption error:', error);
+    logger.error('Encryption error:', error);
     throw new Error('Encryption failed');
   }
 }
 
 function decrypt(text) {
   if (!text) return null;
-  const [ivText, encryptedText] = text.split(':');
-  if (!ivText || !encryptedText) {
-    console.warn(`Data appears unencrypted or invalid format: "${text}". Returning as-is.`);
+  
+  const [ivText, encryptedText, authTagText] = text.split(':');
+  if (!ivText || !encryptedText || !authTagText) {
+    logger.warn(`Invalid encrypted format: "${text}"`);
     return text;
   }
   try {
     const iv = Buffer.from(ivText, 'hex');
-    if (iv.length !== IV_LENGTH) {
-      throw new Error(`Invalid IV length: expected ${IV_LENGTH} bytes, got ${iv.length}`);
+    const authTag = Buffer.from(authTagText, 'hex');
+    if (iv.length !== IV_LENGTH || authTag.length !== AUTHsides_tag_length) {
+      throw new Error(`Invalid IV or auth tag length`);
     }
-    const encrypted = Buffer.from(encryptedText, 'hex');
-    const decipher = crypto.createDecipheriv(ALGORITHM, encryptionKey, iv);
-    let decrypted = decipher.update(encrypted);
+    const decipher = crypto.createDecipheriv(ALGORITHM, encryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(Buffer.from(encryptedText, 'hex'));
     decrypted = Buffer.concat([decrypted, decipher.final()]);
-    let decryptedString = decrypted.toString('utf8');
-
-    if (decryptedString.includes(':')) {
-      console.log(`First decryption produced encrypted output: "${decryptedString}". Attempting second pass.`);
-      const [secondIvText, secondEncryptedText] = decryptedString.split(':');
-      const secondIv = Buffer.from(secondIvText, 'hex');
-      const secondEncrypted = Buffer.from(secondEncryptedText, 'hex');
-      const secondDecipher = crypto.createDecipheriv(ALGORITHM, encryptionKey, secondIv);
-      let secondDecrypted = secondDecipher.update(secondEncrypted);
-      secondDecrypted = Buffer.concat([secondDecrypted, secondDecipher.final()]);
-      decryptedString = secondDecrypted.toString('utf8');
-
-      if (!decryptedString || decryptedString.includes(':') || /[^ -~]/.test(decryptedString)) {
-        console.warn(`Second decryption produced invalid output: "${decryptedString}". Returning original: "${text}"`);
-        return text;
-      }
-      return decryptedString;
-    }
+    const decryptedString = decrypted.toString('utf8');
 
     if (!decryptedString || /[^ -~]/.test(decryptedString)) {
-      console.warn(`Single decryption produced invalid output: "${decryptedString}". Returning original: "${text}"`);
+      logger.warn(`Invalid decryption result: "${decryptedString}"`);
       return text;
     }
     return decryptedString;
   } catch (error) {
-    console.error('Decryption failed:', {
-      error: error.message,
-      input: text,
-      ivLength: ivText?.length,
-      keySnippet: ENCRYPTION_KEY.slice(0, 8) + '...'
-    });
+    logger.error('Decryption failed:', { error: error.message, input: text });
     return text;
   }
 }

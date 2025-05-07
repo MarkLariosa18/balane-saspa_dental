@@ -514,7 +514,7 @@
                       No upcoming appointments found.
                     </div>
                     <button class="btn btn-primary mt-2" onclick="window.location.href='make-appointment.html'">
-                      <i class="bi bi-plus-circle me-2"></i>Book New Appointment>
+                      <i class="bi bi-plus-circle me-2"></i>Book New Appointment
                     </button>
                   </div>
 
@@ -1338,7 +1338,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       full_name: profileData.full_name || 'N/A',
       email: profileData.email || 'N/A',
       phone: profileData.phone || 'N/A',
-      dob: profileData.dob || 'N/A',
+      dob: profileData.dob ? new Date(profileData.dob).toISOString().split('T')[0] : 'N/A',
       gender: profileData.gender || 'N/A',
       address: profileData.address || 'N/A',
       religion: profileData.religion || 'N/A',
@@ -1351,7 +1351,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     document.getElementById('profile-phone').textContent = safeProfileData.phone;
 
     document.getElementById('overview-name').textContent = safeProfileData.full_name;
-    document.getElementById('overview-dob').textContent = profileData.dob || 'N/A';
+    document.getElementById('overview-dob').textContent = safeProfileData.dob !== 'N/A' ? safeProfileData.dob : 'Not provided';
     document.getElementById('overview-gender').textContent = safeProfileData.gender;
     document.getElementById('overview-address').textContent = safeProfileData.address;
     document.getElementById('overview-religion').textContent = safeProfileData.religion;
@@ -1683,8 +1683,13 @@ async function saveProfile() {
   console.log('Profile data to save:', profileData);
 
   // Client-side validation
+
   if (!profileData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
     showError('A valid email address is required.');
+    return;
+  }
+  if (profileData.dob && !/^\d{4}-\d{2}-\d{2}$/.test(profileData.dob)) {
+    showError('Date of birth must be in YYYY-MM-DD format.');
     return;
   }
   if (profileData.phone && !/^\+?\d{7,15}$/.test(profileData.phone)) {
