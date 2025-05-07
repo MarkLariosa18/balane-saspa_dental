@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>Admin - Appointment Graph</title>
-  <meta name="description" content="Visualize appointment trends by month, status, and service">
-  <meta name="keywords" content="appointments, graph, admin, dashboard">
+  <meta content="Visualize appointment trends by month, status, and service" name="description">
+  <meta content="appointments, graph, admin, dashboard" name="keywords">
   <link href="assets/img/icon.png" rel="icon">
   <link href="assets/img/icon.png" rel="apple-touch-icon">
-  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.gstatic.com" rel="preconnect">
   <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
@@ -20,6 +20,7 @@
   <link href="assets/css/style.css" rel="stylesheet">
   <link href="assets/css/calendar.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <link href="assets/css/styles.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script>window.jQuery || document.write('<script src="assets/vendor/jquery/jquery.min.js"><\/script>');</script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -286,7 +287,7 @@
   <div id="head_content">
     <header class="bg-light p-3">
       <h1 class="h4">Dental Dashboard</h1>
-      <button class="toggle-sidebar-btn btn btn-primary" aria-label="Toggle sidebar">Toggle Sidebar</button>
+      <button class="toggle-sidebar-btn btn btn-primary">Toggle Sidebar</button>
     </header>
     <div id="sidebarOverlay" style="display: none;"></div>
   </div>
@@ -412,7 +413,7 @@
       $('#head_content').html(`
         <header class="bg-light p-3">
           <h1 class="h4">Dental Dashboard</h1>
-          <button class="toggle-sidebar-btn btn btn-primary" aria-label="Toggle sidebar">Toggle Sidebar</button>
+          <button class="toggle-sidebar-btn btn btn-primary">Toggle Sidebar</button>
         </header>
         <div id="sidebarOverlay" style="display: none;"></div>
       `);
@@ -630,43 +631,37 @@
       ];
       const years = [...new Set(appointments.map(app => new Date(app.appointment_date).getFullYear()))].sort((a, b) => b - a);
       yearFilters.forEach(filter => {
-        if (filter) {
-          filter.innerHTML = '';
-          years.forEach(year => {
-            const option = document.createElement('option');
-            option.value = year;
-            option.textContent = year;
-            filter.appendChild(option);
-          });
-          filter.value = currentYear;
-        }
+        filter.innerHTML = '';
+        years.forEach(year => {
+          const option = document.createElement('option');
+          option.value = year;
+          option.textContent = year;
+          filter.appendChild(option);
+        });
+        filter.value = currentYear;
       });
     }
 
     function populateServiceFilter(services) {
       const serviceFilter = document.getElementById('serviceFilter');
-      if (serviceFilter) {
-        serviceFilter.innerHTML = '';
-        services.forEach(service => {
-          const option = document.createElement('option');
-          option.value = service.name;
-          option.textContent = service.name;
-          serviceFilter.appendChild(option);
-        });
-      }
+      serviceFilter.innerHTML = '';
+      services.forEach(service => {
+        const option = document.createElement('option');
+        option.value = service.name;
+        option.textContent = service.name;
+        serviceFilter.appendChild(option);
+      });
     }
 
     function populateServiceTableFilter(services) {
       const serviceTableFilter = document.getElementById('serviceTableFilter');
-      if (serviceTableFilter) {
-        serviceTableFilter.innerHTML = '<option value="all">All Services</option>';
-        services.forEach(service => {
-          const option = document.createElement('option');
-          option.value = service.name;
-          option.textContent = service.name;
-          serviceTableFilter.appendChild(option);
-        });
-      }
+      serviceTableFilter.innerHTML = '<option value="all">All Services</option>';
+      services.forEach(service => {
+        const option = document.createElement('option');
+        option.value = service.name;
+        option.textContent = service.name;
+        serviceTableFilter.appendChild(option);
+      });
     }
 
     function generateColor(index) {
