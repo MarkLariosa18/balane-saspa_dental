@@ -495,12 +495,14 @@ async function fetchCsrfToken(attempt = 1, maxAttempts = 3, delay = 1000) {
       throw new Error('No session cookie found');
     }
 
+    console.log(`Fetching CSRF token, attempt ${attempt}`);
     const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
       method: 'GET',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
     });
 
+    console.log('CSRF response status:', response.status);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(`Failed to fetch CSRF token: ${response.status} ${errorData.message || ''}`);
@@ -551,6 +553,7 @@ async function fetchCsrfToken(attempt = 1, maxAttempts = 3, delay = 1000) {
 // Invalidate cached CSRF token
 function invalidateCsrfToken() {
   csrfToken = null;
+  console.log('CSRF token invalidated');
 }
 
 // Authentication and session management
@@ -576,9 +579,10 @@ async function checkAuth(attempt = 1, maxAttempts = 3, delay = 1000) {
       return false;
     }
 
+    console.log(`Checking auth, attempt ${attempt}`);
     const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', {
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
     });
 
     if (!response.ok) {
@@ -623,6 +627,13 @@ async function checkAuth(attempt = 1, maxAttempts = 3, delay = 1000) {
   }
 }
 
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+}
+
 async function tryAutoLogin(attempt = 1, maxAttempts = 3, delay = 1000) {
   try {
     const cookies = document.cookie.split(';').reduce((acc, cookie) => {
@@ -634,21 +645,27 @@ async function tryAutoLogin(attempt = 1, maxAttempts = 3, delay = 1000) {
       console.warn('No session cookie found for auto-login. Skipping.');
       return false;
     }
+    if (!cookies['remember_token']) {
+      console.warn('No remember_token cookie found. Skipping auto-login.');
+      return false;
+    }
 
+    console.log(`Attempting auto-login, attempt ${attempt}`);
     const token = await fetchCsrfToken();
     const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/auto-login', {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
-      body: JSON.stringify({ _csrf: token })
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'CSRF-Token': token
+      }
     });
 
     const data = await response.json();
     if (response.ok && data.success && data.role === 'admin') {
       console.log('Auto-login successful:', data);
-      // Invalidate CSRF token after session regeneration
       invalidateCsrfToken();
-      // Fetch new CSRF token for subsequent requests
       await fetchCsrfToken();
       return true;
     }
@@ -657,12 +674,13 @@ async function tryAutoLogin(attempt = 1, maxAttempts = 3, delay = 1000) {
     if (data.error === 'invalid_csrf_token') {
       console.error('CSRF token invalid:', token);
       invalidateCsrfToken();
+      clearSession();
       throw new Error('Invalid CSRF token');
     }
     throw new Error(data.message || 'Auto-login failed');
   } catch (error) {
     console.error(`Auto-login attempt ${attempt} failed:`, error.message);
-    if (error.message === 'No session cookie found') {
+    if (error.message === 'No session cookie found' || error.message === 'No remember_token cookie found') {
       return false;
     }
     if (attempt < maxAttempts && error.message === 'Invalid CSRF token') {
@@ -672,6 +690,7 @@ async function tryAutoLogin(attempt = 1, maxAttempts = 3, delay = 1000) {
       return tryAutoLogin(attempt + 1, maxAttempts, delay);
     }
     console.error('Max auto-login attempts reached:', error);
+    clearSession();
     return false;
   }
 }
@@ -683,6 +702,7 @@ function clearSession() {
   document.cookie = 'remember_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict';
   document.cookie = '_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict';
   invalidateCsrfToken();
+  console.log('Session and cookies cleared');
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -830,16 +850,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function fetchAppointmentsAndRequests(attempt = 1, maxAttempts = 3, delay = 1000) {
     try {
       const token = await fetchCsrfToken();
+      console.log('Fetching appointments with CSRF token:', token);
       const [appointmentsResponse, requestsResponse] = await Promise.all([
         fetch('https://balane-saspa-dental-1.onrender.com/api/appointments', {
           method: 'GET',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token }
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': token, 'Accept': 'application/json' }
         }),
         fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/requests', {
           method: 'GET',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token }
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': token, 'Accept': 'application/json' }
         })
       ]);
 
@@ -995,7 +1016,7 @@ function getPatientName(patientData) {
   return [first_name, middle_name, last_name].filter(Boolean).join(' ').trim() || 'Unknown';
 }
 
-async function confirmAppointment(appointmentId) {
+async function confirmAppointment(appointmentId, attempt = 1, maxAttempts = 3, delay = 1000) {
   const request = window.pendingRequests.find(req => req.appointment_id === appointmentId && req.action === 'confirm');
   if (!request) {
     Swal.fire({
@@ -1019,21 +1040,27 @@ async function confirmAppointment(appointmentId) {
     if (result.isConfirmed) {
       try {
         const token = await fetchCsrfToken();
+        console.log('Confirming appointment with CSRF token:', token);
         const response = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/requests/${request.id}/approve`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
-          credentials: 'include',
-          body: JSON.stringify({ _csrf: token })
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'CSRF-Token': token
+          },
+          credentials: 'include'
         });
 
         if (!response.ok) {
           const errorData = await response.json();
           if (errorData.error === 'invalid_csrf_token') {
+            console.error('Invalid CSRF token in confirmAppointment:', token);
             invalidateCsrfToken();
+            clearSession();
             if (attempt < maxAttempts) {
               console.log(`Retrying confirm appointment, attempt ${attempt + 1}`);
               await new Promise(resolve => setTimeout(resolve, delay * attempt));
-              return confirmAppointment(appointmentId, attempt + 1);
+              return confirmAppointment(appointmentId, attempt + 1, maxAttempts, delay);
             }
           }
           throw new Error(errorData.message || 'Failed to confirm appointment');
@@ -1089,17 +1116,24 @@ async function rejectAppointment(appointmentId, attempt = 1, maxAttempts = 3, de
     if (result.isConfirmed) {
       try {
         const token = await fetchCsrfToken();
+        console.log('Rejecting appointment with CSRF token:', token);
         const response = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/requests/${request.id}/reject`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'CSRF-Token': token
+          },
           credentials: 'include',
-          body: JSON.stringify({ _csrf: token, reject_reason: result.value })
+          body: JSON.stringify({ reject_reason: result.value })
         });
 
         if (!response.ok) {
           const errorData = await response.json();
           if (errorData.error === 'invalid_csrf_token') {
+            console.error('Invalid CSRF token in rejectAppointment:', token);
             invalidateCsrfToken();
+            clearSession();
             if (attempt < maxAttempts) {
               console.log(`Retrying reject appointment, attempt ${attempt + 1}`);
               await new Promise(resolve => setTimeout(resolve, delay * attempt));
@@ -1337,21 +1371,21 @@ function initializeTableFeatures(appointments) {
               aValue = (a.status || '').toLowerCase();
               bValue = (b.status || '').toLowerCase();
               break;
-            }
+          }
   
-            if (column === 'date') {
-              return isAscending ? aValue - bValue : bValue - aValue;
-            }
-            return isAscending 
-              ? aValue.localeCompare(bValue) 
-              : bValue.localeCompare(aValue);
-          });
-  
-          updateRecentAppointments(appointments, sortedAppointments.slice(0, 5));
+          if (column === 'date') {
+            return isAscending ? aValue - bValue : bValue - aValue;
+          }
+          return isAscending 
+            ? aValue.localeCompare(bValue) 
+            : bValue.localeCompare(aValue);
         });
+  
+        updateRecentAppointments(appointments, sortedAppointments.slice(0, 5));
       });
-    }
+    });
   }
+}
   </script>
 </body>
 </html>
