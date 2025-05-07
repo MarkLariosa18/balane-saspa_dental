@@ -1,14 +1,16 @@
 document.addEventListener('DOMContentLoaded', function () {
   // Get all service cards
-  const serviceCards = document.querySelectorAll('.service-item .card');
+  const serviceCards = document.querySelectorAll('.service-item');
+  console.log('Service cards found:', serviceCards.length);
 
   // Create overlay elements
   const overlay = document.createElement('div');
   overlay.className = 'image-overlay fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center transition-opacity duration-300';
+  overlay.style.display = 'none'; // Initially hidden
 
   // Create container for image and text
   const contentContainer = document.createElement('div');
-  contentContainer.className = 'bg-white rounded-2xl shadow-lg w-full max-w-4xl mx-4 md:mx-0 flex flex-col md:flex-row overflow-hidden transform transition-transform duration-300 scale-95';
+  contentContainer.className = 'bg-white rounded-2xl shadow-lg w-full max-w-4xl mx-4 flex flex-col md:flex-row overflow-hidden transform transition-transform duration-300 scale-95';
 
   // Create image container
   const imageContainer = document.createElement('div');
@@ -17,6 +19,8 @@ document.addEventListener('DOMContentLoaded', function () {
   // Create image element
   const overlayImg = document.createElement('img');
   overlayImg.className = 'max-w-full max-h-96 object-contain rounded-lg';
+  overlayImg.alt = 'Service Image';
+  overlayImg.src = 'https://via.placeholder.com/300'; // Fallback image
 
   // Add image to container
   imageContainer.appendChild(overlayImg);
@@ -28,9 +32,11 @@ document.addEventListener('DOMContentLoaded', function () {
   // Create title and description elements
   const panelTitle = document.createElement('h2');
   panelTitle.className = 'text-2xl md:text-3xl font-bold text-gray-800 mb-4 font-poppins';
+  panelTitle.textContent = 'Service Details';
 
   const panelDescription = document.createElement('p');
   panelDescription.className = 'text-gray-600 text-base md:text-lg leading-relaxed mb-6 font-poppins';
+  panelDescription.textContent = 'Details about this service will appear here.';
 
   // Append elements to the panel
   textPanel.appendChild(panelTitle);
@@ -44,6 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const closeBtn = document.createElement('button');
   closeBtn.innerHTML = '×';
   closeBtn.className = 'absolute top-4 right-4 text-white text-2xl font-bold bg-primary bg-opacity-80 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-100 transition-colors duration-200 focus:outline-none';
+  closeBtn.setAttribute('aria-label', 'Close overlay');
 
   // Build the overlay
   overlay.appendChild(contentContainer);
@@ -52,17 +59,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Add click event to each card
   serviceCards.forEach(card => {
-    card.addEventListener('click', function () {
-      // Get content from the card
-      const imgSrc = this.querySelector('img').src;
-      const cardTitle = this.closest('.service-item').querySelector('h3').textContent;
+    card.addEventListener('click', function (e) {
+      e.preventDefault(); // Prevent default behavior
+      console.log('Card clicked:', card);
 
-      // Set the overlay content
-      overlayImg.src = imgSrc;
-      panelTitle.textContent = cardTitle;
+      // Get content from the card
+      const imgElement = card.querySelector('img');
+      const cardTitleElement = card.querySelector('h3');
+      
+      if (!imgElement || !cardTitleElement) {
+        console.error('Missing image or title in service card:', card);
+        overlayImg.src = 'https://via.placeholder.com/300';
+        panelTitle.textContent = 'Service Details';
+        panelDescription.textContent = 'Details about this service will appear here.';
+      } else {
+        overlayImg.src = imgElement.src;
+        panelTitle.textContent = cardTitleElement.textContent;
+        console.log('Setting overlay content:', {
+          imgSrc: imgElement.src,
+          title: cardTitleElement.textContent
+        });
+      }
 
       // Set custom description based on card title
-      setCardDescription(cardTitle, panelDescription, textPanel);
+      setCardDescription(cardTitleElement ? cardTitleElement.textContent : '', panelDescription, textPanel);
 
       // Show the overlay with animation
       overlay.style.display = 'flex';
@@ -121,11 +141,10 @@ document.addEventListener('DOMContentLoaded', function () {
    * @param {HTMLElement} panelElement - The parent panel element
    */
   function setCardDescription(cardTitle, descriptionElement, panelElement) {
-    // Default description
     let description = "Details about this service will appear here.";
     let additionalInfo;
 
-    switch (cardTitle) {
+    switch (cardTitle.trim()) {
       case "Consultation":
         description = "Professional examination and discussion about your oral health status and treatment options.";
         additionalInfo = document.createElement('div');
@@ -236,6 +255,7 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
           <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
+ Tallahassee, FL 32304
             <li>Removable Partial Ordinary Acrylic/Stayplate</li>
             <li>1-2 units plastic</li>
             <li>3-4 units plastic</li>
@@ -453,9 +473,21 @@ document.addEventListener('DOMContentLoaded', function () {
         panelElement.appendChild(additionalInfo);
         break;
 
-
-      case "Imelda":
-        description = "Professional cleaning procedure to remove plaque and tartar. Available in light, moderate, and heavy treatments depending on your needs.";
+      case "Orthodontics":
+        description = "Specialized dental treatment focused on correcting misaligned teeth and jaws.";
+        additionalInfo = document.createElement('div');
+        additionalInfo.className = 'mt-4';
+        additionalInfo.innerHTML = `
+          <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
+            <li>Conventional</li>
+            <li>Self-ligating</li>
+            <li>Depends on severity of the case</li>
+          </ul>
+          <div class="p-4 bg-blue-50 border-l-4 border-primary text-primary rounded-lg font-poppins">
+            <p>Orthodontic treatments improve bite function, aesthetics, and oral health through braces or aligners.</p>
+          </div>
+        `;
+        panelElement.appendChild(additionalInfo);
         break;
 
       default:
@@ -479,9 +511,6 @@ document.addEventListener('DOMContentLoaded', function () {
       opacity: 0;
       font-family: 'Poppins', sans-serif;
     }
-    .image-overlay.show {
-      opacity: 1;
-    }
     .bg-primary {
       background-color: var(--primary);
     }
@@ -498,8 +527,11 @@ document.addEventListener('DOMContentLoaded', function () {
       .image-overlay .bg-white {
         flex-direction: column;
       }
-      .image-overlay .md\\:w-1\\/2 {
+      .image-overlay .md\\:w-1/2 {
         width: 100%;
+      }
+      .image-overlay img {
+        max-height: 50vh;
       }
     }
   `;
