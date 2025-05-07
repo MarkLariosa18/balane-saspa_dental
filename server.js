@@ -149,6 +149,8 @@ io.on('connection', (socket) => {
     console.error(`Socket.IO error for ${socket.id}:`, error);
   });
 });
+
+
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -171,6 +173,7 @@ app.use(
           'https://cdn.jsdelivr.net/npm/sweetalert2@11',
           'https://unpkg.com'
         ],
+        scriptSrcAttr: ["'unsafe-inline'"],
         styleSrc: [
           "'self'",
           "'unsafe-inline'",
