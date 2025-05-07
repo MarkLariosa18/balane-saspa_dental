@@ -77,7 +77,7 @@ function encrypt(text) {
 // Decrypt function
 function decrypt(text) {
   if (!text) return null;
-  const [ivText, encryptedText, authTagText] = text.split(':');
+  const [ivText, authTagText, encryptedText] = text.split(':');
   if (!ivText || !encryptedText || !authTagText) {
     logger.warn(`Invalid encrypted format: "${text}"`);
     return text;
