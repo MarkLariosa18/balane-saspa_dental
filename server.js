@@ -171,7 +171,9 @@ app.use(
           'https://cdn.tailwindcss.com',
           'https://formsubmit.co',
           'https://cdn.jsdelivr.net/npm/sweetalert2@11',
-          'https://unpkg.com'
+          'https://unpkg.com',
+          'https://cdnjs.cloudflare.com',
+          'https://cdn.tiny.cloud' // tinymce CDN
         ],
         scriptSrcAttr: ["'unsafe-inline'"],
         styleSrc: [
@@ -180,14 +182,15 @@ app.use(
           'https://cdn.jsdelivr.net',
           'https://cdn.tailwindcss.com',
           'https://fonts.googleapis.com',
-          'https://unpkg.com'
+          'https://unpkg.com',
+          'https://cdnjs.cloudflare.com'
         ],
         fontSrc: [
           "'self'",
           'https://fonts.gstatic.com',
+          'https://cdn.jsdelivr.net', // bootstrap-icons font
           'data:'
         ],
-        
         imgSrc: ["'self'", 'data:'],
         formAction: ["'self'", 'https://formsubmit.co'],
         frameSrc: ["'self'", 'https://www.google.com'],
