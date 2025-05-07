@@ -5,12 +5,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Create overlay elements
   const overlay = document.createElement('div');
-  overlay.className = 'image-overlay fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center transition-opacity duration-300';
+  overlay.className = 'image-overlay fixed inset-0 bg-red-500 bg-opacity-70 z-[9999] flex items-center justify-center';
   overlay.style.display = 'none'; // Initially hidden
+  console.log('Overlay created:', overlay);
 
   // Create container for image and text
   const contentContainer = document.createElement('div');
-  contentContainer.className = 'bg-white rounded-2xl shadow-lg w-full max-w-4xl mx-4 flex flex-col md:flex-row overflow-hidden transform transition-transform duration-300 scale-95';
+  contentContainer.className = 'bg-green-500 rounded-2xl shadow-lg w-full max-w-4xl mx-4 flex flex-col md:flex-row overflow-hidden';
 
   // Create image container
   const imageContainer = document.createElement('div');
@@ -49,13 +50,14 @@ document.addEventListener('DOMContentLoaded', function () {
   // Create close button
   const closeBtn = document.createElement('button');
   closeBtn.innerHTML = '×';
-  closeBtn.className = 'absolute top-4 right-4 text-white text-2xl font-bold bg-primary bg-opacity-80 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-100 transition-colors duration-200 focus:outline-none';
+  closeBtn.className = 'absolute top-4 right-4 text-white text-2xl font-bold bg-blue-500 rounded-full w-10 h-10 flex items-center justify-center hover:bg-blue-600 focus:outline-none';
   closeBtn.setAttribute('aria-label', 'Close overlay');
 
   // Build the overlay
   overlay.appendChild(contentContainer);
   overlay.appendChild(closeBtn);
   document.body.appendChild(overlay);
+  console.log('Overlay appended to body:', document.body.contains(overlay));
 
   // Add click event to each card
   serviceCards.forEach(card => {
@@ -84,14 +86,10 @@ document.addEventListener('DOMContentLoaded', function () {
       // Set custom description based on card title
       setCardDescription(cardTitleElement ? cardTitleElement.textContent : '', panelDescription, textPanel);
 
-      // Show the overlay with animation
+      // Show the overlay
       overlay.style.display = 'flex';
-      overlay.style.opacity = '0';
-      contentContainer.style.transform = 'scale(0.95)';
-      setTimeout(() => {
-        overlay.style.opacity = '1';
-        contentContainer.style.transform = 'scale(1)';
-      }, 10);
+      overlay.style.opacity = '1';
+      console.log('Overlay shown:', overlay.style.display, overlay.style.opacity);
       document.body.style.overflow = 'hidden';
     });
   });
@@ -122,16 +120,13 @@ document.addEventListener('DOMContentLoaded', function () {
    * Close the overlay and clean up
    */
   function closeOverlay() {
-    overlay.style.opacity = '0';
-    contentContainer.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-      overlay.style.display = 'none';
-      document.body.style.overflow = '';
-      // Clear any additional content
-      while (textPanel.childNodes.length > 2) {
-        textPanel.removeChild(textPanel.lastChild);
-      }
-    }, 300);
+    overlay.style.display = 'none';
+    document.body.style.overflow = '';
+    // Clear any additional content
+    while (textPanel.childNodes.length > 2) {
+      textPanel.removeChild(textPanel.lastChild);
+    }
+    console.log('Overlay closed');
   }
 
   /**
@@ -255,7 +250,6 @@ document.addEventListener('DOMContentLoaded', function () {
         additionalInfo.className = 'mt-4';
         additionalInfo.innerHTML = `
           <ul class="list-disc list-inside text-gray-600 mb-4 font-poppins">
- Tallahassee, FL 32304
             <li>Removable Partial Ordinary Acrylic/Stayplate</li>
             <li>1-2 units plastic</li>
             <li>3-4 units plastic</li>
@@ -503,12 +497,10 @@ document.addEventListener('DOMContentLoaded', function () {
   style.textContent = `
     :root {
       --primary: #007bff;
-      --accent: #0056b3;
       --light: #ffffff;
       --text: #333333;
     }
     .image-overlay {
-      opacity: 0;
       font-family: 'Poppins', sans-serif;
     }
     .bg-primary {
@@ -522,17 +514,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     .font-poppins {
       font-family: 'Poppins', sans-serif;
-    }
-    @media (max-width: 768px) {
-      .image-overlay .bg-white {
-        flex-direction: column;
-      }
-      .image-overlay .md\\:w-1/2 {
-        width: 100%;
-      }
-      .image-overlay img {
-        max-height: 50vh;
-      }
     }
   `;
   document.head.appendChild(style);

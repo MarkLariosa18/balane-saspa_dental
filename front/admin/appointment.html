@@ -253,6 +253,16 @@
         gap: 10px;
       }
     }
+    /* Added styles for new charts */
+    #genderChart, #ageChart {
+      width: 100% !important;
+      height: 300px !important;
+    }
+    @media (max-width: 768px) {
+      #genderChart, #ageChart {
+        height: 200px !important;
+      }
+    }
   </style>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -260,6 +270,9 @@
   <!-- Fallback for Chart.js -->
   <script>window.Chart || document.write('<script src="assets/vendor/chart.js/chart.min.js"><\/script>');</script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Added scripts for visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
+  <script src="visualizations.js"></script>
 </head>
 
 <body>
@@ -294,6 +307,22 @@
               <canvas id="appointmentsChart"></canvas>
             </div>
             <div class="highlight-text" id="highestMonthText"></div>
+          </div>
+
+          <!-- Added Gender Distribution Chart -->
+          <div class="graph-container">
+            <h5>Gender Distribution</h5>
+            <div class="canvas-container">
+              <canvas id="genderChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Added Age Group Distribution Chart -->
+          <div class="graph-container">
+            <h5>Age Group Distribution</h5>
+            <div class="canvas-container">
+              <canvas id="ageChart"></canvas>
+            </div>
           </div>
 
           <div class="card recent-sales overflow-auto">
@@ -381,6 +410,9 @@
       console.error('Failed to load footer:', xhr.status, xhr.statusText);
     }
   });
+
+  // Added: Initialize visualizations
+  initializeVisualizations();
 });
 
 function initSidebarToggle() {
@@ -628,6 +660,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   String.prototype.capitalize = function() {
     return this.charAt(0).toUpperCase() + this.slice(1);
   };
+
+  // Added: Calculate age from birth date
+  function calculateAge(birthDate) {
+    if (!birthDate || isNaN(new Date(birthDate).getTime())) return 'N/A';
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  }
 
   try {
     const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', { 
@@ -1152,6 +1197,82 @@ function exportTableToCsv(appointments) {
       `"${app.services?.name || 'N/A'}"`,
       new Date(app.appointment_date).toISOString().split('T')[0],
       app.status?.capitalize() || 'Unknown'
+    ].join(',');
+    csvRows.push(row);
+  });
+
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `appointments_table_${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  Swal.fire({
+    icon: 'success',
+    title: 'Export Successful',
+    text: `Table data exported as appointments_table_${new Date().toISOString().split('T')[0]}.csv`,
+    confirmButtonColor: '#4154f1',
+    timer: 1500
+  });
+}
+
+// Added: Enhanced export functions to include gender and age
+function exportGraphToCsvWithGenderAndAge(appointments, year) {
+  const filteredAppointments = appointments.filter(app => new Date(app.appointment_date).getFullYear() === year);
+  const csvRows = [
+    ['ID', 'Patient', 'Service', 'Date', 'Status', 'Gender', 'Age'].join(',')
+  ];
+
+  filteredAppointments.forEach(app => {
+    const patientName = getPatientName(app.patients);
+    const age = calculateAge(app.patients?.birth_date);
+    const row = [
+      app.id || '',
+      `"${patientName}"`,
+      `"${app.services?.name || 'N/A'}"`,
+      new Date(app.appointment_date).toISOString().split('T')[0],
+      app.status?.capitalize() || 'Unknown',
+      app.patients?.gender?.capitalize() || 'Unknown',
+      age
+    ].join(',');
+    csvRows.push(row);
+  });
+
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `appointments_graph_${year}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  Swal.fire({
+    icon: 'success',
+    title: 'Export Successful',
+    text: `Graph data exported as appointments_graph_${year}.csv`,
+    confirmButtonColor: '#4154f1',
+    timer: 1500
+  });
+}
+
+function exportTableToCsvWithGenderAndAge(appointments) {
+  const csvRows = [
+    ['ID', 'Patient', 'Service', 'Date', 'Status', 'Gender', 'Age'].join(',')
+  ];
+
+  appointments.forEach(app => {
+    const patientName = getPatientName(app.patients);
+    const age = calculateAge(app.patients?.birth_date);
+    const row = [
+      app.id || '',
+      `"${patientName}"`,
+      `"${app.services?.name || 'N/A'}"`,
+      new Date(app.appointment_date).toISOString().split('T')[0],
+      app.status?.capitalize() || 'Unknown',
+      app.patients?.gender?.capitalize() || 'Unknown',
+      age
     ].join(',');
     csvRows.push(row);
   });
