@@ -184,8 +184,10 @@ app.use(
         ],
         fontSrc: [
           "'self'",
-          'https://fonts.gstatic.com'
+          'https://fonts.gstatic.com',
+          'data:'
         ],
+        
         imgSrc: ["'self'", 'data:'],
         formAction: ["'self'", 'https://formsubmit.co'],
         frameSrc: ["'self'", 'https://www.google.com'],
