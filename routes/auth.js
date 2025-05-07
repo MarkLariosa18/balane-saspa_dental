@@ -743,10 +743,6 @@ router.post('/reset-password', async (req, res) => {
   const { identifier, otp, newPassword } = req.body;
 
   try {
-    if (!identifier || !otp || !newPassword) {
-      logger.warn('Password reset attempt with missing fields');
-      return res.status(400).json({ error: 'bad_request', message: 'Identifier, OTP, and new password are required' });
-    }
     if (!/^\d{6}$/.test(otp)) {
       logger.warn('Invalid OTP format');
       return res.status(400).json({ error: 'bad_request', message: 'Invalid OTP format' });
