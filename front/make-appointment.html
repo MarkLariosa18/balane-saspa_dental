@@ -564,6 +564,7 @@
   };
 
   let flatpickrInstance = null;
+  let timeUpdateInterval = null;
 
   const initializeDatePicker = (bookedAppointments) => {
     console.log('Initializing date picker with booked appointments:', bookedAppointments);
@@ -667,7 +668,7 @@
             console.log(`Disabling slot: ${timeStr} (Booked)`);
             slot.classList.add('disabled');
           } else if (isPast) {
-            console.log(`Disabling slot: ${timeStr} (Past time)`);
+            console.log(`Disabling slot: ${timeStr} (Current or past hour)`);
             slot.classList.add('disabled');
           } else {
             console.log(`Enabling slot: ${timeStr} (Available)`);
@@ -686,6 +687,26 @@
         } else if (!firstAvailable) {
           instance.clear();
           showAlert('No Availability', 'No available times for this date.', 'warning');
+        }
+
+        // Clear previous interval if it exists
+        if (timeUpdateInterval) {
+          clearInterval(timeUpdateInterval);
+        }
+
+        // Set up interval to update time slots every minute if today is selected
+        if (isToday) {
+          timeUpdateInterval = setInterval(() => {
+            console.log('Checking time slot updates for today');
+            instance.changeMonth(0); // Trigger onChange to re-evaluate slots
+          }, 60000); // Every 60 seconds
+        }
+      },
+      onClose: () => {
+        // Clear the interval when the date picker is closed
+        if (timeUpdateInterval) {
+          clearInterval(timeUpdateInterval);
+          timeUpdateInterval = null;
         }
       }
     });
