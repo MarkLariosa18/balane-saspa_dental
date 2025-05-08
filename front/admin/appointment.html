@@ -1,20 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-
   <title>Admin - Appointment Graph</title>
   <meta content="Visualize appointment trends by month and service" name="description">
   <meta content="appointments, graph, admin, dashboard" name="keywords">
-
   <link href="assets/img/icon.png" rel="icon">
   <link href="assets/img/icon.png" rel="apple-touch-icon">
-
-  <link href="https://fonts.gstatic.com" rel="preconnect">
   <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
-
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
   <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
@@ -24,10 +18,7 @@
   <link href="assets/vendor/simple-datatables/style.css" rel="stylesheet">
   <link href="assets/css/style.css" rel="stylesheet">
   <link href="assets/css/calendar.css" rel="stylesheet">
-
-  <!-- SweetAlert2 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-
   <style>
     .graph-container {
       margin: 20px 0;
@@ -196,7 +187,7 @@
       width: 100%;
       min-height: 300px;
     }
-    #appointmentsChart, #statusChart, #serviceChart {
+    #appointmentsChart {
       width: 100% !important;
       height: 300px !important;
     }
@@ -216,6 +207,20 @@
     @keyframes spin {
       0% { transform: translate(-50%, -50%) rotate(0deg); }
       100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    .visualizations-btn {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border-radius: 8px;
+      background-color: #4A90E2;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .visualizations-btn:hover {
+      background-color: #357ABD;
+      transform: translateY(-2px);
     }
     @media (max-width: 768px) {
       .filter-container, .recent-appointments-filter {
@@ -249,14 +254,14 @@
         font-size: 0.8rem;
         padding: 8px;
       }
-      .load-more-btn, .load-less-btn {
+      .load-more-btn, .load-less-btn, .visualizations-btn {
         font-size: 0.9rem;
         padding: 8px 20px;
       }
       .canvas-container {
         min-height: 200px;
       }
-      #appointmentsChart, #statusChart, #serviceChart {
+      #appointmentsChart {
         height: 200px !important;
       }
     }
@@ -276,18 +281,12 @@
       }
     }
   </style>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <!-- Fallback for Chart.js -->
-  <script>window.Chart || document.write('<script src="assets/vendor/chart.js/chart.min.js"><\/script>');</script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-
 <body>
   <div id="head_content"></div>
-
   <main id="main" class="main">
     <div class="pagetitle">
       <nav>
@@ -298,7 +297,6 @@
       </nav>
       <h2 id="pageTitle">Monthly Appointments Overview</h2>
     </div>
-
     <section class="section">
       <div class="row">
         <div class="col-lg-12">
@@ -316,38 +314,13 @@
               <label for="dateEnd">To:</label>
               <input type="date" id="dateEnd" aria-label="End date for filtering">
               <button id="exportCsvBtn" aria-label="Export graph data as CSV">Export Graph Data as CSV</button>
+              <a href="visualizations.html" class="visualizations-btn" aria-label="View additional visualizations">View More Visualizations</a>
             </div>
             <div id="chartLegend" class="chart-legend"></div>
             <div class="canvas-container">
               <canvas id="appointmentsChart" aria-label="Line chart showing appointments by month and service"></canvas>
             </div>
             <div class="highlight-text" id="highestMonthText"></div>
-          </div>
-          <div class="graph-container">
-            <div class="loading-spinner" id="pieChartSpinner"></div>
-            <div class="filter-container">
-              <label for="statusYearFilter">Year:</label>
-              <select id="statusYearFilter" aria-label="Select year for status chart"></select>
-              <button id="exportStatusCsvBtn" aria-label="Export status chart data as CSV">Export Status Data as CSV</button>
-            </div>
-            <div id="statusChartLegend" class="chart-legend"></div>
-            <div class="canvas-container">
-              <canvas id="statusChart" aria-label="Pie chart showing appointment status distribution"></canvas>
-            </div>
-            <div class="highlight-text" id="statusHighlightText"></div>
-          </div>
-          <div class="graph-container">
-            <div class="loading-spinner" id="barChartSpinner"></div>
-            <div class="filter-container">
-              <label for="serviceYearFilter">Year:</label>
-              <select id="serviceYearFilter" aria-label="Select year for service chart"></select>
-              <button id="exportServiceCsvBtn" aria-label="Export service chart data as CSV">Export Service Data as CSV</button>
-            </div>
-            <div id="serviceChartLegend" class="chart-legend"></div>
-            <div class="canvas-container">
-              <canvas id="serviceChart" aria-label="Bar chart showing service popularity"></canvas>
-            </div>
-            <div class="highlight-text" id="serviceHighlightText"></div>
           </div>
           <div class="card recent-sales overflow-auto">
             <div class="card-body">
@@ -392,11 +365,8 @@
       </div>
     </section>
   </main>
-
   <div id="foot_content"></div>
-
   <a href="#" class="back-to-top d-flex align-items-center justify-content-center"><i class="bi bi-arrow-up-short"></i></a>
-
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script src="assets/vendor/quill/quill.js"></script>
   <script src="assets/vendor/simple-datatables/simple-datatables.js"></script>
@@ -404,11 +374,7 @@
   <script src="assets/vendor/php-email-form/validate.js"></script>
   <script src="assets/js/main.js"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <script type="text/javascript">
+  <script>
 $(document).ready(() => {
   $('#head_content').load('header.html', (response, status, xhr) => {
     if (status === 'success') {
@@ -426,7 +392,6 @@ $(document).ready(() => {
       $('#head_content').html('<p>Error loading header. Please try again later.</p>');
     }
   });
-
   $('#foot_content').load('footer.html', (response, status, xhr) => {
     if (status === 'success') {
       console.log('Footer loaded successfully');
@@ -435,19 +400,16 @@ $(document).ready(() => {
     }
   });
 });
-
 function initSidebarToggle() {
   const toggleSidebarBtn = document.querySelector('.toggle-sidebar-btn');
   const sidebar = document.querySelector('.sidebar');
   const overlay = document.getElementById('sidebarOverlay');
-
   if (toggleSidebarBtn && sidebar && overlay) {
     toggleSidebarBtn.addEventListener('click', () => {
       sidebar.classList.toggle('active');
       overlay.classList.toggle('active');
       overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
     });
-
     overlay.addEventListener('click', () => {
       sidebar.classList.remove('active');
       overlay.classList.remove('active');
@@ -461,13 +423,11 @@ function initSidebarToggle() {
     });
   }
 }
-
 function initDropdowns() {
   const notificationDropdown = document.getElementById('notificationDropdown');
   const notificationsList = document.getElementById('notificationsList');
   const profileDropdown = document.querySelector('.nav-link.nav-profile');
   const profileDropdownMenu = document.querySelector('.dropdown-menu.profile');
-
   if (notificationDropdown && notificationsList) {
     if (typeof bootstrap !== 'undefined') {
       const dropdown = new bootstrap.Dropdown(notificationDropdown);
@@ -485,7 +445,6 @@ function initDropdowns() {
       });
     }
   }
-
   if (profileDropdown && profileDropdownMenu) {
     if (typeof bootstrap !== 'undefined') {
       const dropdown = new bootstrap.Dropdown(profileDropdown);
@@ -504,27 +463,16 @@ function initDropdowns() {
     }
   }
 }
-
-console.log('Chart.js loaded:', typeof Chart !== 'undefined');
-
 let chartInstance = null;
-let statusChartInstance = null;
-let serviceChartInstance = null;
 let allAppointments = [];
 let allServices = [];
 let filteredAppointments = [];
 let displayedAppointments = [];
 const ITEMS_PER_PAGE = 10;
 let currentPage = 1;
-
 document.addEventListener('DOMContentLoaded', async () => {
-  const spinners = [
-    document.getElementById('lineChartSpinner'),
-    document.getElementById('pieChartSpinner'),
-    document.getElementById('barChartSpinner')
-  ];
-  spinners.forEach(spinner => spinner && (spinner.style.display = 'block'));
-
+  const spinner = document.getElementById('lineChartSpinner');
+  spinner.style.display = 'block';
   function testChart() {
     const testCanvas = document.createElement('canvas');
     testCanvas.id = 'testChart';
@@ -551,7 +499,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
   testChart();
-
   let socket;
   function initSocketIO() {
     socket = io('https://balane-saspa-dental-1.onrender.com', {
@@ -563,65 +510,53 @@ document.addEventListener('DOMContentLoaded', async () => {
       reconnectionDelayMax: 10000,
       randomizationFactor: 0.5
     });
-
     socket.on('connect', () => {
       console.log('Socket.IO connected');
       socket.emit('join', { userId: socket.userId });
     });
-
     socket.on('welcome', (data) => {
       console.log('Socket.IO welcome message:', data);
     });
-
     socket.on('reschedule_request', (message) => {
       console.log('Received Socket.IO reschedule_request:', message);
       handleSocketIOMessage(message);
     });
-
     socket.on('cancel_request', (message) => {
       console.log('Received Socket.IO cancel_request:', message);
       handleSocketIOMessage(message);
     });
-
     socket.on('confirm_response', (message) => {
       console.log('Received Socket.IO confirm_response:', message);
       handleSocketIOMessage(message);
     });
-
     socket.on('reschedule_response', (message) => {
       console.log('Received Socket.IO reschedule_response:', message);
       handleSocketIOMessage(message);
     });
-
     socket.on('reject_response', (message) => {
       console.log('Received Socket.IO reject_response:', message);
       handleSocketIOMessage(message);
     });
-
     socket.on('service_added', (message) => {
       console.log('Received Socket.IO service_added:', message);
       handleSocketIOMessage(message);
     });
-
     socket.on('connect_error', (error) => {
       console.error('Socket.IO error:', error);
       setTimeout(initSocketIO, 5000);
     });
-
     socket.on('disconnect', () => {
       console.log('Socket.IO disconnected. Reconnecting in 5s...');
       setTimeout(initSocketIO, 5000);
     });
   }
   initSocketIO();
-
   async function handleSocketIOMessage(message) {
     console.log('Processing Socket.IO message:', message);
     const yearFilter = document.getElementById('yearFilter');
     const serviceFilter = document.getElementById('serviceFilter');
     const currentYear = parseInt(yearFilter.value);
     const currentService = Array.from(serviceFilter.selectedOptions).map(opt => opt.value);
-
     switch (message.type) {
       case 'reschedule_request':
       case 'cancel_request':
@@ -659,8 +594,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           allAppointments[appointmentIndex] = appointment;
           filterAppointments();
           renderAppointmentsGraph(allAppointments, allServices, currentYear, currentService);
-          renderStatusChart(allAppointments, parseInt(document.getElementById('statusYearFilter').value));
-          renderServiceChart(allAppointments, allServices, parseInt(document.getElementById('serviceYearFilter').value));
           Swal.fire({
             icon: message.status === 'approved' ? 'success' : 'error',
             title: `${message.type.replace('_response', '').capitalize()} ${message.status.capitalize()}`,
@@ -677,7 +610,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           populateServiceFilter(allServices);
           populateServiceTableFilter(allServices);
           renderAppointmentsGraph(allAppointments, allServices, currentYear, currentService);
-          renderServiceChart(allAppointments, allServices, parseInt(document.getElementById('serviceYearFilter').value));
           Swal.fire({
             icon: 'info',
             title: 'New Service',
@@ -689,15 +621,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         break;
     }
   }
-
   String.prototype.capitalize = function() {
     return this.length > 0 ? this.charAt(0).toUpperCase() + this.slice(1) : this;
   };
-
   try {
-    const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', { 
+    const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', {
       credentials: 'include',
-      headers: { 
+      headers: {
         'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
         'CSRF-Token': await getCsrfToken()
       }
@@ -707,7 +637,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       throw new Error(errorData.message || 'Authentication check failed');
     }
     const authData = await authResponse.json();
-
     if (!authData.isLoggedIn || authData.role !== 'admin') {
       Swal.fire({
         icon: 'error',
@@ -720,10 +649,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       return;
     }
-
-    const appointmentsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', { 
+    const appointmentsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', {
       credentials: 'include',
-      headers: { 
+      headers: {
         'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
         'CSRF-Token': await getCsrfToken()
       }
@@ -733,11 +661,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!appointmentsData.success) throw new Error(appointmentsData.message);
     allAppointments = appointmentsData.appointments;
     console.log('Appointments loaded:', allAppointments);
-
     try {
-      const servicesResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/services/all', { 
+      const servicesResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/services/all', {
         credentials: 'include',
-        headers: { 
+        headers: {
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
           'CSRF-Token': await getCsrfToken()
         }
@@ -758,7 +685,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       allServices = uniqueServices.map(name => ({ name }));
     }
     console.log('Services loaded:', allServices);
-
     const invalidAppointments = allAppointments.filter(app => isNaN(new Date(app.appointment_date).getTime()));
     if (invalidAppointments.length > 0) {
       console.warn('Invalid appointment dates:', invalidAppointments);
@@ -770,7 +696,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       allAppointments = allAppointments.filter(app => !isNaN(new Date(app.appointment_date).getTime()));
     }
-
     if (allAppointments.length === 0) {
       Swal.fire({
         icon: 'info',
@@ -779,10 +704,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         confirmButtonColor: '#4154f1'
       });
       document.getElementById('highestMonthText').textContent = 'No appointment data available.';
-      spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
+      spinner.style.display = 'none';
       return;
     }
-
     const currentYear = new Date().getFullYear();
     populateYearFilter(allAppointments, currentYear);
     populateServiceFilter(allServices);
@@ -801,11 +725,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
       }
       renderAppointmentsGraph(allAppointments, allServices, currentYear, ['all']);
-      renderStatusChart(allAppointments, currentYear);
-      renderServiceChart(allAppointments, allServices, currentYear);
     });
     updateRecentAppointments();
-
     document.getElementById('yearFilter').addEventListener('change', (e) => {
       renderAppointmentsGraph(allAppointments, allServices, parseInt(e.target.value), Array.from(document.getElementById('serviceFilter').selectedOptions).map(opt => opt.value));
     });
@@ -817,18 +738,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('exportCsvBtn').addEventListener('click', () => {
       exportGraphToCsv(allAppointments, parseInt(document.getElementById('yearFilter').value));
     });
-    document.getElementById('statusYearFilter').addEventListener('change', (e) => {
-      renderStatusChart(allAppointments, parseInt(e.target.value));
-    });
-    document.getElementById('exportStatusCsvBtn').addEventListener('click', () => {
-      exportStatusToCsv(allAppointments, parseInt(document.getElementById('statusYearFilter').value));
-    });
-    document.getElementById('serviceYearFilter').addEventListener('change', (e) => {
-      renderServiceChart(allAppointments, allServices, parseInt(e.target.value));
-    });
-    document.getElementById('exportServiceCsvBtn').addEventListener('click', () => {
-      exportServiceToCsv(allAppointments, parseInt(document.getElementById('serviceYearFilter').value));
-    });
     document.getElementById('statusFilter').addEventListener('change', filterAppointments);
     document.getElementById('serviceTableFilter').addEventListener('change', filterAppointments);
     document.getElementById('searchInput').addEventListener('input', filterAppointments);
@@ -837,8 +746,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     document.getElementById('loadMoreBtn').addEventListener('click', loadMoreAppointments);
     document.getElementById('loadLessBtn').addEventListener('click', loadLessAppointments);
-
-    spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
+    spinner.style.display = 'none';
   } catch (error) {
     console.error('Error loading data:', error);
     Swal.fire({
@@ -848,10 +756,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       confirmButtonColor: '#4154f1'
     });
     document.getElementById('highestMonthText').textContent = 'Failed to load appointment data.';
-    spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
+    spinner.style.display = 'none';
   }
 });
-
 async function getCsrfToken() {
   try {
     const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
@@ -864,34 +771,23 @@ async function getCsrfToken() {
     throw new Error('Failed to fetch CSRF token');
   }
 }
-
 function getPatientName(patientData) {
   if (!patientData) return 'Unknown';
   const { first_name, middle_name, last_name } = patientData;
   return [first_name, middle_name, last_name].filter(Boolean).join(' ').trim() || 'Unknown';
 }
-
 function populateYearFilter(appointments, currentYear) {
-  const yearFilters = [
-    document.getElementById('yearFilter'),
-    document.getElementById('statusYearFilter'),
-    document.getElementById('serviceYearFilter')
-  ];
+  const yearFilter = document.getElementById('yearFilter');
   const years = [...new Set(appointments.map(app => new Date(app.appointment_date).getFullYear()))].sort((a, b) => b - a);
-  yearFilters.forEach(filter => {
-    if (filter) {
-      filter.innerHTML = '';
-      years.forEach(year => {
-        const option = document.createElement('option');
-        option.value = year;
-        option.textContent = year;
-        filter.appendChild(option);
-      });
-      filter.value = currentYear;
-    }
+  yearFilter.innerHTML = '';
+  years.forEach(year => {
+    const option = document.createElement('option');
+    option.value = year;
+    option.textContent = year;
+    yearFilter.appendChild(option);
   });
+  yearFilter.value = currentYear;
 }
-
 function populateServiceFilter(services) {
   const serviceFilter = document.getElementById('serviceFilter');
   serviceFilter.innerHTML = '';
@@ -902,7 +798,6 @@ function populateServiceFilter(services) {
     serviceFilter.appendChild(option);
   });
 }
-
 function populateServiceTableFilter(services) {
   const serviceTableFilter = document.getElementById('serviceTableFilter');
   serviceTableFilter.innerHTML = '<option value="all">All Services</option>';
@@ -913,7 +808,6 @@ function populateServiceTableFilter(services) {
     serviceTableFilter.appendChild(option);
   });
 }
-
 function generateColor(index) {
   const colors = [
     '#2563eb', '#f97316', '#dc2626', '#14b8a6', '#9333ea', '#f59e0b', '#16a34a',
@@ -922,7 +816,6 @@ function generateColor(index) {
   ];
   return colors[index % colors.length];
 }
-
 function renderAppointmentsGraph(appointments, services, year, selectedServices) {
   const spinner = document.getElementById('lineChartSpinner');
   spinner.style.display = 'block';
@@ -937,7 +830,6 @@ function renderAppointmentsGraph(appointments, services, year, selectedServices)
         color: generateColor(index)
       };
     });
-
     appointments.forEach(app => {
       const date = new Date(app.appointment_date);
       if (isNaN(date.getTime()) || date.getFullYear() !== year) return;
@@ -945,7 +837,6 @@ function renderAppointmentsGraph(appointments, services, year, selectedServices)
       const serviceName = app.services?.name || 'Unknown';
       if (serviceData[serviceName]) serviceData[serviceName].counts[monthIndex]++;
     });
-
     const datasets = Object.keys(serviceData).map(service => {
       const data = serviceData[service].counts;
       const hasAppointments = data.reduce((sum, value) => sum + value, 0) > 0;
@@ -963,7 +854,6 @@ function renderAppointmentsGraph(appointments, services, year, selectedServices)
         hidden: !selectedServices.includes('all') && !selectedServices.includes(service)
       };
     });
-
     const monthlyTotals = Array(12).fill(0);
     datasets.forEach(dataset => {
       if (!dataset.hidden) {
@@ -972,10 +862,8 @@ function renderAppointmentsGraph(appointments, services, year, selectedServices)
         });
       }
     });
-
     const maxCount = Math.max(...monthlyTotals);
     const highestMonthIndex = monthlyTotals.indexOf(maxCount);
-
     if (chartInstance) chartInstance.destroy();
     chartInstance = new Chart(canvas.getContext('2d'), {
       type: 'line',
@@ -1021,7 +909,6 @@ function renderAppointmentsGraph(appointments, services, year, selectedServices)
         }
       }
     });
-
     const legendContainer = document.getElementById('chartLegend');
     legendContainer.innerHTML = '';
     datasets.forEach((dataset, index) => {
@@ -1047,7 +934,6 @@ function renderAppointmentsGraph(appointments, services, year, selectedServices)
       });
       legendContainer.appendChild(legendItem);
     });
-
     document.getElementById('pageTitle').textContent = `Monthly Appointments Overview (${year})`;
     document.getElementById('highestMonthText').textContent = 
       selectedServices.includes('all') 
@@ -1064,181 +950,12 @@ function renderAppointmentsGraph(appointments, services, year, selectedServices)
   }
   spinner.style.display = 'none';
 }
-
-function renderStatusChart(appointments, year) {
-  const spinner = document.getElementById('pieChartSpinner');
-  spinner.style.display = 'block';
-  try {
-    const canvas = document.getElementById('statusChart');
-    if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
-    const statuses = ['confirmed', 'pending', 'cancelled', 'rejected'];
-    const statusCounts = statuses.map(status => 
-      appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.status?.toLowerCase() === status).length
-    );
-    const total = statusCounts.reduce((sum, count) => sum + count, 0);
-    const datasets = [{
-      data: statusCounts,
-      backgroundColor: ['#16a34a', '#f59e0b', '#ef4444', '#dc2626'],
-      borderColor: '#fff',
-      borderWidth: 2
-    }];
-
-    const maxCount = Math.max(...statusCounts);
-    const dominantStatus = statuses[statusCounts.indexOf(maxCount)];
-
-    if (statusChartInstance) statusChartInstance.destroy();
-    statusChartInstance = new Chart(canvas.getContext('2d'), {
-      type: 'pie',
-      data: { labels: statuses.map(s => s.capitalize()), datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          title: { display: true, text: `Appointment Status Distribution (${year})`, font: { size: 18, weight: '600', family: 'Nunito' }, color: '#333', padding: { top: 10, bottom: 20 } },
-          tooltip: { backgroundColor: '#fff', titleColor: '#333', bodyColor: '#666', borderColor: '#e0e0e0', borderWidth: 1, cornerRadius: 8, padding: 12 }
-        }
-      }
-    });
-
-    const legendContainer = document.getElementById('statusChartLegend');
-    legendContainer.innerHTML = '';
-    datasets[0].data.forEach((count, index) => {
-      const legendItem = document.createElement('div');
-      legendItem.className = `legend-item`;
-      legendItem.setAttribute('role', 'button');
-      legendItem.setAttribute('tabindex', '0');
-      legendItem.innerHTML = `
-        <span class="legend-color" style="background-color: ${datasets[0].backgroundColor[index]};"></span>
-        <span>${statuses[index].capitalize()}</span>
-      `;
-      legendItem.addEventListener('click', () => {
-        datasets[0].hidden = datasets[0].hidden ? false : true;
-        legendItem.classList.toggle('hidden');
-        statusChartInstance.update();
-      });
-      legendItem.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          datasets[0].hidden = datasets[0].hidden ? false : true;
-          legendItem.classList.toggle('hidden');
-          statusChartInstance.update();
-        }
-      });
-      legendContainer.appendChild(legendItem);
-    });
-
-    document.getElementById('statusHighlightText').textContent = total > 0 
-      ? `Dominant Status: ${dominantStatus.capitalize()} (${maxCount} appointments)`
-      : 'No appointment data available.';
-  } catch (error) {
-    console.error('Error rendering pie chart:', error);
-    Swal.fire({
-      icon: 'error',
-      title: 'Graph Error',
-      text: `Failed to render status chart: ${error.message}`,
-      confirmButtonColor: '#4154f1'
-    });
-  }
-  spinner.style.display = 'none';
-}
-
-function renderServiceChart(appointments, services, year) {
-  const spinner = document.getElementById('barChartSpinner');
-  spinner.style.display = 'block';
-  try {
-    const canvas = document.getElementById('serviceChart');
-    if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
-    const serviceCounts = services.map((service, index) => ({
-      name: service.name,
-      count: appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.services?.name === service.name).length,
-      color: generateColor(index)
-    }));
-
-    const datasets = [{
-      label: 'Appointments',
-      data: serviceCounts.map(s => s.count),
-      backgroundColor: serviceCounts.map(s => s.color),
-      borderColor: serviceCounts.map(s => s.color),
-      borderWidth: 1
-    }];
-
-    const maxCount = Math.max(...serviceCounts.map(s => s.count));
-    const topService = serviceCounts.find(s => s.count === maxCount)?.name || 'N/A';
-
-    if (serviceChartInstance) serviceChartInstance.destroy();
-    serviceChartInstance = new Chart(canvas.getContext('2d'), {
-      type: 'bar',
-      data: { labels: services.map(s => s.name), datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: { display: true, text: 'Number of Appointments', font: { size: 14, weight: '600', family: 'Nunito' }, color: '#333' },
-            ticks: { stepSize: 1, font: { size: 12, family: 'Nunito' }, color: '#666' }
-          },
-          x: {
-            title: { display: true, text: 'Service', font: { size: 14, weight: '600', family: 'Nunito' }, color: '#333' },
-            ticks: { font: { size: 12, family: 'Nunito' }, color: '#666' }
-          }
-        },
-        plugins: {
-          legend: { display: false },
-          title: { display: true, text: `Service Popularity (${year})`, font: { size: 18, weight: '600', family: 'Nunito' }, color: '#333', padding: { top: 10, bottom: 20 } },
-          tooltip: { backgroundColor: '#fff', titleColor: '#333', bodyColor: '#666', borderColor: '#e0e0e0', borderWidth: 1, cornerRadius: 8, padding: 12 }
-        }
-      }
-    });
-
-    const legendContainer = document.getElementById('serviceChartLegend');
-    legendContainer.innerHTML = '';
-    datasets[0].data.forEach((count, index) => {
-      const legendItem = document.createElement('div');
-      legendItem.className = `legend-item`;
-      legendItem.setAttribute('role', 'button');
-      legendItem.setAttribute('tabindex', '0');
-      legendItem.innerHTML = `
-        <span class="legend-color" style="background-color: ${datasets[0].backgroundColor[index]};"></span>
-        <span>${services[index].name}</span>
-      `;
-      legendItem.addEventListener('click', () => {
-        datasets[0].hidden = datasets[0].hidden ? false : true;
-        legendItem.classList.toggle('hidden');
-        serviceChartInstance.update();
-      });
-      legendItem.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          datasets[0].hidden = datasets[0].hidden ? false : true;
-          legendItem.classList.toggle('hidden');
-          serviceChartInstance.update();
-        }
-      });
-      legendContainer.appendChild(legendItem);
-    });
-
-    document.getElementById('serviceHighlightText').textContent = maxCount > 0 
-      ? `Most Popular Service: ${topService} (${maxCount} appointments)`
-      : 'No appointment data available.';
-  } catch (error) {
-    console.error('Error rendering bar chart:', error);
-    Swal.fire({
-      icon: 'error',
-      title: 'Graph Error',
-      text: `Failed to render service chart: ${error.message}`,
-      confirmButtonColor: '#4154f1'
-    });
-  }
-  spinner.style.display = 'none';
-}
-
 function filterAppointments() {
   const statusFilter = document.getElementById('statusFilter').value;
   const serviceFilter = document.getElementById('serviceTableFilter').value;
   const searchQuery = document.getElementById('searchInput').value.toLowerCase();
   const dateStart = document.getElementById('dateStart').value;
   const dateEnd = document.getElementById('dateEnd').value;
-
   filteredAppointments = allAppointments.filter(app => {
     const matchesStatus = statusFilter === 'all' || app.status?.toLowerCase() === statusFilter;
     const matchesService = serviceFilter === 'all' || app.services?.name === serviceFilter;
@@ -1255,29 +972,23 @@ function filterAppointments() {
       (!dateEnd || appDate <= new Date(dateEnd));
     return matchesStatus && matchesService && matchesSearch && matchesDate;
   });
-
   currentPage = 1;
   displayedAppointments = [];
   updateRecentAppointments();
 }
-
 function updateRecentAppointments() {
   const tbody = document.getElementById('recentAppointmentsBody');
   if (!tbody) {
     console.error('Recent appointments table body not found.');
     return;
   }
-
   const sortedAppointments = [...filteredAppointments].sort((a, b) => 
     new Date(b.appointment_date) - new Date(a.appointment_date)
   );
-
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const appointmentsToAdd = sortedAppointments.slice(startIndex, endIndex);
-
   displayedAppointments = [...displayedAppointments, ...appointmentsToAdd];
-
   tbody.innerHTML = '';
   if (displayedAppointments.length === 0) {
     const row = document.createElement('tr');
@@ -1295,7 +1006,6 @@ function updateRecentAppointments() {
       }[app.status?.toLowerCase()] || 'bg-secondary';
       const idString = String(app.id || app._id || index + 1);
       const shortId = idString.length > 4 ? idString.slice(0, 4) : idString.padEnd(4, '0');
-
       const row = document.createElement('tr');
       row.innerHTML = `
         <th scope="row"><a href="#">#${shortId}</a></th>
@@ -1307,31 +1017,26 @@ function updateRecentAppointments() {
       tbody.appendChild(row);
     });
   }
-
   const loadMoreBtn = document.getElementById('loadMoreBtn');
   const loadLessBtn = document.getElementById('loadLessBtn');
   const allLoaded = displayedAppointments.length >= sortedAppointments.length;
   loadMoreBtn.style.display = allLoaded ? 'none' : 'inline-block';
   loadLessBtn.style.display = allLoaded && sortedAppointments.length > ITEMS_PER_PAGE ? 'inline-block' : 'none';
 }
-
 function loadMoreAppointments() {
   currentPage++;
   updateRecentAppointments();
 }
-
 function loadLessAppointments() {
   currentPage = 1;
   displayedAppointments = [];
   updateRecentAppointments();
 }
-
 function exportGraphToCsv(appointments, year) {
   const filteredAppointments = appointments.filter(app => new Date(app.appointment_date).getFullYear() === year);
   const csvRows = [
     ['ID', 'Patient', 'Service', 'Date', 'Status'].join(',')
   ];
-
   filteredAppointments.forEach(app => {
     const patientName = getPatientName(app.patients);
     const row = [
@@ -1343,7 +1048,6 @@ function exportGraphToCsv(appointments, year) {
     ].join(',');
     csvRows.push(row);
   });
-
   const csvContent = csvRows.join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
@@ -1360,65 +1064,10 @@ function exportGraphToCsv(appointments, year) {
     timer: 1500
   });
 }
-
-function exportStatusToCsv(appointments, year) {
-  const statuses = ['confirmed', 'pending', 'cancelled', 'rejected'];
-  const statusCounts = statuses.map(status => ({
-    status,
-    count: appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.status?.toLowerCase() === status).length
-  }));
-  const csvRows = [['Status', 'Count'].join(',')];
-  statusCounts.forEach(s => {
-    csvRows.push([s.status.capitalize(), s.count].join(','));
-  });
-  const csvContent = csvRows.join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `appointment_status_${year}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  Swal.fire({
-    icon: 'success',
-    title: 'Export Successful',
-    text: `Status data exported as appointment_status_${year}.csv`,
-    confirmButtonColor: '#4154f1',
-    timer: 1500
-  });
-}
-
-function exportServiceToCsv(appointments, year) {
-  const serviceCounts = allServices.map(service => ({
-    name: service.name,
-    count: appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.services?.name === service.name).length
-  }));
-  const csvRows = [['Service', 'Count'].join(',')];
-  serviceCounts.forEach(s => {
-    csvRows.push([`"${s.name}"`, s.count].join(','));
-  });
-  const csvContent = csvRows.join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `service_popularity_${year}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  Swal.fire({
-    icon: 'success',
-    title: 'Export Successful',
-    text: `Service data exported as service_popularity_${year}.csv`,
-    confirmButtonColor: '#4154f1',
-    timer: 1500
-  });
-}
-
 function exportTableToCsv(appointments) {
   const csvRows = [
     ['ID', 'Patient', 'Service', 'Date', 'Status'].join(',')
   ];
-
   appointments.forEach(app => {
     const patientName = getPatientName(app.patients);
     const row = [
@@ -1430,7 +1079,6 @@ function exportTableToCsv(appointments) {
     ].join(',');
     csvRows.push(row);
   });
-
   const csvContent = csvRows.join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
