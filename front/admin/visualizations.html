@@ -88,19 +88,10 @@
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body class="bg-gray-100 font-nunito">
-  <div id="head_content"></div>
   <main class="container mx-auto px-4 py-8">
     <div class="mb-6">
-      <nav class="text-gray-600">
-        <ol class="list-reset flex">
-          <li><a href="index.html" class="text-blue-500 hover:underline">Dashboard</a></li>
-          <li><span class="mx-2">/</span></li>
-          <li><a href="appointments.html" class="text-blue-500 hover:underline">Appointments Graph</a></li>
-          <li><span class="mx-2">/</span></li>
-          <li class="text-gray-500">Visualizations</li>
-        </ol>
-      </nav>
-      <h2 class="text-2xl font-bold text-gray-800">Appointment Visualizations</h2>
+      <a href="index.html" class="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 focus:outline-none" aria-label="Back to Admin Dashboard">Back to Admin</a>
+      <h2 class="text-2xl font-bold text-gray-800 mt-4">Appointment Visualizations</h2>
     </div>
     <section class="space-y-8">
       <div class="bg-white p-6 rounded-lg shadow-lg">
@@ -120,7 +111,7 @@
         <div class="loading-spinner" id="barChartSpinner"></div>
         <div class="flex flex-wrap items-center gap-4 mb-4">
           <label for="serviceYearFilter" class="font-medium text-gray-700">Year:</label>
-          <select id="serviceYearFilter" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-300 focus:outline-none" aria-label="Select year for service chart"></select>
+          <select id="serviceYearFilter" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-300 focus:outline-none" aria-label="Select year for service chart"></select dispersive
           <button id="exportServiceCsvBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 focus:outline-none" aria-label="Export service chart data as CSV">Export Service Data as CSV</button>
         </div>
         <div id="serviceChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
@@ -131,82 +122,9 @@
       </div>
     </section>
   </main>
-  <div id="foot_content"></div>
-  <a href="#" class="fixed bottom-4 right-4 bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 focus:outline-none" aria-label="Back to top">
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-  </a>
-  <script src="assets/js/main.js"></script>
   <script>
 $(document).ready(() => {
-  $('#head_content').load('header.html', (response, status, xhr) => {
-    if (status === 'success') {
-      console.log('Header loaded successfully in visualizations.html');
-      initSidebarToggle();
-      initDropdowns();
-    } else {
-      console.error('Failed to load header:', xhr.status, xhr.statusText);
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Failed to load header. Please try again later.',
-        confirmButtonColor: '#4A90E2'
-      });
-      $('#head_content').html('<p>Error loading header. Please try again later.</p>');
-    }
-  });
-  $('#foot_content').load('footer.html', (response, status, xhr) => {
-    if (status === 'success') {
-      console.log('Footer loaded successfully');
-    } else {
-      console.error('Failed to load footer:', xhr.status, xhr.statusText);
-    }
-  });
 });
-
-function initSidebarToggle() {
-  const toggleSidebarBtn = document.querySelector('.toggle-sidebar-btn');
-  const sidebar = document.querySelector('.sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
-  if (toggleSidebarBtn && sidebar && overlay) {
-    toggleSidebarBtn.addEventListener('click', () => {
-      sidebar.classList.toggle('active');
-      overlay.classList.toggle('active');
-      overlay.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
-    });
-    overlay.addEventListener('click', () => {
-      sidebar.classList.remove('active');
-      overlay.classList.remove('active');
-      overlay.style.display = 'none';
-    });
-  } else {
-    console.error('Sidebar toggle elements not found:', {
-      toggleSidebarBtn: !!toggleSidebarBtn,
-      sidebar: !!sidebar,
-      overlay: !!overlay
-    });
-  }
-}
-
-function initDropdowns() {
-  const notificationDropdown = document.getElementById('notificationDropdown');
-  const notificationsList = document.getElementById('notificationsList');
-  const profileDropdown = document.querySelector('.nav-link.nav-profile');
-  const profileDropdownMenu = document.querySelector('.dropdown-menu.profile');
-  if (notificationDropdown && notificationsList) {
-    notificationDropdown.addEventListener('click', (e) => {
-      e.preventDefault();
-      notificationsList.classList.toggle('show');
-      console.log('Notification dropdown toggled manually');
-    });
-  }
-  if (profileDropdown && profileDropdownMenu) {
-    profileDropdown.addEventListener('click', (e) => {
-      e.preventDefault();
-      profileDropdownMenu.classList.toggle('show');
-      console.log('Profile dropdown toggled manually');
-    });
-  }
-}
 
 let statusChartInstance = null;
 let serviceChartInstance = null;
@@ -419,6 +337,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
           'CSRF-Token': await getCsrfToken()
         }
+
       });
       if (!servicesResponse.ok) throw new Error(`Failed to fetch services: ${servicesResponse.status}`);
       const servicesData = await servicesResponse.json();
