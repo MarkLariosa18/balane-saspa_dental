@@ -36,6 +36,7 @@
       border-radius: 12px;
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
       transition: box-shadow 0.3s;
+      position: relative;
     }
     .graph-container:hover {
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
@@ -57,17 +58,20 @@
       font-weight: 500;
       color: #333;
     }
-    .filter-container select, .filter-container button {
+    .filter-container select, .filter-container button, .filter-container input[type="date"] {
       padding: 10px 15px;
       font-size: 0.95rem;
       border-radius: 8px;
       border: 1px solid #e0e0e0;
       transition: all 0.3s ease;
     }
-    .filter-container select:focus, .filter-container button:focus {
+    .filter-container select:focus, .filter-container button:focus, .filter-container input:focus {
       outline: none;
       border-color: #4154f1;
       box-shadow: 0 0 0 3px rgba(65, 84, 241, 0.1);
+    }
+    .filter-container select[multiple] {
+      height: 100px;
     }
     .filter-container button {
       background-color: #4154f1;
@@ -192,21 +196,39 @@
       width: 100%;
       min-height: 300px;
     }
-    #appointmentsChart {
+    #appointmentsChart, #statusChart, #serviceChart {
       width: 100% !important;
       height: 300px !important;
     }
-
-    /* Responsive Adjustments */
+    .loading-spinner {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #4154f1;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
     @media (max-width: 768px) {
       .filter-container, .recent-appointments-filter {
         flex-direction: column;
         align-items: flex-start;
       }
-      .filter-container select, .filter-container button, .search-container input {
+      .filter-container select, .filter-container button, .filter-container input, .search-container input {
         width: 100%;
         font-size: 0.9rem;
         padding: 8px 12px;
+      }
+      .filter-container select[multiple] {
+        height: auto;
       }
       .chart-legend {
         gap: 8px;
@@ -234,7 +256,7 @@
       .canvas-container {
         min-height: 200px;
       }
-      #appointmentsChart {
+      #appointmentsChart, #statusChart, #serviceChart {
         height: 200px !important;
       }
     }
@@ -257,6 +279,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Fallback for Chart.js -->
   <script>window.Chart || document.write('<script src="assets/vendor/chart.js/chart.min.js"><\/script>');</script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -280,22 +303,52 @@
       <div class="row">
         <div class="col-lg-12">
           <div class="graph-container">
+            <div class="loading-spinner" id="lineChartSpinner"></div>
             <div class="filter-container">
               <label for="yearFilter">Year:</label>
-              <select id="yearFilter"></select>
-              <label for="serviceFilter">Service:</label>
-              <select id="serviceFilter">
+              <select id="yearFilter" aria-label="Select year for chart"></select>
+              <label for="serviceFilter">Services:</label>
+              <select id="serviceFilter" multiple aria-label="Select services for chart">
                 <option value="all">All Services</option>
               </select>
-              <button id="exportCsvBtn">Export Graph Data as CSV</button>
+              <label for="dateStart">Date From:</label>
+              <input type="date" id="dateStart" aria-label="Start date for filtering">
+              <label for="dateEnd">To:</label>
+              <input type="date" id="dateEnd" aria-label="End date for filtering">
+              <button id="exportCsvBtn" aria-label="Export graph data as CSV">Export Graph Data as CSV</button>
             </div>
             <div id="chartLegend" class="chart-legend"></div>
             <div class="canvas-container">
-              <canvas id="appointmentsChart"></canvas>
+              <canvas id="appointmentsChart" aria-label="Line chart showing appointments by month and service"></canvas>
             </div>
             <div class="highlight-text" id="highestMonthText"></div>
           </div>
-
+          <div class="graph-container">
+            <div class="loading-spinner" id="pieChartSpinner"></div>
+            <div class="filter-container">
+              <label for="statusYearFilter">Year:</label>
+              <select id="statusYearFilter" aria-label="Select year for status chart"></select>
+              <button id="exportStatusCsvBtn" aria-label="Export status chart data as CSV">Export Status Data as CSV</button>
+            </div>
+            <div id="statusChartLegend" class="chart-legend"></div>
+            <div class="canvas-container">
+              <canvas id="statusChart" aria-label="Pie chart showing appointment status distribution"></canvas>
+            </div>
+            <div class="highlight-text" id="statusHighlightText"></div>
+          </div>
+          <div class="graph-container">
+            <div class="loading-spinner" id="barChartSpinner"></div>
+            <div class="filter-container">
+              <label for="serviceYearFilter">Year:</label>
+              <select id="serviceYearFilter" aria-label="Select year for service chart"></select>
+              <button id="exportServiceCsvBtn" aria-label="Export service chart data as CSV">Export Service Data as CSV</button>
+            </div>
+            <div id="serviceChartLegend" class="chart-legend"></div>
+            <div class="canvas-container">
+              <canvas id="serviceChart" aria-label="Bar chart showing service popularity"></canvas>
+            </div>
+            <div class="highlight-text" id="serviceHighlightText"></div>
+          </div>
           <div class="card recent-sales overflow-auto">
             <div class="card-body">
               <h5 class="card-title">All Appointments</h5>
@@ -354,10 +407,9 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
 
   <script type="text/javascript">
- $(document).ready(() => {
+$(document).ready(() => {
   $('#head_content').load('header.html', (response, status, xhr) => {
     if (status === 'success') {
       console.log('Header loaded successfully in appointment.html');
@@ -456,6 +508,8 @@ function initDropdowns() {
 console.log('Chart.js loaded:', typeof Chart !== 'undefined');
 
 let chartInstance = null;
+let statusChartInstance = null;
+let serviceChartInstance = null;
 let allAppointments = [];
 let allServices = [];
 let filteredAppointments = [];
@@ -464,6 +518,13 @@ const ITEMS_PER_PAGE = 10;
 let currentPage = 1;
 
 document.addEventListener('DOMContentLoaded', async () => {
+  const spinners = [
+    document.getElementById('lineChartSpinner'),
+    document.getElementById('pieChartSpinner'),
+    document.getElementById('barChartSpinner')
+  ];
+  spinners.forEach(spinner => spinner && (spinner.style.display = 'block'));
+
   function testChart() {
     const testCanvas = document.createElement('canvas');
     testCanvas.id = 'testChart';
@@ -559,7 +620,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const yearFilter = document.getElementById('yearFilter');
     const serviceFilter = document.getElementById('serviceFilter');
     const currentYear = parseInt(yearFilter.value);
-    const currentService = serviceFilter.value;
+    const currentService = Array.from(serviceFilter.selectedOptions).map(opt => opt.value);
 
     switch (message.type) {
       case 'reschedule_request':
@@ -598,6 +659,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           allAppointments[appointmentIndex] = appointment;
           filterAppointments();
           renderAppointmentsGraph(allAppointments, allServices, currentYear, currentService);
+          renderStatusChart(allAppointments, parseInt(document.getElementById('statusYearFilter').value));
+          renderServiceChart(allAppointments, allServices, parseInt(document.getElementById('serviceYearFilter').value));
           Swal.fire({
             icon: message.status === 'approved' ? 'success' : 'error',
             title: `${message.type.replace('_response', '').capitalize()} ${message.status.capitalize()}`,
@@ -614,6 +677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           populateServiceFilter(allServices);
           populateServiceTableFilter(allServices);
           renderAppointmentsGraph(allAppointments, allServices, currentYear, currentService);
+          renderServiceChart(allAppointments, allServices, parseInt(document.getElementById('serviceYearFilter').value));
           Swal.fire({
             icon: 'info',
             title: 'New Service',
@@ -627,7 +691,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   String.prototype.capitalize = function() {
-    return this.charAt(0).toUpperCase() + this.slice(1);
+    return this.length > 0 ? this.charAt(0).toUpperCase() + this.slice(1) : this;
   };
 
   try {
@@ -715,6 +779,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         confirmButtonColor: '#4154f1'
       });
       document.getElementById('highestMonthText').textContent = 'No appointment data available.';
+      spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
       return;
     }
 
@@ -735,20 +800,35 @@ document.addEventListener('DOMContentLoaded', async () => {
           visibility: style.visibility
         });
       }
-      renderAppointmentsGraph(allAppointments, allServices, currentYear, 'all');
+      renderAppointmentsGraph(allAppointments, allServices, currentYear, ['all']);
+      renderStatusChart(allAppointments, currentYear);
+      renderServiceChart(allAppointments, allServices, currentYear);
     });
     updateRecentAppointments();
 
     document.getElementById('yearFilter').addEventListener('change', (e) => {
-      renderAppointmentsGraph(allAppointments, allServices, parseInt(e.target.value), document.getElementById('serviceFilter').value);
+      renderAppointmentsGraph(allAppointments, allServices, parseInt(e.target.value), Array.from(document.getElementById('serviceFilter').selectedOptions).map(opt => opt.value));
     });
     document.getElementById('serviceFilter').addEventListener('change', (e) => {
-      renderAppointmentsGraph(allAppointments, allServices, parseInt(document.getElementById('yearFilter').value), e.target.value);
+      renderAppointmentsGraph(allAppointments, allServices, parseInt(document.getElementById('yearFilter').value), Array.from(e.target.selectedOptions).map(opt => opt.value));
     });
+    document.getElementById('dateStart').addEventListener('change', filterAppointments);
+    document.getElementById('dateEnd').addEventListener('change', filterAppointments);
     document.getElementById('exportCsvBtn').addEventListener('click', () => {
       exportGraphToCsv(allAppointments, parseInt(document.getElementById('yearFilter').value));
     });
-
+    document.getElementById('statusYearFilter').addEventListener('change', (e) => {
+      renderStatusChart(allAppointments, parseInt(e.target.value));
+    });
+    document.getElementById('exportStatusCsvBtn').addEventListener('click', () => {
+      exportStatusToCsv(allAppointments, parseInt(document.getElementById('statusYearFilter').value));
+    });
+    document.getElementById('serviceYearFilter').addEventListener('change', (e) => {
+      renderServiceChart(allAppointments, allServices, parseInt(e.target.value));
+    });
+    document.getElementById('exportServiceCsvBtn').addEventListener('click', () => {
+      exportServiceToCsv(allAppointments, parseInt(document.getElementById('serviceYearFilter').value));
+    });
     document.getElementById('statusFilter').addEventListener('change', filterAppointments);
     document.getElementById('serviceTableFilter').addEventListener('change', filterAppointments);
     document.getElementById('searchInput').addEventListener('input', filterAppointments);
@@ -758,6 +838,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('loadMoreBtn').addEventListener('click', loadMoreAppointments);
     document.getElementById('loadLessBtn').addEventListener('click', loadLessAppointments);
 
+    spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
   } catch (error) {
     console.error('Error loading data:', error);
     Swal.fire({
@@ -767,6 +848,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       confirmButtonColor: '#4154f1'
     });
     document.getElementById('highestMonthText').textContent = 'Failed to load appointment data.';
+    spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
   }
 });
 
@@ -790,21 +872,29 @@ function getPatientName(patientData) {
 }
 
 function populateYearFilter(appointments, currentYear) {
-  const yearFilter = document.getElementById('yearFilter');
+  const yearFilters = [
+    document.getElementById('yearFilter'),
+    document.getElementById('statusYearFilter'),
+    document.getElementById('serviceYearFilter')
+  ];
   const years = [...new Set(appointments.map(app => new Date(app.appointment_date).getFullYear()))].sort((a, b) => b - a);
-  yearFilter.innerHTML = '';
-  years.forEach(year => {
-    const option = document.createElement('option');
-    option.value = year;
-    option.textContent = year;
-    yearFilter.appendChild(option);
+  yearFilters.forEach(filter => {
+    if (filter) {
+      filter.innerHTML = '';
+      years.forEach(year => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        filter.appendChild(option);
+      });
+      filter.value = currentYear;
+    }
   });
-  yearFilter.value = currentYear;
 }
 
 function populateServiceFilter(services) {
   const serviceFilter = document.getElementById('serviceFilter');
-  serviceFilter.innerHTML = '<option value="all">All Services</option>';
+  serviceFilter.innerHTML = '';
   services.forEach(service => {
     const option = document.createElement('option');
     option.value = service.name;
@@ -833,21 +923,13 @@ function generateColor(index) {
   return colors[index % colors.length];
 }
 
-function renderAppointmentsGraph(appointments, services, year, selectedService) {
+function renderAppointmentsGraph(appointments, services, year, selectedServices) {
+  const spinner = document.getElementById('lineChartSpinner');
+  spinner.style.display = 'block';
   try {
     const canvas = document.getElementById('appointmentsChart');
-    if (!canvas) {
-      throw new Error('Canvas element #appointmentsChart not found');
-    }
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-      throw new Error('Failed to get 2D context for canvas');
-    }
-
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
+    if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const serviceData = {};
     services.forEach((service, index) => {
       serviceData[service.name] = {
@@ -856,18 +938,13 @@ function renderAppointmentsGraph(appointments, services, year, selectedService) 
       };
     });
 
-    console.log('Processing appointments:', appointments.length);
     appointments.forEach(app => {
       const date = new Date(app.appointment_date);
-      if (isNaN(date.getTime())) return;
+      if (isNaN(date.getTime()) || date.getFullYear() !== year) return;
       const monthIndex = date.getMonth();
-      const appYear = date.getFullYear();
       const serviceName = app.services?.name || 'Unknown';
-      if (appYear === year && serviceData[serviceName]) {
-        serviceData[serviceName].counts[monthIndex]++;
-      }
+      if (serviceData[serviceName]) serviceData[serviceName].counts[monthIndex]++;
     });
-    console.log('Service data:', serviceData);
 
     const datasets = Object.keys(serviceData).map(service => {
       const data = serviceData[service].counts;
@@ -883,111 +960,75 @@ function renderAppointmentsGraph(appointments, services, year, selectedService) 
         tension: 0.4,
         pointRadius: 4,
         pointHoverRadius: 6,
-        hidden: selectedService !== 'all' && service !== selectedService
+        hidden: !selectedServices.includes('all') && !selectedServices.includes(service)
       };
     });
-    console.log('Datasets:', datasets);
 
-    let monthlyTotals;
-    if (selectedService === 'all') {
-      monthlyTotals = Array(12).fill(0);
-      datasets.forEach(dataset => {
+    const monthlyTotals = Array(12).fill(0);
+    datasets.forEach(dataset => {
+      if (!dataset.hidden) {
         dataset.data.forEach((count, i) => {
           monthlyTotals[i] += count;
         });
-      });
-    } else {
-      monthlyTotals = serviceData[selectedService]?.counts || Array(12).fill(0);
-    }
+      }
+    });
 
     const maxCount = Math.max(...monthlyTotals);
     const highestMonthIndex = monthlyTotals.indexOf(maxCount);
-    const highestMonth = months[highestMonthIndex];
 
-    if (chartInstance) {
-      chartInstance.destroy();
-    }
-
-    chartInstance = new Chart(ctx, {
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(canvas.getContext('2d'), {
       type: 'line',
-      data: {
-        labels: months,
-        datasets: datasets
-      },
+      data: { labels: months, datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         scales: {
           y: {
             beginAtZero: true,
-            title: {
-              display: true,
-              text: 'Number of Appointments',
-              font: { size: 14, weight: '600', family: 'Nunito' },
-              color: '#333'
-            },
-            ticks: {
-              stepSize: 1,
-              font: { size: 12, family: 'Nunito' },
-              color: '#666'
-            },
-            grid: {
-              color: '#e0e0e0',
-              borderDash: [5, 5]
-            }
+            title: { display: true, text: 'Number of Appointments', font: { size: 14, weight: '600', family: 'Nunito' }, color: '#333' },
+            ticks: { stepSize: 1, font: { size: 12, family: 'Nunito' }, color: '#666' },
+            grid: { color: '#e0e0e0', borderDash: [5, 5] }
           },
           x: {
-            title: {
-              display: true,
-              text: `Month (${year})`,
-              font: { size: 14, weight: '600', family: 'Nunito' },
-              color: '#333'
-            },
-            ticks: {
-              font: { size: 12, family: 'Nunito' },
-              color: '#666'
-            },
-            grid: {
-              display: false
-            }
+            title: { display: true, text: `Month (${year})`, font: { size: 14, weight: '600', family: 'Nunito' }, color: '#333' },
+            ticks: { font: { size: 12, family: 'Nunito' }, color: '#666' },
+            grid: { display: false }
           }
         },
         plugins: {
-          legend: {
-            display: false
-          },
-          title: {
-            display: true,
-            text: `Appointments by Month and Service (${year})`,
-            font: { size: 18, weight: '600', family: 'Nunito' },
-            color: '#333',
-            padding: { top: 10, bottom: 20 }
-          },
-          tooltip: {
-            backgroundColor: '#fff',
-            titleColor: '#333',
-            bodyColor: '#666',
-            borderColor: '#e0e0e0',
-            borderWidth: 1,
-            cornerRadius: 8,
-            padding: 12,
-            titleFont: { size: 14, weight: '600', family: 'Nunito' },
-            bodyFont: { size: 12, family: 'Nunito' }
-          }
+          legend: { display: false },
+          title: { display: true, text: `Appointments by Month and Service (${year})`, font: { size: 18, weight: '600', family: 'Nunito' }, color: '#333', padding: { top: 10, bottom: 20 } },
+          tooltip: { backgroundColor: '#fff', titleColor: '#333', bodyColor: '#666', borderColor: '#e0e0e0', borderWidth: 1, cornerRadius: 8, padding: 12 }
         },
-        animation: {
-          duration: 1000,
-          easing: 'easeOutQuart'
+        animation: { duration: 1000, easing: 'easeOutQuart' },
+        onClick: (e, elements) => {
+          if (elements.length) {
+            const datasetIndex = elements[0].datasetIndex;
+            const monthIndex = elements[0].index;
+            const service = datasets[datasetIndex].label;
+            const month = months[monthIndex];
+            const monthAppointments = appointments.filter(app => {
+              const date = new Date(app.appointment_date);
+              return date.getFullYear() === year && date.getMonth() === monthIndex && app.services?.name === service;
+            });
+            Swal.fire({
+              title: `${service} in ${month} ${year}`,
+              html: monthAppointments.length ? `<ul>${monthAppointments.map(app => `<li>${getPatientName(app.patients)} - ${new Date(app.appointment_date).toLocaleDateString()}</li>`).join('')}</ul>` : 'No appointments found.',
+              confirmButtonColor: '#4154f1'
+            });
+          }
         }
       }
     });
-    console.log('Chart instance created:', chartInstance);
 
     const legendContainer = document.getElementById('chartLegend');
     legendContainer.innerHTML = '';
-    datasets.forEach((dataset) => {
+    datasets.forEach((dataset, index) => {
       const legendItem = document.createElement('div');
       legendItem.className = `legend-item ${dataset.hidden ? 'hidden' : ''}`;
+      legendItem.setAttribute('role', 'button');
+      legendItem.setAttribute('tabindex', '0');
       legendItem.innerHTML = `
         <span class="legend-color" style="background-color: ${dataset.borderColor};"></span>
         <span>${dataset.label}</span>
@@ -997,30 +1038,206 @@ function renderAppointmentsGraph(appointments, services, year, selectedService) 
         legendItem.classList.toggle('hidden');
         chartInstance.update();
       });
+      legendItem.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          dataset.hidden = !dataset.hidden;
+          legendItem.classList.toggle('hidden');
+          chartInstance.update();
+        }
+      });
       legendContainer.appendChild(legendItem);
     });
 
     document.getElementById('pageTitle').textContent = `Monthly Appointments Overview (${year})`;
     document.getElementById('highestMonthText').textContent = 
-      selectedService === 'all' 
-        ? `Month with Highest Total Appointments: ${highestMonth} (${maxCount} appointments)`
-        : `Month with Highest Appointments for ${selectedService}: ${highestMonth} (${maxCount} appointments)`;
+      selectedServices.includes('all') 
+        ? `Month with Highest Total Appointments: ${months[highestMonthIndex]} (${maxCount} appointments)`
+        : `Month with Highest Appointments for Selected Services: ${months[highestMonthIndex]} (${maxCount} appointments)`;
   } catch (error) {
-    console.error('Error rendering graph:', error);
+    console.error('Error rendering line chart:', error);
     Swal.fire({
       icon: 'error',
       title: 'Graph Error',
-      text: `Failed to render graph: ${error.message}`,
+      text: `Failed to render line chart: ${error.message}`,
       confirmButtonColor: '#4154f1'
     });
-    document.getElementById('highestMonthText').textContent = 'Failed to render graph.';
   }
+  spinner.style.display = 'none';
+}
+
+function renderStatusChart(appointments, year) {
+  const spinner = document.getElementById('pieChartSpinner');
+  spinner.style.display = 'block';
+  try {
+    const canvas = document.getElementById('statusChart');
+    if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
+    const statuses = ['confirmed', 'pending', 'cancelled', 'rejected'];
+    const statusCounts = statuses.map(status => 
+      appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.status?.toLowerCase() === status).length
+    );
+    const total = statusCounts.reduce((sum, count) => sum + count, 0);
+    const datasets = [{
+      data: statusCounts,
+      backgroundColor: ['#16a34a', '#f59e0b', '#ef4444', '#dc2626'],
+      borderColor: '#fff',
+      borderWidth: 2
+    }];
+
+    const maxCount = Math.max(...statusCounts);
+    const dominantStatus = statuses[statusCounts.indexOf(maxCount)];
+
+    if (statusChartInstance) statusChartInstance.destroy();
+    statusChartInstance = new Chart(canvas.getContext('2d'), {
+      type: 'pie',
+      data: { labels: statuses.map(s => s.capitalize()), datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: `Appointment Status Distribution (${year})`, font: { size: 18, weight: '600', family: 'Nunito' }, color: '#333', padding: { top: 10, bottom: 20 } },
+          tooltip: { backgroundColor: '#fff', titleColor: '#333', bodyColor: '#666', borderColor: '#e0e0e0', borderWidth: 1, cornerRadius: 8, padding: 12 }
+        }
+      }
+    });
+
+    const legendContainer = document.getElementById('statusChartLegend');
+    legendContainer.innerHTML = '';
+    datasets[0].data.forEach((count, index) => {
+      const legendItem = document.createElement('div');
+      legendItem.className = `legend-item`;
+      legendItem.setAttribute('role', 'button');
+      legendItem.setAttribute('tabindex', '0');
+      legendItem.innerHTML = `
+        <span class="legend-color" style="background-color: ${datasets[0].backgroundColor[index]};"></span>
+        <span>${statuses[index].capitalize()}</span>
+      `;
+      legendItem.addEventListener('click', () => {
+        datasets[0].hidden = datasets[0].hidden ? false : true;
+        legendItem.classList.toggle('hidden');
+        statusChartInstance.update();
+      });
+      legendItem.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          datasets[0].hidden = datasets[0].hidden ? false : true;
+          legendItem.classList.toggle('hidden');
+          statusChartInstance.update();
+        }
+      });
+      legendContainer.appendChild(legendItem);
+    });
+
+    document.getElementById('statusHighlightText').textContent = total > 0 
+      ? `Dominant Status: ${dominantStatus.capitalize()} (${maxCount} appointments)`
+      : 'No appointment data available.';
+  } catch (error) {
+    console.error('Error rendering pie chart:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Graph Error',
+      text: `Failed to render status chart: ${error.message}`,
+      confirmButtonColor: '#4154f1'
+    });
+  }
+  spinner.style.display = 'none';
+}
+
+function renderServiceChart(appointments, services, year) {
+  const spinner = document.getElementById('barChartSpinner');
+  spinner.style.display = 'block';
+  try {
+    const canvas = document.getElementById('serviceChart');
+    if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
+    const serviceCounts = services.map((service, index) => ({
+      name: service.name,
+      count: appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.services?.name === service.name).length,
+      color: generateColor(index)
+    }));
+
+    const datasets = [{
+      label: 'Appointments',
+      data: serviceCounts.map(s => s.count),
+      backgroundColor: serviceCounts.map(s => s.color),
+      borderColor: serviceCounts.map(s => s.color),
+      borderWidth: 1
+    }];
+
+    const maxCount = Math.max(...serviceCounts.map(s => s.count));
+    const topService = serviceCounts.find(s => s.count === maxCount)?.name || 'N/A';
+
+    if (serviceChartInstance) serviceChartInstance.destroy();
+    serviceChartInstance = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: { labels: services.map(s => s.name), datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Number of Appointments', font: { size: 14, weight: '600', family: 'Nunito' }, color: '#333' },
+            ticks: { stepSize: 1, font: { size: 12, family: 'Nunito' }, color: '#666' }
+          },
+          x: {
+            title: { display: true, text: 'Service', font: { size: 14, weight: '600', family: 'Nunito' }, color: '#333' },
+            ticks: { font: { size: 12, family: 'Nunito' }, color: '#666' }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: `Service Popularity (${year})`, font: { size: 18, weight: '600', family: 'Nunito' }, color: '#333', padding: { top: 10, bottom: 20 } },
+          tooltip: { backgroundColor: '#fff', titleColor: '#333', bodyColor: '#666', borderColor: '#e0e0e0', borderWidth: 1, cornerRadius: 8, padding: 12 }
+        }
+      }
+    });
+
+    const legendContainer = document.getElementById('serviceChartLegend');
+    legendContainer.innerHTML = '';
+    datasets[0].data.forEach((count, index) => {
+      const legendItem = document.createElement('div');
+      legendItem.className = `legend-item`;
+      legendItem.setAttribute('role', 'button');
+      legendItem.setAttribute('tabindex', '0');
+      legendItem.innerHTML = `
+        <span class="legend-color" style="background-color: ${datasets[0].backgroundColor[index]};"></span>
+        <span>${services[index].name}</span>
+      `;
+      legendItem.addEventListener('click', () => {
+        datasets[0].hidden = datasets[0].hidden ? false : true;
+        legendItem.classList.toggle('hidden');
+        serviceChartInstance.update();
+      });
+      legendItem.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          datasets[0].hidden = datasets[0].hidden ? false : true;
+          legendItem.classList.toggle('hidden');
+          serviceChartInstance.update();
+        }
+      });
+      legendContainer.appendChild(legendItem);
+    });
+
+    document.getElementById('serviceHighlightText').textContent = maxCount > 0 
+      ? `Most Popular Service: ${topService} (${maxCount} appointments)`
+      : 'No appointment data available.';
+  } catch (error) {
+    console.error('Error rendering bar chart:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Graph Error',
+      text: `Failed to render service chart: ${error.message}`,
+      confirmButtonColor: '#4154f1'
+    });
+  }
+  spinner.style.display = 'none';
 }
 
 function filterAppointments() {
   const statusFilter = document.getElementById('statusFilter').value;
   const serviceFilter = document.getElementById('serviceTableFilter').value;
   const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+  const dateStart = document.getElementById('dateStart').value;
+  const dateEnd = document.getElementById('dateEnd').value;
 
   filteredAppointments = allAppointments.filter(app => {
     const matchesStatus = statusFilter === 'all' || app.status?.toLowerCase() === statusFilter;
@@ -1032,7 +1249,11 @@ function filterAppointments() {
       patientName.includes(searchQuery) ||
       serviceName.includes(searchQuery) ||
       dateStr.includes(searchQuery);
-    return matchesStatus && matchesService && matchesSearch;
+    const appDate = new Date(app.appointment_date);
+    const matchesDate = 
+      (!dateStart || appDate >= new Date(dateStart)) &&
+      (!dateEnd || appDate <= new Date(dateEnd));
+    return matchesStatus && matchesService && matchesSearch && matchesDate;
   });
 
   currentPage = 1;
@@ -1135,6 +1356,59 @@ function exportGraphToCsv(appointments, year) {
     icon: 'success',
     title: 'Export Successful',
     text: `Graph data exported as appointments_graph_${year}.csv`,
+    confirmButtonColor: '#4154f1',
+    timer: 1500
+  });
+}
+
+function exportStatusToCsv(appointments, year) {
+  const statuses = ['confirmed', 'pending', 'cancelled', 'rejected'];
+  const statusCounts = statuses.map(status => ({
+    status,
+    count: appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.status?.toLowerCase() === status).length
+  }));
+  const csvRows = [['Status', 'Count'].join(',')];
+  statusCounts.forEach(s => {
+    csvRows.push([s.status.capitalize(), s.count].join(','));
+  });
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `appointment_status_${year}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  Swal.fire({
+    icon: 'success',
+    title: 'Export Successful',
+    text: `Status data exported as appointment_status_${year}.csv`,
+    confirmButtonColor: '#4154f1',
+    timer: 1500
+  });
+}
+
+function exportServiceToCsv(appointments, year) {
+  const serviceCounts = allServices.map(service => ({
+    name: service.name,
+    count: appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.services?.name === service.name).length
+  }));
+  const csvRows = [['Service', 'Count'].join(',')];
+  serviceCounts.forEach(s => {
+    csvRows.push([`"${s.name}"`, s.count].join(','));
+  });
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `service_popularity_${year}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  Swal.fire({
+    icon: 'success',
+    title: 'Export Successful',
+    text: `Service data exported as service_popularity_${year}.csv`,
     confirmButtonColor: '#4154f1',
     timer: 1500
   });
