@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>Admin - Analytics Dashboard</title>
-  <meta content="Power BI-inspired dashboard for appointment and patient analytics" name="description">
-  <meta content="dashboard, analytics, appointments, patients, power bi" name="keywords">
+  <title>Admin - Dynamic Analytics Dashboard</title>
+  <meta content="Power BI-inspired dynamic dashboard for appointment and patient analytics" name="description">
+  <meta content="dashboard, analytics, appointments, patients, power bi, dynamic" name="keywords">
   <link href="assets/img/icon.png" rel="icon">
   <link href="assets/img/icon.png" rel="apple-touch-icon">
   <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -91,12 +91,22 @@
     .canvas-container {
       position: relative;
       width: 100%;
-      min-height: 300px;
       padding: 1rem;
+    }
+    .canvas-container.standard {
+      min-height: 300px;
+    }
+    .canvas-container.large {
+      min-height: 400px;
     }
     #statusChart, #serviceChart, #ageChart, #genderChart {
       width: 100% !important;
+    }
+    .standard #statusChart, .standard #serviceChart, .standard #ageChart, .standard #genderChart {
       height: 300px !important;
+    }
+    .large #statusChart, .large #serviceChart, .large #ageChart, .large #genderChart {
+      height: 400px !important;
     }
     .slicer {
       padding: 0.5rem 1rem;
@@ -145,14 +155,18 @@
       gap: 1.5rem;
       padding: 1.5rem;
     }
+    .dashboard-grid .large {
+      grid-column: span 2;
+    }
     @media (max-width: 768px) {
       .dashboard-header {
         padding: 1rem;
       }
-      .canvas-container {
+      .canvas-container.standard, .canvas-container.large {
         min-height: 250px;
       }
-      #statusChart, #serviceChart, #ageChart, #genderChart {
+      .standard #statusChart, .standard #serviceChart, .standard #ageChart, .standard #genderChart,
+      .large #statusChart, .large #serviceChart, .large #ageChart, .large #genderChart {
         height: 250px !important;
       }
       .slicer, .btn-export {
@@ -172,6 +186,9 @@
         grid-template-columns: 1fr;
         padding: 1rem;
       }
+      .dashboard-grid .large {
+        grid-column: span 1;
+      }
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -183,8 +200,8 @@
   <header class="dashboard-header">
     <div class="flex justify-between items-center">
       <div>
-        <h1 class="text-2xl font-semibold text-gray-800">Dental Clinic Analytics Dashboard</h1>
-        <p class="text-sm text-gray-600">Interactive insights for appointments and patient demographics</p>
+        <h1 class="text-2xl font-semibold text-gray-800">Dental Clinic Dynamic Analytics</h1>
+        <p class="text-sm text-gray-600">Adaptive insights for appointments and patients</p>
       </div>
       <div class="flex items-center gap-4">
         <label for="globalYearFilter" class="text-sm font-medium text-gray-700">Filter Year:</label>
@@ -196,16 +213,16 @@
     </div>
   </header>
   <main class="container mx-auto">
-    <div class="dashboard-grid">
+    <div class="dashboard-grid" id="dashboardGrid">
       <!-- Appointment Status Chart -->
-      <div class="card p-6">
+      <div class="card p-6" id="statusCard">
         <div class="loading-spinner" id="pieChartSpinner"></div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-medium text-gray-800">Appointment Status</h2>
           <select id="statusYearFilter" class="slicer" aria-label="Select year for status chart"></select>
         </div>
         <div id="statusChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
-        <div class="canvas-container">
+        <div class="canvas-container standard">
           <canvas id="statusChart" aria-label="Pie chart showing appointment status distribution"></canvas>
         </div>
         <div class="flex justify-between items-center mt-4">
@@ -214,15 +231,15 @@
         </div>
       </div>
       <!-- Service Popularity Chart -->
-      <div class="card p-6">
+      <div class="card p-6" id="serviceCard">
         <div class="loading-spinner" id="barChartSpinner"></div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-medium text-gray-800">Service Popularity</h2>
           <select id="serviceYearFilter" class="slicer" aria-label="Select year for service chart"></select>
         </div>
         <div id="serviceChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
-        <div class="canvas-container">
-          <canvas id="serviceChart" aria-label="Bar chart showing service popularity"></canvas>
+        <div class="canvas-container standard">
+          <canvas id="serviceChart" aria-label="Chart showing service popularity"></canvas>
         </div>
         <div class="flex justify-between items-center mt-4">
           <p class="highlight-text" id="serviceHighlightText"></p>
@@ -230,14 +247,14 @@
         </div>
       </div>
       <!-- Age Distribution Chart -->
-      <div class="card p-6">
+      <div class="card p-6" id="ageCard">
         <div class="loading-spinner" id="ageChartSpinner"></div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-medium text-gray-800">Patient Age Distribution</h2>
           <select id="ageYearFilter" class="slicer" aria-label="Select year for age chart"></select>
         </div>
         <div id="ageChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
-        <div class="canvas-container">
+        <div class="canvas-container standard">
           <canvas id="ageChart" aria-label="Histogram showing patient age distribution"></canvas>
         </div>
         <div class="flex justify-between items-center mt-4">
@@ -246,14 +263,14 @@
         </div>
       </div>
       <!-- Gender Distribution Chart -->
-      <div class="card p-6">
+      <div class="card p-6" id="genderCard">
         <div class="loading-spinner" id="genderChartSpinner"></div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-lg font-medium text-gray-800">Patient Gender Distribution</h2>
           <select id="genderYearFilter" class="slicer" aria-label="Select year for gender chart"></select>
         </div>
         <div id="genderChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
-        <div class="canvas-container">
+        <div class="canvas-container standard">
           <canvas id="genderChart" aria-label="Pie chart showing patient gender distribution"></canvas>
         </div>
         <div class="flex justify-between items-center mt-4">
@@ -409,8 +426,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             appointment.pending_action = null;
           }
           allAppointments[appointmentIndex] = appointment;
-          renderStatusChart(allAppointments, currentYear);
-          renderServiceChart(allAppointments, allServices, currentYear);
+          renderAllCharts(currentYear);
           Swal.fire({
             icon: message.status === 'approved' ? 'success' : 'error',
             title: `${message.type.replace('_response', '').capitalize()} ${message.status.capitalize()}`,
@@ -424,7 +440,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const newService = message.service;
         if (!allServices.some(s => s.name === newService.name)) {
           allServices.push(newService);
-          renderServiceChart(allAppointments, allServices, currentYear);
+          renderAllCharts(currentYear);
           Swal.fire({
             icon: 'info',
             title: 'New Service',
@@ -436,8 +452,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         break;
       case 'patient_added':
         allPatients.push(message.patient);
-        renderAgeChart(allPatients, currentYear);
-        renderGenderChart(allPatients, currentYear);
+        renderAllCharts(currentYear);
         Swal.fire({
           icon: 'success',
           title: 'Patient Added',
@@ -450,8 +465,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const updateIndex = allPatients.findIndex(p => p.email === message.patient.email);
         if (updateIndex !== -1) {
           allPatients[updateIndex] = message.patient;
-          renderAgeChart(allPatients, currentYear);
-          renderGenderChart(allPatients, currentYear);
+          renderAllCharts(currentYear);
           Swal.fire({
             icon: 'success',
             title: 'Patient Updated',
@@ -465,8 +479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const deleteIndex = allPatients.findIndex(p => p.email === message.patient.email);
         if (deleteIndex !== -1) {
           allPatients.splice(deleteIndex, 1);
-          renderAgeChart(allPatients, currentYear);
-          renderGenderChart(allPatients, currentYear);
+          renderAllCharts(currentYear);
           Swal.fire({
             icon: 'info',
             title: 'Patient Deleted',
@@ -580,7 +593,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         text: `${invalidAppointments.length} appointment(s) have invalid dates and will be excluded from the charts.`,
         confirmButtonColor: '#0078D4'
       });
-      allAppointments = allAppointments.filter(app => !isNaN(new Date(app.appointment_date).getFullYear()));
+      allAppointments = allAppointments.filter(app => !isNaN(new Date(app.appointment_date).getTime()));
     }
 
     const invalidPatients = allPatients.filter(p => !p.age || !['Male', 'Female'].includes(p.sex));
@@ -613,10 +626,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentYear = new Date().getFullYear();
     populateYearFilter(allAppointments, allPatients, currentYear);
     requestAnimationFrame(() => {
-      renderStatusChart(allAppointments, null);
-      renderServiceChart(allAppointments, allServices, null);
-      renderAgeChart(allPatients, null);
-      renderGenderChart(allPatients, null);
+      renderAllCharts(null);
     });
 
     const globalYearFilter = document.getElementById('globalYearFilter');
@@ -632,10 +642,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (globalYearFilter) {
       globalYearFilter.addEventListener('change', (e) => {
         const year = e.target.value ? parseInt(e.target.value) : null;
-        renderStatusChart(allAppointments, year);
-        renderServiceChart(allAppointments, allServices, year);
-        renderAgeChart(allPatients, year);
-        renderGenderChart(allPatients, year);
+        renderAllCharts(year);
         [statusYearFilter, serviceYearFilter, ageYearFilter, genderYearFilter].forEach(filter => {
           if (filter) filter.value = e.target.value;
         });
@@ -733,6 +740,55 @@ function generateColor(index) {
   return colors[index % colors.length];
 }
 
+function adjustChartSizes(appointments, services, patients, year) {
+  const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
+  const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
+
+  const statusCount = filteredAppointments.length;
+  const serviceCount = filteredAppointments.reduce((sum, app) => sum + (app.services ? 1 : 0), 0);
+  const ageCount = filteredPatients.length;
+  const genderCount = filteredPatients.length;
+
+  const counts = [
+    { id: 'statusCard', count: statusCount },
+    { id: 'serviceCard', count: serviceCount },
+    { id: 'ageCard', count: ageCount },
+    { id: 'genderCard', count: genderCount }
+  ];
+
+  const maxCount = Math.max(...counts.map(c => c.count));
+  const largestChart = counts.find(c => c.count === maxCount)?.id || 'statusCard';
+
+  const cards = {
+    statusCard: document.getElementById('statusCard'),
+    serviceCard: document.getElementById('serviceCard'),
+    ageCard: document.getElementById('ageCard'),
+    genderCard: document.getElementById('genderCard')
+  };
+
+  Object.values(cards).forEach(card => {
+    card.classList.remove('large');
+    const canvasContainer = card.querySelector('.canvas-container');
+    canvasContainer.classList.remove('large');
+    canvasContainer.classList.add('standard');
+  });
+
+  if (maxCount > 0) {
+    cards[largestChart].classList.add('large');
+    const canvasContainer = cards[largestChart].querySelector('.canvas-container');
+    canvasContainer.classList.remove('standard');
+    canvasContainer.classList.add('large');
+  }
+}
+
+function renderAllCharts(year) {
+  adjustChartSizes(allAppointments, allServices, allPatients, year);
+  renderStatusChart(allAppointments, year);
+  renderServiceChart(allAppointments, allServices, year);
+  renderAgeChart(allPatients, year);
+  renderGenderChart(allPatients, year);
+}
+
 function renderStatusChart(appointments, year) {
   const spinner = document.getElementById('pieChartSpinner');
   spinner.style.display = 'block';
@@ -779,6 +835,12 @@ function renderStatusChart(appointments, year) {
             borderWidth: 1, 
             cornerRadius: 4, 
             padding: 10 
+          },
+          datalabels: {
+            display: total > 0 && total <= 10,
+            color: '#FFFFFF',
+            font: { size: 10, weight: '600', family: 'Segoe UI' },
+            formatter: (value, ctx) => value > 0 ? `${Math.round((value / total) * 100)}%` : ''
           }
         },
         animation: {
@@ -855,30 +917,40 @@ function renderServiceChart(appointments, services, year) {
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
     const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
     const serviceCounts = services.map((service, index) => ({
-      name: service.name,
+      name: service.name.length > 15 ? service.name.substring(0, 12) + '...' : service.name,
       count: filteredAppointments.filter(app => app.services?.name === service.name).length,
       color: generateColor(index)
     }));
 
-    const datasets = [{
-      label: 'Appointments',
-      data: serviceCounts.map(s => s.count),
-      backgroundColor: serviceCounts.map(s => s.color),
-      borderColor: serviceCounts.map(s => s.color),
-      borderWidth: 1
-    }];
-
+    const total = serviceCounts.reduce((sum, s) => sum + s.count, 0);
     const maxCount = Math.max(...serviceCounts.map(s => s.count));
     const topService = serviceCounts.find(s => s.count === maxCount)?.name || 'N/A';
 
+    const isPieChart = services.length <= 5;
+    const chartType = isPieChart ? 'pie' : 'bar';
+    const datasets = isPieChart 
+      ? [{
+          data: serviceCounts.map(s => s.count),
+          backgroundColor: serviceCounts.map(s => s.color),
+          borderColor: '#FFFFFF',
+          borderWidth: 2
+        }]
+      : [{
+          label: 'Appointments',
+          data: serviceCounts.map(s => s.count),
+          backgroundColor: serviceCounts.map(s => s.color),
+          borderColor: serviceCounts.map(s => s.color),
+          borderWidth: 1
+        }];
+
     if (serviceChartInstance) serviceChartInstance.destroy();
     serviceChartInstance = new Chart(canvas.getContext('2d'), {
-      type: 'bar',
-      data: { labels: services.map(s => s.name), datasets },
+      type: chartType,
+      data: { labels: serviceCounts.map(s => s.name), datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: {
+        scales: isPieChart ? {} : {
           y: {
             beginAtZero: true,
             title: { 
@@ -887,7 +959,11 @@ function renderServiceChart(appointments, services, year) {
               font: { size: 12, weight: '600', family: 'Segoe UI' }, 
               color: '#252423' 
             },
-            ticks: { stepSize: 1, font: { size: 10, family: 'Segoe UI' }, color: '#605E5C' }
+            ticks: { 
+              stepSize: 1, 
+              font: { size: 10, family: 'Segoe UI' }, 
+              color: '#605E5C' 
+            }
           },
           x: {
             title: { 
@@ -896,7 +972,13 @@ function renderServiceChart(appointments, services, year) {
               font: { size: 12, weight: '600', family: 'Segoe UI' }, 
               color: '#252423' 
             },
-            ticks: { font: { size: 10, family: 'Segoe UI' }, color: '#605E5C' }
+            ticks: { 
+              font: { size: 10, family: 'Segoe UI' }, 
+              color: '#605E5C',
+              autoSkip: true,
+              maxRotation: 45,
+              minRotation: 0
+            }
           }
         },
         plugins: {
@@ -916,13 +998,21 @@ function renderServiceChart(appointments, services, year) {
             borderWidth: 1, 
             cornerRadius: 4, 
             padding: 10 
+          },
+          datalabels: {
+            display: isPieChart && total > 0 && total <= 10,
+            color: '#FFFFFF',
+            font: { size: 10, weight: '600', family: 'Segoe UI' },
+            formatter: (value, ctx) => value > 0 ? `${Math.round((value / total) * 100)}%` : ''
           }
         },
         animation: {
           duration: 1200,
           easing: 'easeOutQuart',
-          y: { from: 0 },
-          delay: (context) => context.dataIndex * 100
+          animateRotate: isPieChart,
+          animateScale: isPieChart,
+          y: isPieChart ? undefined : { from: 0 },
+          delay: isPieChart ? undefined : (context) => context.dataIndex * 100
         },
         onClick: (e, elements) => {
           if (elements.length) {
@@ -973,7 +1063,7 @@ function renderServiceChart(appointments, services, year) {
       ? `Top Service: ${topService} (${maxCount} appointments)`
       : 'No appointment data available.';
   } catch (error) {
-    console.error('Error rendering bar chart:', error);
+    console.error('Error rendering service chart:', error);
     Swal.fire({
       icon: 'error',
       title: 'Graph Error',
@@ -992,11 +1082,15 @@ function renderAgeChart(patients, year) {
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
     const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
     const ages = filteredPatients.map(p => parseInt(p.age));
+    const minAge = Math.min(...ages, 0);
+    const maxAge = Math.max(...ages, 100);
+    const range = maxAge - minAge;
+    const binSize = range <= 50 ? 5 : 10;
     const bins = [];
-    for (let i = 0; i <= 100; i += 10) {
+    for (let i = Math.floor(minAge / binSize) * binSize; i <= maxAge; i += binSize) {
       bins.push({
-        range: `${i}-${i + 9}`,
-        count: ages.filter(age => age >= i && age < i + 10).length
+        range: `${i}-${i + binSize - 1}`,
+        count: ages.filter(age => age >= i && age < i + binSize).length
       });
     }
     const datasets = [{
@@ -1026,7 +1120,11 @@ function renderAgeChart(patients, year) {
               font: { size: 12, weight: '600', family: 'Segoe UI' }, 
               color: '#252423' 
             },
-            ticks: { stepSize: 1, font: { size: 10, family: 'Segoe UI' }, color: '#605E5C' }
+            ticks: { 
+              stepSize: 1, 
+              font: { size: 10, family: 'Segoe UI' }, 
+              color: '#605E5C' 
+            }
           },
           x: {
             title: { 
@@ -1035,7 +1133,13 @@ function renderAgeChart(patients, year) {
               font: { size: 12, weight: '600', family: 'Segoe UI' }, 
               color: '#252423' 
             },
-            ticks: { font: { size: 10, family: 'Segoe UI' }, color: '#605E5C' }
+            ticks: { 
+              font: { size: 10, family: 'Segoe UI' }, 
+              color: '#605E5C',
+              autoSkip: true,
+              maxRotation: 45,
+              minRotation: 0
+            }
           }
         },
         plugins: {
@@ -1153,6 +1257,12 @@ function renderGenderChart(patients, year) {
             borderWidth: 1, 
             cornerRadius: 4, 
             padding: 10 
+          },
+          datalabels: {
+            display: total > 0 && total <= 10,
+            color: '#FFFFFF',
+            font: { size: 10, weight: '600', family: 'Segoe UI' },
+            formatter: (value, ctx) => value > 0 ? `${Math.round((value / total) * 100)}%` : ''
           }
         },
         animation: {
@@ -1278,13 +1388,17 @@ function exportServiceToCsv(appointments, year) {
 
 function exportAgeToCsv(patients, year) {
   const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
+  const ages = filteredPatients.map(p => parseInt(p.age));
+  const minAge = Math.min(...ages, 0);
+  const maxAge = Math.max(...ages, 100);
+  const binSize = (maxAge - minAge) <= 50 ? 5 : 10;
   const bins = [];
-  for (let i = 0; i <= 100; i += 10) {
+  for (let i = Math.floor(minAge / binSize) * binSize; i <= maxAge; i += binSize) {
     bins.push({
-      range: `${i}-${i + 9}`,
+      range: `${i}-${i + binSize - 1}`,
       count: filteredPatients.filter(p => {
         const age = parseInt(p.age);
-        return age >= i && age < i + 10;
+        return age >= i && age < i + binSize;
       }).length
     });
   }
