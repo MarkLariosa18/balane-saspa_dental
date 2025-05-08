@@ -4,14 +4,13 @@
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>Admin - Appointment Graph</title>
-  <meta content="Visualize appointment trends by month and service" name="description">
+  <meta content="Visualize appointment trends by month" name="description">
   <meta content="appointments, graph, admin, dashboard" name="keywords">
   <link href="assets/img/icon.png" rel="icon">
   <link href="assets/img/icon.png" rel="apple-touch-icon">
   <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-  <link href="assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
   <link href="assets/vendor/quill/quill.snow.css" rel="stylesheet">
   <link href="assets/vendor/quill/quill.bubble.css" rel="stylesheet">
   <link href="assets/vendor/remixicon/remixicon.css" rel="stylesheet">
@@ -49,20 +48,17 @@
       font-weight: 500;
       color: #333;
     }
-    .filter-container select, .filter-container button, .filter-container input[type="date"] {
+    .filter-container select, .filter-container button {
       padding: 10px 15px;
       font-size: 0.95rem;
       border-radius: 8px;
       border: 1px solid #e0e0e0;
       transition: all 0.3s ease;
     }
-    .filter-container select:focus, .filter-container button:focus, .filter-container input:focus {
+    .filter-container select:focus, .filter-container button:focus {
       outline: none;
       border-color: #4154f1;
       box-shadow: 0 0 0 3px rgba(65, 84, 241, 0.1);
-    }
-    .filter-container select[multiple] {
-      height: 100px;
     }
     .filter-container button {
       background-color: #4154f1;
@@ -227,13 +223,10 @@
         flex-direction: column;
         align-items: flex-start;
       }
-      .filter-container select, .filter-container button, .filter-container input, .search-container input {
+      .filter-container select, .filter-container button, .search-container input {
         width: 100%;
         font-size: 0.9rem;
         padding: 8px 12px;
-      }
-      .filter-container select[multiple] {
-        height: auto;
       }
       .chart-legend {
         gap: 8px;
@@ -305,20 +298,12 @@
             <div class="filter-container">
               <label for="yearFilter">Year:</label>
               <select id="yearFilter" aria-label="Select year for chart"></select>
-              <label for="serviceFilter">Services:</label>
-              <select id="serviceFilter" multiple aria-label="Select services for chart">
-                <option value="all">All Services</option>
-              </select>
-              <label for="dateStart">Date From:</label>
-              <input type="date" id="dateStart" aria-label="Start date for filtering">
-              <label for="dateEnd">To:</label>
-              <input type="date" id="dateEnd" aria-label="End date for filtering">
               <button id="exportCsvBtn" aria-label="Export graph data as CSV">Export Graph Data as CSV</button>
               <a href="visualizations.html" class="visualizations-btn" aria-label="View additional visualizations">View More Visualizations</a>
             </div>
             <div id="chartLegend" class="chart-legend"></div>
             <div class="canvas-container">
-              <canvas id="appointmentsChart" aria-label="Line chart showing appointments by month and service"></canvas>
+              <canvas id="appointmentsChart" aria-label="Line chart showing appointments by month"></canvas>
             </div>
             <div class="highlight-text" id="highestMonthText"></div>
           </div>
@@ -554,9 +539,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function handleSocketIOMessage(message) {
     console.log('Processing Socket.IO message:', message);
     const yearFilter = document.getElementById('yearFilter');
-    const serviceFilter = document.getElementById('serviceFilter');
     const currentYear = parseInt(yearFilter.value);
-    const currentService = Array.from(serviceFilter.selectedOptions).map(opt => opt.value);
     switch (message.type) {
       case 'reschedule_request':
       case 'cancel_request':
@@ -593,7 +576,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
           allAppointments[appointmentIndex] = appointment;
           filterAppointments();
-          renderAppointmentsGraph(allAppointments, allServices, currentYear, currentService);
+          renderAppointmentsGraph(allAppointments, allServices, currentYear);
           Swal.fire({
             icon: message.status === 'approved' ? 'success' : 'error',
             title: `${message.type.replace('_response', '').capitalize()} ${message.status.capitalize()}`,
@@ -607,9 +590,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const newService = message.service;
         if (!allServices.some(s => s.name === newService.name)) {
           allServices.push(newService);
-          populateServiceFilter(allServices);
           populateServiceTableFilter(allServices);
-          renderAppointmentsGraph(allAppointments, allServices, currentYear, currentService);
+          renderAppointmentsGraph(allAppointments, allServices, currentYear);
           Swal.fire({
             icon: 'info',
             title: 'New Service',
@@ -709,7 +691,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const currentYear = new Date().getFullYear();
     populateYearFilter(allAppointments, currentYear);
-    populateServiceFilter(allServices);
     populateServiceTableFilter(allServices);
     filteredAppointments = [...allAppointments];
     requestAnimationFrame(() => {
@@ -724,17 +705,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           visibility: style.visibility
         });
       }
-      renderAppointmentsGraph(allAppointments, allServices, currentYear, ['all']);
+      renderAppointmentsGraph(allAppointments, allServices, currentYear);
     });
     updateRecentAppointments();
     document.getElementById('yearFilter').addEventListener('change', (e) => {
-      renderAppointmentsGraph(allAppointments, allServices, parseInt(e.target.value), Array.from(document.getElementById('serviceFilter').selectedOptions).map(opt => opt.value));
+      renderAppointmentsGraph(allAppointments, allServices, parseInt(e.target.value));
     });
-    document.getElementById('serviceFilter').addEventListener('change', (e) => {
-      renderAppointmentsGraph(allAppointments, allServices, parseInt(document.getElementById('yearFilter').value), Array.from(e.target.selectedOptions).map(opt => opt.value));
-    });
-    document.getElementById('dateStart').addEventListener('change', filterAppointments);
-    document.getElementById('dateEnd').addEventListener('change', filterAppointments);
     document.getElementById('exportCsvBtn').addEventListener('click', () => {
       exportGraphToCsv(allAppointments, parseInt(document.getElementById('yearFilter').value));
     });
@@ -788,16 +764,6 @@ function populateYearFilter(appointments, currentYear) {
   });
   yearFilter.value = currentYear;
 }
-function populateServiceFilter(services) {
-  const serviceFilter = document.getElementById('serviceFilter');
-  serviceFilter.innerHTML = '';
-  services.forEach(service => {
-    const option = document.createElement('option');
-    option.value = service.name;
-    option.textContent = service.name;
-    serviceFilter.appendChild(option);
-  });
-}
 function populateServiceTableFilter(services) {
   const serviceTableFilter = document.getElementById('serviceTableFilter');
   serviceTableFilter.innerHTML = '<option value="all">All Services</option>';
@@ -816,7 +782,7 @@ function generateColor(index) {
   ];
   return colors[index % colors.length];
 }
-function renderAppointmentsGraph(appointments, services, year, selectedServices) {
+function renderAppointmentsGraph(appointments, services, year) {
   const spinner = document.getElementById('lineChartSpinner');
   spinner.style.display = 'block';
   try {
@@ -851,16 +817,14 @@ function renderAppointmentsGraph(appointments, services, year, selectedServices)
         tension: 0.4,
         pointRadius: 4,
         pointHoverRadius: 6,
-        hidden: !selectedServices.includes('all') && !selectedServices.includes(service)
+        hidden: false
       };
     });
     const monthlyTotals = Array(12).fill(0);
     datasets.forEach(dataset => {
-      if (!dataset.hidden) {
-        dataset.data.forEach((count, i) => {
-          monthlyTotals[i] += count;
-        });
-      }
+      dataset.data.forEach((count, i) => {
+        monthlyTotals[i] += count;
+      });
     });
     const maxCount = Math.max(...monthlyTotals);
     const highestMonthIndex = monthlyTotals.indexOf(maxCount);
@@ -886,7 +850,7 @@ function renderAppointmentsGraph(appointments, services, year, selectedServices)
         },
         plugins: {
           legend: { display: false },
-          title: { display: true, text: `Appointments by Month and Service (${year})`, font: { size: 18, weight: '600', family: 'Nunito' }, color: '#333', padding: { top: 10, bottom: 20 } },
+          title: { display: true, text: `Appointments by Month (${year})`, font: { size: 18, weight: '600', family: 'Nunito' }, color: '#333', padding: { top: 10, bottom: 20 } },
           tooltip: { backgroundColor: '#fff', titleColor: '#333', bodyColor: '#666', borderColor: '#e0e0e0', borderWidth: 1, cornerRadius: 8, padding: 12 }
         },
         animation: { duration: 1000, easing: 'easeOutQuart' },
@@ -936,9 +900,7 @@ function renderAppointmentsGraph(appointments, services, year, selectedServices)
     });
     document.getElementById('pageTitle').textContent = `Monthly Appointments Overview (${year})`;
     document.getElementById('highestMonthText').textContent = 
-      selectedServices.includes('all') 
-        ? `Month with Highest Total Appointments: ${months[highestMonthIndex]} (${maxCount} appointments)`
-        : `Month with Highest Appointments for Selected Services: ${months[highestMonthIndex]} (${maxCount} appointments)`;
+      `Month with Highest Total Appointments: ${months[highestMonthIndex]} (${maxCount} appointments)`;
   } catch (error) {
     console.error('Error rendering line chart:', error);
     Swal.fire({
@@ -954,8 +916,6 @@ function filterAppointments() {
   const statusFilter = document.getElementById('statusFilter').value;
   const serviceFilter = document.getElementById('serviceTableFilter').value;
   const searchQuery = document.getElementById('searchInput').value.toLowerCase();
-  const dateStart = document.getElementById('dateStart').value;
-  const dateEnd = document.getElementById('dateEnd').value;
   filteredAppointments = allAppointments.filter(app => {
     const matchesStatus = statusFilter === 'all' || app.status?.toLowerCase() === statusFilter;
     const matchesService = serviceFilter === 'all' || app.services?.name === serviceFilter;
@@ -966,11 +926,7 @@ function filterAppointments() {
       patientName.includes(searchQuery) ||
       serviceName.includes(searchQuery) ||
       dateStr.includes(searchQuery);
-    const appDate = new Date(app.appointment_date);
-    const matchesDate = 
-      (!dateStart || appDate >= new Date(dateStart)) &&
-      (!dateEnd || appDate <= new Date(dateEnd));
-    return matchesStatus && matchesService && matchesSearch && matchesDate;
+    return matchesStatus && matchesService && matchesSearch;
   });
   currentPage = 1;
   displayedAppointments = [];
