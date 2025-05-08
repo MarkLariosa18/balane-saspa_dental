@@ -3,41 +3,73 @@
 <head>
   <meta charset="utf-8">
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>Admin - Appointment Visualizations</title>
-  <meta content="Interactive visualizations for appointment status and service popularity" name="description">
-  <meta content="appointments, visualizations, admin, dashboard" name="keywords">
+  <title>Admin - Analytics Dashboard</title>
+  <meta content="Power BI-inspired dashboard for appointment and patient analytics" name="description">
+  <meta content="dashboard, analytics, appointments, patients, power bi" name="keywords">
   <link href="assets/img/icon.png" rel="icon">
   <link href="assets/img/icon.png" rel="apple-touch-icon">
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
   <style>
+    body {
+      background: #F3F2F1;
+      font-family: 'Segoe UI', sans-serif;
+      color: #252423;
+      overflow-x: hidden;
+    }
+    .dashboard-header {
+      background: #FFFFFF;
+      border-bottom: 1px solid #E1DFDD;
+      padding: 1.5rem 2rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      animation: slideDown 0.5s ease-out;
+    }
+    @keyframes slideDown {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .card {
+      background: #FFFFFF;
+      border-radius: 8px;
+      border: 1px solid #E1DFDD;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      animation: fadeInUp 0.6s ease-out;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(15px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     .legend-item {
       display: flex;
       align-items: center;
       cursor: pointer;
       padding: 0.5rem 1rem;
-      border-radius: 1rem;
-      background: #ffffff;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      border-radius: 6px;
+      background: #F9F9F9;
       transition: all 0.3s ease;
       font-size: 0.9rem;
-      font-weight: 500;
+      font-weight: 400;
+      margin: 0.25rem 0;
     }
     .legend-item:hover {
-      background: #e6f3ff;
-      transform: translateY(-2px);
+      background: #E6F0FA;
+      transform: translateX(2px);
     }
     .legend-color {
       width: 16px;
       height: 16px;
-      border-radius: 50%;
+      border-radius: 4px;
       margin-right: 0.5rem;
-      box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
     }
     .legend-item.hidden {
       opacity: 0.6;
-      background: #f0f0f0;
+      background: #F1F1F1;
     }
     .loading-spinner {
       display: none;
@@ -45,12 +77,12 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #4A90E2;
+      border: 4px solid #E1DFDD;
+      border-top: 4px solid #0078D4;
       border-radius: 50%;
       width: 40px;
       height: 40px;
-      animation: spin 1s linear infinite;
+      animation: spin 0.8s linear infinite;
     }
     @keyframes spin {
       0% { transform: translate(-50%, -50%) rotate(0deg); }
@@ -60,25 +92,85 @@
       position: relative;
       width: 100%;
       min-height: 300px;
+      padding: 1rem;
     }
-    #statusChart, #serviceChart {
+    #statusChart, #serviceChart, #ageChart, #genderChart {
       width: 100% !important;
       height: 300px !important;
     }
+    .slicer {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      border: 1px solid #D1D0CE;
+      background: #FFFFFF;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      width: 150px;
+    }
+    .slicer:focus {
+      border-color: #0078D4;
+      box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.2);
+      outline: none;
+    }
+    .btn-export {
+      background: #0078D4;
+      color: #FFFFFF;
+      padding: 0.5rem 1.2rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 400;
+      transition: all 0.3s ease;
+    }
+    .btn-export:hover {
+      background: #005A9E;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0, 90, 158, 0.3);
+    }
+    .highlight-text {
+      background: #E6F0FA;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #252423;
+      animation: fadeIn 0.5s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      padding: 1.5rem;
+    }
     @media (max-width: 768px) {
-      .canvas-container {
-        min-height: 200px;
+      .dashboard-header {
+        padding: 1rem;
       }
-      #statusChart, #serviceChart {
-        height: 200px !important;
+      .canvas-container {
+        min-height: 250px;
+      }
+      #statusChart, #serviceChart, #ageChart, #genderChart {
+        height: 250px !important;
+      }
+      .slicer, .btn-export {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+        width: 120px;
       }
       .legend-item {
         font-size: 0.85rem;
         padding: 0.4rem 0.8rem;
       }
       .legend-color {
-        width: 12px;
-        height: 12px;
+        width: 14px;
+        height: 14px;
+      }
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+        padding: 1rem;
       }
     }
   </style>
@@ -87,54 +179,105 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
-<body class="bg-gray-100 font-nunito">
-  <main class="container mx-auto px-4 py-8">
-    <div class="mb-6">
-      <a href="index.html" class="inline-block px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 focus:outline-none" aria-label="Back to Admin Dashboard">Back to Admin</a>
-      <h2 class="text-2xl font-bold text-gray-800 mt-4">Appointment Visualizations</h2>
+<body>
+  <header class="dashboard-header">
+    <div class="flex justify-between items-center">
+      <div>
+        <h1 class="text-2xl font-semibold text-gray-800">Dental Clinic Analytics Dashboard</h1>
+        <p class="text-sm text-gray-600">Interactive insights for appointments and patient demographics</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <label for="globalYearFilter" class="text-sm font-medium text-gray-700">Filter Year:</label>
+        <select id="globalYearFilter" class="slicer" aria-label="Select year for all charts">
+          <option value="">All Years</option>
+        </select>
+        <a href="index.html" class="btn-export" aria-label="Back to Admin Dashboard">Back to Admin</a>
+      </div>
     </div>
-    <section class="space-y-8">
-      <div class="bg-white p-6 rounded-lg shadow-lg">
+  </header>
+  <main class="container mx-auto">
+    <div class="dashboard-grid">
+      <!-- Appointment Status Chart -->
+      <div class="card p-6">
         <div class="loading-spinner" id="pieChartSpinner"></div>
-        <div class="flex flex-wrap items-center gap-4 mb-4">
-          <label for="statusYearFilter" class="font-medium text-gray-700">Year:</label>
-          <select id="statusYearFilter" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-300 focus:outline-none" aria-label="Select year for status chart"></select>
-          <button id="exportStatusCsvBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 focus:outline-none" aria-label="Export status chart data as CSV">Export Status Data as CSV</button>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-medium text-gray-800">Appointment Status</h2>
+          <select id="statusYearFilter" class="slicer" aria-label="Select year for status chart"></select>
         </div>
         <div id="statusChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
         <div class="canvas-container">
           <canvas id="statusChart" aria-label="Pie chart showing appointment status distribution"></canvas>
         </div>
-        <p class="mt-4 text-lg font-semibold text-blue-500" id="statusHighlightText"></p>
+        <div class="flex justify-between items-center mt-4">
+          <p class="highlight-text" id="statusHighlightText"></p>
+          <button id="exportStatusCsvBtn" class="btn-export" aria-label="Export status chart data as CSV">Export</button>
+        </div>
       </div>
-      <div class="bg-white p-6 rounded-lg shadow-lg">
+      <!-- Service Popularity Chart -->
+      <div class="card p-6">
         <div class="loading-spinner" id="barChartSpinner"></div>
-        <div class="flex flex-wrap items-center gap-4 mb-4">
-          <label for="serviceYearFilter" class="font-medium text-gray-700">Year:</label>
-          <select id="serviceYearFilter" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-300 focus:outline-none" aria-label="Select year for service chart"></select dispersive
-          <button id="exportServiceCsvBtn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 focus:outline-none" aria-label="Export service chart data as CSV">Export Service Data as CSV</button>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-medium text-gray-800">Service Popularity</h2>
+          <select id="serviceYearFilter" class="slicer" aria-label="Select year for service chart"></select>
         </div>
         <div id="serviceChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
         <div class="canvas-container">
           <canvas id="serviceChart" aria-label="Bar chart showing service popularity"></canvas>
         </div>
-        <p class="mt-4 text-lg font-semibold text-blue-500" id="serviceHighlightText"></p>
+        <div class="flex justify-between items-center mt-4">
+          <p class="highlight-text" id="serviceHighlightText"></p>
+          <button id="exportServiceCsvBtn" class="btn-export" aria-label="Export service chart data as CSV">Export</button>
+        </div>
       </div>
-    </section>
+      <!-- Age Distribution Chart -->
+      <div class="card p-6">
+        <div class="loading-spinner" id="ageChartSpinner"></div>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-medium text-gray-800">Patient Age Distribution</h2>
+          <select id="ageYearFilter" class="slicer" aria-label="Select year for age chart"></select>
+        </div>
+        <div id="ageChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
+        <div class="canvas-container">
+          <canvas id="ageChart" aria-label="Histogram showing patient age distribution"></canvas>
+        </div>
+        <div class="flex justify-between items-center mt-4">
+          <p class="highlight-text" id="ageHighlightText"></p>
+          <button id="exportAgeCsvBtn" class="btn-export" aria-label="Export age chart data as CSV">Export</button>
+        </div>
+      </div>
+      <!-- Gender Distribution Chart -->
+      <div class="card p-6">
+        <div class="loading-spinner" id="genderChartSpinner"></div>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-medium text-gray-800">Patient Gender Distribution</h2>
+          <select id="genderYearFilter" class="slicer" aria-label="Select year for gender chart"></select>
+        </div>
+        <div id="genderChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
+        <div class="canvas-container">
+          <canvas id="genderChart" aria-label="Pie chart showing patient gender distribution"></canvas>
+        </div>
+        <div class="flex justify-between items-center mt-4">
+          <p class="highlight-text" id="genderHighlightText"></p>
+          <button id="exportGenderCsvBtn" class="btn-export" aria-label="Export gender chart data as CSV">Export</button>
+        </div>
+      </div>
+    </div>
   </main>
   <script>
-$(document).ready(() => {
-});
-
 let statusChartInstance = null;
 let serviceChartInstance = null;
+let ageChartInstance = null;
+let genderChartInstance = null;
 let allAppointments = [];
 let allServices = [];
+let allPatients = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   const spinners = [
     document.getElementById('pieChartSpinner'),
-    document.getElementById('barChartSpinner')
+    document.getElementById('barChartSpinner'),
+    document.getElementById('ageChartSpinner'),
+    document.getElementById('genderChartSpinner')
   ];
   spinners.forEach(spinner => spinner && (spinner.style.display = 'block'));
 
@@ -146,10 +289,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       new Chart(testCanvas.getContext('2d'), {
         type: 'pie',
-        data: {
-          labels: ['Test'],
-          datasets: [{ data: [1] }]
-        }
+        data: { labels: ['Test'], datasets: [{ data: [1] }] }
       });
       console.log('Test chart rendered successfully');
       document.body.removeChild(testCanvas);
@@ -159,7 +299,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'error',
         title: 'Chart Error',
         text: 'Failed to initialize Chart.js: ' + error.message,
-        confirmButtonColor: '#4A90E2'
+        confirmButtonColor: '#0078D4'
       });
     }
   }
@@ -207,6 +347,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       console.log('Received Socket.IO service_added:', message);
       handleSocketIOMessage(message);
     });
+    socket.on('patient_added', (message) => {
+      console.log('Received Socket.IO patient_added:', message);
+      handleSocketIOMessage(message);
+    });
+    socket.on('patient_updated', (message) => {
+      console.log('Received Socket.IO patient_updated:', message);
+      handleSocketIOMessage(message);
+    });
+    socket.on('patient_deleted', (message) => {
+      console.log('Received Socket.IO patient_deleted:', message);
+      handleSocketIOMessage(message);
+    });
     socket.on('connect_error', (error) => {
       console.error('Socket.IO error:', error);
       setTimeout(initSocketIO, 5000);
@@ -220,18 +372,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function handleSocketIOMessage(message) {
     console.log('Processing Socket.IO message:', message);
-    const statusYearFilter = document.getElementById('statusYearFilter');
-    const serviceYearFilter = document.getElementById('serviceYearFilter');
-    const currentStatusYear = parseInt(statusYearFilter.value);
-    const currentServiceYear = parseInt(serviceYearFilter.value);
+    const globalYearFilter = document.getElementById('globalYearFilter');
+    const currentYear = globalYearFilter ? parseInt(globalYearFilter.value) || null : null;
     switch (message.type) {
       case 'reschedule_request':
       case 'cancel_request':
         Swal.fire({
           icon: 'info',
           title: `${message.type === 'reschedule_request' ? 'Reschedule' : 'Cancel'} Request`,
-          text: `New ${message.type === 'reschedule_request' ? 'reschedule' : 'cancel'} request for ${getPatientName(message.request.patients)}.`,
-          confirmButtonColor: '#4A90E2',
+          text: `New ${message.type === 'reschedule_request' ? 'reschedule' : 'cancel'} request.`,
+          confirmButtonColor: '#0078D4',
           timer: 3000
         });
         break;
@@ -259,13 +409,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             appointment.pending_action = null;
           }
           allAppointments[appointmentIndex] = appointment;
-          renderStatusChart(allAppointments, currentStatusYear);
-          renderServiceChart(allAppointments, allServices, currentServiceYear);
+          renderStatusChart(allAppointments, currentYear);
+          renderServiceChart(allAppointments, allServices, currentYear);
           Swal.fire({
             icon: message.status === 'approved' ? 'success' : 'error',
             title: `${message.type.replace('_response', '').capitalize()} ${message.status.capitalize()}`,
-            text: `Appointment ${message.status} for ${getPatientName(appointment.patients)}.`,
-            confirmButtonColor: '#4A90E2',
+            text: `Appointment ${message.status}.`,
+            confirmButtonColor: '#0078D4',
             timer: 3000
           });
         }
@@ -274,12 +424,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         const newService = message.service;
         if (!allServices.some(s => s.name === newService.name)) {
           allServices.push(newService);
-          renderServiceChart(allAppointments, allServices, currentServiceYear);
+          renderServiceChart(allAppointments, allServices, currentYear);
           Swal.fire({
             icon: 'info',
             title: 'New Service',
             text: `Service "${newService.name}" added.`,
-            confirmButtonColor: '#4A90E2',
+            confirmButtonColor: '#0078D4',
+            timer: 3000
+          });
+        }
+        break;
+      case 'patient_added':
+        allPatients.push(message.patient);
+        renderAgeChart(allPatients, currentYear);
+        renderGenderChart(allPatients, currentYear);
+        Swal.fire({
+          icon: 'success',
+          title: 'Patient Added',
+          text: `New patient added.`,
+          confirmButtonColor: '#0078D4',
+          timer: 3000
+        });
+        break;
+      case 'patient_updated':
+        const updateIndex = allPatients.findIndex(p => p.email === message.patient.email);
+        if (updateIndex !== -1) {
+          allPatients[updateIndex] = message.patient;
+          renderAgeChart(allPatients, currentYear);
+          renderGenderChart(allPatients, currentYear);
+          Swal.fire({
+            icon: 'success',
+            title: 'Patient Updated',
+            text: `Patient updated.`,
+            confirmButtonColor: '#0078D4',
+            timer: 3000
+          });
+        }
+        break;
+      case 'patient_deleted':
+        const deleteIndex = allPatients.findIndex(p => p.email === message.patient.email);
+        if (deleteIndex !== -1) {
+          allPatients.splice(deleteIndex, 1);
+          renderAgeChart(allPatients, currentYear);
+          renderGenderChart(allPatients, currentYear);
+          Swal.fire({
+            icon: 'info',
+            title: 'Patient Deleted',
+            text: `Patient removed.`,
+            confirmButtonColor: '#0078D4',
             timer: 3000
           });
         }
@@ -290,6 +482,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   String.prototype.capitalize = function() {
     return this.length > 0 ? this.charAt(0).toUpperCase() + this.slice(1) : this;
   };
+
+  async function getCsrfToken() {
+    try {
+      const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      return data.csrfToken;
+    } catch (error) {
+      console.error('Error fetching CSRF token:', error);
+      throw new Error('Failed to fetch CSRF token');
+    }
+  }
 
   try {
     const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', {
@@ -309,7 +514,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'error',
         title: 'Unauthorized',
         text: 'You are not authorized to access this page. Redirecting to login page.',
-        confirmButtonColor: '#4A90E2',
+        confirmButtonColor: '#0078D4',
         allowOutsideClick: false
       }).then(() => {
         window.location.href = '/pages-login.html';
@@ -337,7 +542,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
           'CSRF-Token': await getCsrfToken()
         }
-
       });
       if (!servicesResponse.ok) throw new Error(`Failed to fetch services: ${servicesResponse.status}`);
       const servicesData = await servicesResponse.json();
@@ -349,12 +553,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'warning',
         title: 'Service Fetch Failed',
         text: 'Could not load services. Using appointment data as fallback.',
-        confirmButtonColor: '#4A90E2'
+        confirmButtonColor: '#0078D4'
       });
       const uniqueServices = [...new Set(allAppointments.map(app => app.services?.name).filter(name => name))];
       allServices = uniqueServices.map(name => ({ name }));
     }
     console.log('Services loaded:', allServices);
+
+    const patientsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/patients/allPatients', {
+      credentials: 'include',
+      headers: {
+        'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
+        'CSRF-Token': await getCsrfToken()
+      }
+    });
+    if (!patientsResponse.ok) throw new Error(`Failed to fetch patients: ${patientsResponse.status}`);
+    allPatients = await patientsResponse.json();
+    console.log('Patients loaded:', allPatients);
 
     const invalidAppointments = allAppointments.filter(app => isNaN(new Date(app.appointment_date).getTime()));
     if (invalidAppointments.length > 0) {
@@ -363,43 +578,109 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'warning',
         title: 'Invalid Data',
         text: `${invalidAppointments.length} appointment(s) have invalid dates and will be excluded from the charts.`,
-        confirmButtonColor: '#4A90E2'
+        confirmButtonColor: '#0078D4'
       });
-      allAppointments = allAppointments.filter(app => !isNaN(new Date(app.appointment_date).getTime()));
+      allAppointments = allAppointments.filter(app => !isNaN(new Date(app.appointment_date).getFullYear()));
     }
 
-    if (allAppointments.length === 0) {
+    const invalidPatients = allPatients.filter(p => !p.age || !['Male', 'Female'].includes(p.sex));
+    if (invalidPatients.length > 0) {
+      console.warn('Invalid patient data:', invalidPatients);
+      Swal.fire({
+        icon: 'warning',
+        title: 'Invalid Data',
+        text: `${invalidPatients.length} patient(s) have invalid age or gender and will be excluded from the charts.`,
+        confirmButtonColor: '#0078D4'
+      });
+      allPatients = allPatients.filter(p => p.age && ['Male', 'Female'].includes(p.sex));
+    }
+
+    if (allAppointments.length === 0 && allPatients.length === 0) {
       Swal.fire({
         icon: 'info',
-        title: 'No Appointments',
-        text: 'No appointment data available to display.',
-        confirmButtonColor: '#4A90E2'
+        title: 'No Data',
+        text: 'No appointment or patient data available to display.',
+        confirmButtonColor: '#0078D4'
       });
       document.getElementById('statusHighlightText').textContent = 'No appointment data available.';
       document.getElementById('serviceHighlightText').textContent = 'No appointment data available.';
+      document.getElementById('ageHighlightText').textContent = 'No patient data available.';
+      document.getElementById('genderHighlightText').textContent = 'No patient data available.';
       spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
       return;
     }
 
     const currentYear = new Date().getFullYear();
-    populateYearFilter(allAppointments, currentYear);
+    populateYearFilter(allAppointments, allPatients, currentYear);
     requestAnimationFrame(() => {
-      renderStatusChart(allAppointments, currentYear);
-      renderServiceChart(allAppointments, allServices, currentYear);
+      renderStatusChart(allAppointments, null);
+      renderServiceChart(allAppointments, allServices, null);
+      renderAgeChart(allPatients, null);
+      renderGenderChart(allPatients, null);
     });
 
-    document.getElementById('statusYearFilter').addEventListener('change', (e) => {
-      renderStatusChart(allAppointments, parseInt(e.target.value));
-    });
-    document.getElementById('exportStatusCsvBtn').addEventListener('click', () => {
-      exportStatusToCsv(allAppointments, parseInt(document.getElementById('statusYearFilter').value));
-    });
-    document.getElementById('serviceYearFilter').addEventListener('change', (e) => {
-      renderServiceChart(allAppointments, allServices, parseInt(e.target.value));
-    });
-    document.getElementById('exportServiceCsvBtn').addEventListener('click', () => {
-      exportServiceToCsv(allAppointments, parseInt(document.getElementById('serviceYearFilter').value));
-    });
+    const globalYearFilter = document.getElementById('globalYearFilter');
+    const statusYearFilter = document.getElementById('statusYearFilter');
+    const exportStatusCsvBtn = document.getElementById('exportStatusCsvBtn');
+    const serviceYearFilter = document.getElementById('serviceYearFilter');
+    const exportServiceCsvBtn = document.getElementById('exportServiceCsvBtn');
+    const ageYearFilter = document.getElementById('ageYearFilter');
+    const exportAgeCsvBtn = document.getElementById('exportAgeCsvBtn');
+    const genderYearFilter = document.getElementById('genderYearFilter');
+    const exportGenderCsvBtn = document.getElementById('exportGenderCsvBtn');
+
+    if (globalYearFilter) {
+      globalYearFilter.addEventListener('change', (e) => {
+        const year = e.target.value ? parseInt(e.target.value) : null;
+        renderStatusChart(allAppointments, year);
+        renderServiceChart(allAppointments, allServices, year);
+        renderAgeChart(allPatients, year);
+        renderGenderChart(allPatients, year);
+        [statusYearFilter, serviceYearFilter, ageYearFilter, genderYearFilter].forEach(filter => {
+          if (filter) filter.value = e.target.value;
+        });
+      });
+    }
+    if (statusYearFilter) {
+      statusYearFilter.addEventListener('change', (e) => {
+        renderStatusChart(allAppointments, e.target.value ? parseInt(e.target.value) : null);
+      });
+    }
+    if (exportStatusCsvBtn) {
+      exportStatusCsvBtn.addEventListener('click', () => {
+        exportStatusToCsv(allAppointments, parseInt(statusYearFilter?.value || globalYearFilter?.value || currentYear));
+      });
+    }
+    if (serviceYearFilter) {
+      serviceYearFilter.addEventListener('change', (e) => {
+        renderServiceChart(allAppointments, allServices, e.target.value ? parseInt(e.target.value) : null);
+      });
+    }
+    if (exportServiceCsvBtn) {
+      exportServiceCsvBtn.addEventListener('click', () => {
+        exportServiceToCsv(allAppointments, parseInt(serviceYearFilter?.value || globalYearFilter?.value || currentYear));
+      });
+    }
+    if (ageYearFilter) {
+      ageYearFilter.addEventListener('change', (e) => {
+        renderAgeChart(allPatients, e.target.value ? parseInt(e.target.value) : null);
+      });
+    }
+    if (exportAgeCsvBtn) {
+      exportAgeCsvBtn.addEventListener('click', () => {
+        exportAgeToCsv(allPatients, parseInt(ageYearFilter?.value || globalYearFilter?.value || currentYear));
+      });
+    }
+    if (genderYearFilter) {
+      genderYearFilter.addEventListener('change', (e) => {
+        renderGenderChart(allPatients, e.target.value ? parseInt(e.target.value) : null);
+      });
+    }
+    if (exportGenderCsvBtn) {
+      exportGenderCsvBtn.addEventListener('click', () => {
+        exportGenderToCsv(allPatients, parseInt(genderYearFilter?.value || globalYearFilter?.value || currentYear));
+      });
+    }
 
     spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
   } catch (error) {
@@ -408,58 +689,46 @@ document.addEventListener('DOMContentLoaded', async () => {
       icon: 'error',
       title: 'Error',
       text: `Failed to load data: ${error.message}`,
-      confirmButtonColor: '#4A90E2'
+      confirmButtonColor: '#0078D4'
     });
     document.getElementById('statusHighlightText').textContent = 'Failed to load appointment data.';
     document.getElementById('serviceHighlightText').textContent = 'Failed to load appointment data.';
+    document.getElementById('ageHighlightText').textContent = 'Failed to load patient data.';
+    document.getElementById('genderHighlightText').textContent = 'Failed to load patient data.';
     spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
   }
 });
 
-async function getCsrfToken() {
-  try {
-    const response = await fetch('https://balane-saspa-dental-1.onrender.com/auth/csrf-token', {
-      credentials: 'include'
-    });
-    const data = await response.json();
-    return data.csrfToken;
-  } catch (error) {
-    console.error('Error fetching CSRF token:', error);
-    throw new Error('Failed to fetch CSRF token');
-  }
-}
-
-function getPatientName(patientData) {
-  if (!patientData) return 'Unknown';
-  const { first_name, middle_name, last_name } = patientData;
-  return [first_name, middle_name, last_name].filter(Boolean).join(' ').trim() || 'Unknown';
-}
-
-function populateYearFilter(appointments, currentYear) {
+function populateYearFilter(appointments, patients, currentYear) {
   const yearFilters = [
+    document.getElementById('globalYearFilter'),
     document.getElementById('statusYearFilter'),
-    document.getElementById('serviceYearFilter')
+    document.getElementById('serviceYearFilter'),
+    document.getElementById('ageYearFilter'),
+    document.getElementById('genderYearFilter')
   ];
-  const years = [...new Set(appointments.map(app => new Date(app.appointment_date).getFullYear()))].sort((a, b) => b - a);
+  const appointmentYears = [...new Set(appointments.map(app => new Date(app.appointment_date).getFullYear()))];
+  const patientYears = [...new Set(patients.map(p => new Date(p.effective_date || new Date()).getFullYear()))];
+  const years = [...new Set([...appointmentYears, ...patientYears])].sort((a, b) => b - a);
   yearFilters.forEach(filter => {
     if (filter) {
-      filter.innerHTML = '';
+      filter.innerHTML = '<option value="">All Years</option>';
       years.forEach(year => {
         const option = document.createElement('option');
         option.value = year;
         option.textContent = year;
         filter.appendChild(option);
       });
-      filter.value = currentYear;
+      filter.value = '';
     }
   });
 }
 
 function generateColor(index) {
   const colors = [
-    '#2563eb', '#f97316', '#dc2626', '#14b8a6', '#9333ea', '#f59e0b', '#16a34a',
-    '#db2777', '#eab308', '#3b82f6', '#4f46e5', '#a3e635', '#22c55e', '#ea580c',
-    '#7c3aed', '#06b6d4', '#ec4899', '#ef4444', '#65a30d', '#0ea5e9'
+    '#0078D4', '#D83B01', '#A80000', '#107C10', '#5C2D91', '#FFB900', '#00B7C3',
+    '#C30052', '#E3008C', '#004B1C', '#8E562E', '#008272', '#F7630C', '#B4009E',
+    '#005B70', '#9B0062', '#D13438', '#2B88D8', '#00A2AD', '#503300'
   ];
   return colors[index % colors.length];
 }
@@ -471,14 +740,15 @@ function renderStatusChart(appointments, year) {
     const canvas = document.getElementById('statusChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
     const statuses = ['confirmed', 'pending', 'cancelled', 'rejected'];
+    const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
     const statusCounts = statuses.map(status => 
-      appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.status?.toLowerCase() === status).length
+      filteredAppointments.filter(app => app.status?.toLowerCase() === status).length
     );
     const total = statusCounts.reduce((sum, count) => sum + count, 0);
     const datasets = [{
       data: statusCounts,
-      backgroundColor: ['#16a34a', '#f59e0b', '#ef4444', '#dc2626'],
-      borderColor: '#fff',
+      backgroundColor: ['#107C10', '#FFB900', '#D83B01', '#A80000'],
+      borderColor: '#FFFFFF',
       borderWidth: 2
     }];
 
@@ -496,35 +766,38 @@ function renderStatusChart(appointments, year) {
           legend: { display: false },
           title: { 
             display: true, 
-            text: `Appointment Status Distribution (${year})`, 
-            font: { size: 18, weight: '600', family: 'Nunito' }, 
-            color: '#333', 
-            padding: { top: 10, bottom: 20 } 
+            text: `Appointment Status${year ? ` (${year})` : ''}`, 
+            font: { size: 16, weight: '600', family: 'Segoe UI' }, 
+            color: '#252423', 
+            padding: { top: 10, bottom: 10 } 
           },
           tooltip: { 
-            backgroundColor: '#fff', 
-            titleColor: '#333', 
-            bodyColor: '#666', 
-            borderColor: '#e0e0e0', 
+            backgroundColor: '#FFFFFF', 
+            titleColor: '#252423', 
+            bodyColor: '#605E5C', 
+            borderColor: '#E1DFDD', 
             borderWidth: 1, 
-            cornerRadius: 8, 
-            padding: 12 
+            cornerRadius: 4, 
+            padding: 10 
           }
         },
-        animation: { duration: 1000, easing: 'easeOutQuart' },
+        animation: {
+          duration: 1200,
+          easing: 'easeOutQuart',
+          animateRotate: true,
+          animateScale: true
+        },
         onClick: (e, elements) => {
           if (elements.length) {
             const index = elements[0].index;
             const status = statuses[index];
-            const statusAppointments = appointments.filter(app => 
-              new Date(app.appointment_date).getFullYear() === year && app.status?.toLowerCase() === status
-            );
+            const statusAppointments = filteredAppointments.filter(app => app.status?.toLowerCase() === status);
             Swal.fire({
-              title: `${status.capitalize()} Appointments in ${year}`,
+              title: `${status.capitalize()} Appointments${year ? ` in ${year}` : ''}`,
               html: statusAppointments.length 
-                ? `<ul>${statusAppointments.map(app => `<li>${getPatientName(app.patients)} - ${new Date(app.appointment_date).toLocaleDateString()}</li>`).join('')}</ul>` 
+                ? `<ul class="list-disc pl-5">${statusAppointments.map(app => `<li>${new Date(app.appointment_date).toLocaleDateString()}</li>`).join('')}</ul>` 
                 : 'No appointments found.',
-              confirmButtonColor: '#4A90E2'
+              confirmButtonColor: '#0078D4'
             });
           }
         }
@@ -568,7 +841,7 @@ function renderStatusChart(appointments, year) {
       icon: 'error',
       title: 'Graph Error',
       text: `Failed to render status chart: ${error.message}`,
-      confirmButtonColor: '#4A90E2'
+      confirmButtonColor: '#0078D4'
     });
   }
   spinner.style.display = 'none';
@@ -580,9 +853,10 @@ function renderServiceChart(appointments, services, year) {
   try {
     const canvas = document.getElementById('serviceChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
+    const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
     const serviceCounts = services.map((service, index) => ({
       name: service.name,
-      count: appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.services?.name === service.name).length,
+      count: filteredAppointments.filter(app => app.services?.name === service.name).length,
       color: generateColor(index)
     }));
 
@@ -610,54 +884,57 @@ function renderServiceChart(appointments, services, year) {
             title: { 
               display: true, 
               text: 'Number of Appointments', 
-              font: { size: 14, weight: '600', family: 'Nunito' }, 
-              color: '#333' 
+              font: { size: 12, weight: '600', family: 'Segoe UI' }, 
+              color: '#252423' 
             },
-            ticks: { stepSize: 1, font: { size: 12, family: 'Nunito' }, color: '#666' }
+            ticks: { stepSize: 1, font: { size: 10, family: 'Segoe UI' }, color: '#605E5C' }
           },
           x: {
             title: { 
               display: true, 
               text: 'Service', 
-              font: { size: 14, weight: '600', family: 'Nunito' }, 
-              color: '#333' 
+              font: { size: 12, weight: '600', family: 'Segoe UI' }, 
+              color: '#252423' 
             },
-            ticks: { font: { size: 12, family: 'Nunito' }, color: '#666' }
+            ticks: { font: { size: 10, family: 'Segoe UI' }, color: '#605E5C' }
           }
         },
         plugins: {
           legend: { display: false },
           title: { 
             display: true, 
-            text: `Service Popularity (${year})`, 
-            font: { size: 18, weight: '600', family: 'Nunito' }, 
-            color: '#333', 
-            padding: { top: 10, bottom: 20 } 
+            text: `Service Popularity${year ? ` (${year})` : ''}`, 
+            font: { size: 16, weight: '600', family: 'Segoe UI' }, 
+            color: '#252423', 
+            padding: { top: 10, bottom: 10 } 
           },
           tooltip: { 
-            backgroundColor: '#fff', 
-            titleColor: '#333', 
-            bodyColor: '#666', 
-            borderColor: '#e0e0e0', 
+            backgroundColor: '#FFFFFF', 
+            titleColor: '#252423', 
+            bodyColor: '#605E5C', 
+            borderColor: '#E1DFDD', 
             borderWidth: 1, 
-            cornerRadius: 8, 
-            padding: 12 
+            cornerRadius: 4, 
+            padding: 10 
           }
         },
-        animation: { duration: 1000, easing: 'easeOutQuart' },
+        animation: {
+          duration: 1200,
+          easing: 'easeOutQuart',
+          y: { from: 0 },
+          delay: (context) => context.dataIndex * 100
+        },
         onClick: (e, elements) => {
           if (elements.length) {
             const index = elements[0].index;
             const service = services[index].name;
-            const serviceAppointments = appointments.filter(app => 
-              new Date(app.appointment_date).getFullYear() === year && app.services?.name === service
-            );
+            const serviceAppointments = filteredAppointments.filter(app => app.services?.name === service);
             Swal.fire({
-              title: `${service} Appointments in ${year}`,
+              title: `${service} Appointments${year ? ` in ${year}` : ''}`,
               html: serviceAppointments.length 
-                ? `<ul>${serviceAppointments.map(app => `<li>${getPatientName(app.patients)} - ${new Date(app.appointment_date).toLocaleDateString()}</li>`).join('')}</ul>` 
+                ? `<ul class="list-disc pl-5">${serviceAppointments.map(app => `<li>${new Date(app.appointment_date).toLocaleDateString()}</li>`).join('')}</ul>` 
                 : 'No appointments found.',
-              confirmButtonColor: '#4A90E2'
+              confirmButtonColor: '#0078D4'
             });
           }
         }
@@ -693,7 +970,7 @@ function renderServiceChart(appointments, services, year) {
     });
 
     document.getElementById('serviceHighlightText').textContent = maxCount > 0 
-      ? `Most Popular Service: ${topService} (${maxCount} appointments)`
+      ? `Top Service: ${topService} (${maxCount} appointments)`
       : 'No appointment data available.';
   } catch (error) {
     console.error('Error rendering bar chart:', error);
@@ -701,7 +978,244 @@ function renderServiceChart(appointments, services, year) {
       icon: 'error',
       title: 'Graph Error',
       text: `Failed to render service chart: ${error.message}`,
-      confirmButtonColor: '#4A90E2'
+      confirmButtonColor: '#0078D4'
+    });
+  }
+  spinner.style.display = 'none';
+}
+
+function renderAgeChart(patients, year) {
+  const spinner = document.getElementById('ageChartSpinner');
+  spinner.style.display = 'block';
+  try {
+    const canvas = document.getElementById('ageChart');
+    if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
+    const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
+    const ages = filteredPatients.map(p => parseInt(p.age));
+    const bins = [];
+    for (let i = 0; i <= 100; i += 10) {
+      bins.push({
+        range: `${i}-${i + 9}`,
+        count: ages.filter(age => age >= i && age < i + 10).length
+      });
+    }
+    const datasets = [{
+      label: 'Patients',
+      data: bins.map(b => b.count),
+      backgroundColor: '#0078D4',
+      borderColor: '#005A9E',
+      borderWidth: 1
+    }];
+
+    const maxCount = Math.max(...bins.map(b => b.count));
+    const peakRange = bins.find(b => b.count === maxCount)?.range || 'N/A';
+
+    if (ageChartInstance) ageChartInstance.destroy();
+    ageChartInstance = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: { labels: bins.map(b => b.range), datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: { 
+              display: true, 
+              text: 'Number of Patients', 
+              font: { size: 12, weight: '600', family: 'Segoe UI' }, 
+              color: '#252423' 
+            },
+            ticks: { stepSize: 1, font: { size: 10, family: 'Segoe UI' }, color: '#605E5C' }
+          },
+          x: {
+            title: { 
+              display: true, 
+              text: 'Age Range', 
+              font: { size: 12, weight: '600', family: 'Segoe UI' }, 
+              color: '#252423' 
+            },
+            ticks: { font: { size: 10, family: 'Segoe UI' }, color: '#605E5C' }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          title: { 
+            display: true, 
+            text: `Patient Age Distribution${year ? ` (${year})` : ''}`, 
+            font: { size: 16, weight: '600', family: 'Segoe UI' }, 
+            color: '#252423', 
+            padding: { top: 10, bottom: 10 } 
+          },
+          tooltip: { 
+            backgroundColor: '#FFFFFF', 
+            titleColor: '#252423', 
+            bodyColor: '#605E5C', 
+            borderColor: '#E1DFDD', 
+            borderWidth: 1, 
+            cornerRadius: 4, 
+            padding: 10 
+          }
+        },
+        animation: {
+          duration: 1200,
+          easing: 'easeOutQuart',
+          y: { from: 0 },
+          delay: (context) => context.dataIndex * 100
+        },
+        onClick: (e, elements) => {
+          if (elements.length) {
+            const index = elements[0].index;
+            const ageRange = bins[index].range;
+            const agePatients = filteredPatients.filter(p => {
+              const age = parseInt(p.age);
+              const [min, max] = ageRange.split('-').map(Number);
+              return age >= min && age <= max;
+            });
+            Swal.fire({
+              title: `Patients in Age Range ${ageRange}${year ? ` (${year})` : ''}`,
+              html: agePatients.length 
+                ? `<p>${agePatients.length} patients in this range.</p>` 
+                : 'No patients found.',
+              confirmButtonColor: '#0078D4'
+            });
+          }
+        }
+      }
+    });
+
+    const legendContainer = document.getElementById('ageChartLegend');
+    legendContainer.innerHTML = '';
+    const legendItem = document.createElement('div');
+    legendItem.className = `legend-item`;
+    legendItem.innerHTML = `
+      <span class="legend-color" style="background-color: ${datasets[0].backgroundColor};"></span>
+      <span>Patients</span>
+    `;
+    legendContainer.appendChild(legendItem);
+
+    document.getElementById('ageHighlightText').textContent = maxCount > 0 
+      ? `Peak Age Range: ${peakRange} (${maxCount} patients)`
+      : 'No patient data available.';
+  } catch (error) {
+    console.error('Error rendering age chart:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Graph Error',
+      text: `Failed to render age chart: ${error.message}`,
+      confirmButtonColor: '#0078D4'
+    });
+  }
+  spinner.style.display = 'none';
+}
+
+function renderGenderChart(patients, year) {
+  const spinner = document.getElementById('genderChartSpinner');
+  spinner.style.display = 'block';
+  try {
+    const canvas = document.getElementById('genderChart');
+    if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
+    const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
+    const genders = ['Male', 'Female'];
+    const genderCounts = genders.map(gender => filteredPatients.filter(p => p.sex === gender).length);
+    const total = genderCounts.reduce((sum, count) => sum + count, 0);
+    const datasets = [{
+      data: genderCounts,
+      backgroundColor: ['#0078D4', '#D83B01'],
+      borderColor: '#FFFFFF',
+      borderWidth: 2
+    }];
+
+    const maxCount = Math.max(...genderCounts);
+    const dominantGender = genders[genderCounts.indexOf(maxCount)];
+
+    if (genderChartInstance) genderChartInstance.destroy();
+    genderChartInstance = new Chart(canvas.getContext('2d'), {
+      type: 'pie',
+      data: { labels: genders, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          title: { 
+            display: true, 
+            text: `Patient Gender Distribution${year ? ` (${year})` : ''}`, 
+            font: { size: 16, weight: '600', family: 'Segoe UI' }, 
+            color: '#252423', 
+            padding: { top: 10, bottom: 10 } 
+          },
+          tooltip: { 
+            backgroundColor: '#FFFFFF', 
+            titleColor: '#252423', 
+            bodyColor: '#605E5C', 
+            borderColor: '#E1DFDD', 
+            borderWidth: 1, 
+            cornerRadius: 4, 
+            padding: 10 
+          }
+        },
+        animation: {
+          duration: 1200,
+          easing: 'easeOutQuart',
+          animateRotate: true,
+          animateScale: true
+        },
+        onClick: (e, elements) => {
+          if (elements.length) {
+            const index = elements[0].index;
+            const gender = genders[index];
+            const genderPatients = filteredPatients.filter(p => p.sex === gender);
+            Swal.fire({
+              title: `${gender} Patients${year ? ` in ${year}` : ''}`,
+              html: genderPatients.length 
+                ? `<p>${genderPatients.length} ${gender} patients.</p>` 
+                : 'No patients found.',
+              confirmButtonColor: '#0078D4'
+            });
+          }
+        }
+      }
+    });
+
+    const legendContainer = document.getElementById('genderChartLegend');
+    legendContainer.innerHTML = '';
+    datasets[0].data.forEach((count, index) => {
+      const legendItem = document.createElement('div');
+      legendItem.className = `legend-item`;
+      legendItem.setAttribute('role', 'button');
+      legendItem.setAttribute('tabindex', '0');
+      legendItem.innerHTML = `
+        <span class="legend-color" style="background-color: ${datasets[0].backgroundColor[index]};"></span>
+        <span>${genders[index]}</span>
+      `;
+      legendItem.addEventListener('click', () => {
+        const meta = genderChartInstance.getDatasetMeta(0);
+        meta.data[index].hidden = !meta.data[index].hidden;
+        legendItem.classList.toggle('hidden');
+        genderChartInstance.update();
+      });
+      legendItem.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          const meta = genderChartInstance.getDatasetMeta(0);
+          meta.data[index].hidden = !meta.data[index].hidden;
+          legendItem.classList.toggle('hidden');
+          genderChartInstance.update();
+        }
+      });
+      legendContainer.appendChild(legendItem);
+    });
+
+    document.getElementById('genderHighlightText').textContent = total > 0 
+      ? `Dominant Gender: ${dominantGender} (${maxCount} patients)`
+      : 'No patient data available.';
+  } catch (error) {
+    console.error('Error rendering gender chart:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Graph Error',
+      text: `Failed to render gender chart: ${error.message}`,
+      confirmButtonColor: '#0078D4'
     });
   }
   spinner.style.display = 'none';
@@ -709,9 +1223,10 @@ function renderServiceChart(appointments, services, year) {
 
 function exportStatusToCsv(appointments, year) {
   const statuses = ['confirmed', 'pending', 'cancelled', 'rejected'];
+  const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
   const statusCounts = statuses.map(status => ({
     status,
-    count: appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.status?.toLowerCase() === status).length
+    count: filteredAppointments.filter(app => app.status?.toLowerCase() === status).length
   }));
   const csvRows = [['Status', 'Count'].join(',')];
   statusCounts.forEach(s => {
@@ -721,23 +1236,24 @@ function exportStatusToCsv(appointments, year) {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `appointment_status_${year}.csv`;
+  link.download = `appointment_status${year ? `_${year}` : ''}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   Swal.fire({
     icon: 'success',
     title: 'Export Successful',
-    text: `Status data exported as appointment_status_${year}.csv`,
-    confirmButtonColor: '#4A90E2',
+    text: `Status data exported as appointment_status${year ? `_${year}` : ''}.csv`,
+    confirmButtonColor: '#0078D4',
     timer: 1500
   });
 }
 
 function exportServiceToCsv(appointments, year) {
+  const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
   const serviceCounts = allServices.map(service => ({
     name: service.name,
-    count: appointments.filter(app => new Date(app.appointment_date).getFullYear() === year && app.services?.name === service.name).length
+    count: filteredAppointments.filter(app => app.services?.name === service.name).length
   }));
   const csvRows = [['Service', 'Count'].join(',')];
   serviceCounts.forEach(s => {
@@ -747,15 +1263,76 @@ function exportServiceToCsv(appointments, year) {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `service_popularity_${year}.csv`;
+  link.download = `service_popularity${year ? `_${year}` : ''}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   Swal.fire({
     icon: 'success',
     title: 'Export Successful',
-    text: `Service data exported as service_popularity_${year}.csv`,
-    confirmButtonColor: '#4A90E2',
+    text: `Service data exported as service_popularity${year ? `_${year}` : ''}.csv`,
+    confirmButtonColor: '#0078D4',
+    timer: 1500
+  });
+}
+
+function exportAgeToCsv(patients, year) {
+  const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
+  const bins = [];
+  for (let i = 0; i <= 100; i += 10) {
+    bins.push({
+      range: `${i}-${i + 9}`,
+      count: filteredPatients.filter(p => {
+        const age = parseInt(p.age);
+        return age >= i && age < i + 10;
+      }).length
+    });
+  }
+  const csvRows = [['Age Range', 'Count'].join(',')];
+  bins.forEach(b => {
+    csvRows.push([b.range, b.count].join(','));
+  });
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `patient_age${year ? `_${year}` : ''}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  Swal.fire({
+    icon: 'success',
+    title: 'Export Successful',
+    text: `Age data exported as patient_age${year ? `_${year}` : ''}.csv`,
+    confirmButtonColor: '#0078D4',
+    timer: 1500
+  });
+}
+
+function exportGenderToCsv(patients, year) {
+  const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
+  const genders = ['Male', 'Female'];
+  const genderCounts = genders.map(gender => ({
+    gender,
+    count: filteredPatients.filter(p => p.sex === gender).length
+  }));
+  const csvRows = [['Gender', 'Count'].join(',')];
+  genderCounts.forEach(g => {
+    csvRows.push([g.gender, g.count].join(','));
+  });
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `patient_gender${year ? `_${year}` : ''}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  Swal.fire({
+    icon: 'success',
+    title: 'Export Successful',
+    text: `Gender data exported as patient_gender${year ? `_${year}` : ''}.csv`,
+    confirmButtonColor: '#0078D4',
     timer: 1500
   });
 }
