@@ -285,15 +285,24 @@
       <div class="card p-6" id="genderCard">
         <div class="loading-spinner" id="genderChartSpinner"></div>
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-medium text-gray-800">Patient Gender Distribution</h2>
+          <h2 class="text-lg font-medium text-gray-800">Count by Gender</h2>
           <select id="genderYearFilter" class="slicer" aria-label="Select year for gender chart"></select>
         </div>
         <div id="genderChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
         <div class="canvas-container small">
-          <canvas id="genderChart" aria-label="Pie chart showing patient gender distribution"></canvas>
+          <canvas id="genderChart" aria-label="Chart showing count by gender distribution"></canvas>
         </div>
-        <div class="flex justify-between items-center mt-4">
-          <p class="highlight-text" id="genderHighlightText"></p>
+        <div class="mt-4 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="flex items-center">
+              <div class="w-4 h-4 bg-pink-500 rounded mr-2"></div>
+              <span id="femaleCount">Female: 0</span>
+            </div>
+            <div class="flex items-center">
+              <div class="w-4 h-4 bg-blue-500 rounded mr-2"></div>
+              <span id="maleCount">Male: 0</span>
+            </div>
+          </div>
           <button id="exportGenderCsvBtn" class="btn-export" aria-label="Export gender chart data as CSV">Export</button>
         </div>
       </div>
@@ -1250,18 +1259,22 @@ function renderGenderChart(patients, year) {
     const canvas = document.getElementById('genderChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
     const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
-    const genders = ['Male', 'Female'];
+    const genders = ['Female', 'Male'];
     const genderCounts = genders.map(gender => filteredPatients.filter(p => p.sex === gender).length);
     const total = genderCounts.reduce((sum, count) => sum + count, 0);
     const datasets = [{
       data: genderCounts,
-      backgroundColor: ['#0078D4', '#D83B01'],
+      backgroundColor: ['#FF69B4', '#0078D4'], // Pink and blue to match the image
       borderColor: '#FFFFFF',
       borderWidth: 2
     }];
 
     const maxCount = Math.max(...genderCounts);
     const dominantGender = genders[genderCounts.indexOf(maxCount)];
+
+    // Update the counts in the HTML
+    document.getElementById('femaleCount').textContent = `Female: ${genderCounts[0]}`;
+    document.getElementById('maleCount').textContent = `Male: ${genderCounts[1]}`;
 
     if (genderChartInstance) genderChartInstance.destroy();
     genderChartInstance = new Chart(canvas.getContext('2d'), {
@@ -1274,7 +1287,7 @@ function renderGenderChart(patients, year) {
           legend: { display: false },
           title: { 
             display: true, 
-            text: `Patient Gender Distribution${year ? ` (${year})` : ''}`, 
+            text: `Count by Gender${year ? ` (${year})` : ''}`, 
             font: { size: 16, weight: '600', family: 'Segoe UI' }, 
             color: '#252423', 
             padding: { top: 10, bottom: 10 } 
@@ -1348,7 +1361,7 @@ function renderGenderChart(patients, year) {
     });
 
     document.getElementById('genderHighlightText').textContent = total > 0 
-      ? `Dominant Gender: ${dominantGender} (${maxCount} patients)`
+      ? `Total Patients: ${total} (Dominant Gender: ${dominantGender} with ${maxCount} patients)`
       : 'No patient data available.';
   } catch (error) {
     console.error('Error rendering gender chart:', error);
@@ -1456,7 +1469,7 @@ function exportAgeToCsv(patients, year) {
 
 function exportGenderToCsv(patients, year) {
   const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
-  const genders = ['Male', 'Female'];
+  const genders = ['Female', 'Male'];
   const genderCounts = genders.map(gender => ({
     gender,
     count: filteredPatients.filter(p => p.sex === gender).length
@@ -1482,5 +1495,4 @@ function exportGenderToCsv(patients, year) {
   });
 }
   </script>
-</body>
 </html>
