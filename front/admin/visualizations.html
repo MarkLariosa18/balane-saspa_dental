@@ -4,388 +4,306 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dental Clinic Analytics Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
-   body {
-  background: #F7F8FA;
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-  color: #1F2A44;
-  overflow-x: hidden;
-  margin: 0;
-  line-height: 1.5;
-}
+    :root {
+      --primary: #3B82F6;
+      --secondary: #10B981;
+      --neutral: #6B7280;
+      --background: #F9FAFB;
+      --card-bg: #FFFFFF;
+      --border: #E5E7EB;
+      --text: #1F2937;
+    }
 
-.dashboard-header {
-  background: #FFFFFF;
-  border-bottom: 1px solid #E4E7EB;
-  padding: 1.5rem 2rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
+    body {
+      background: var(--background);
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      margin: 0;
+      line-height: 1.6;
+    }
 
-.card {
-  background: #FFFFFF;
-  border-radius: 12px;
-  border: 1px solid #E4E7EB;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  overflow: hidden;
-  padding: 1.5rem;
-}
+    .dashboard-header {
+      background: var(--card-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 1.5rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
 
-.card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-}
+    .dashboard-header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0;
+    }
 
-.legend-item {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  background: #F1F3F5;
-  font-size: 0.875rem;
-  font-weight: 400;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  margin: 0.25rem;
-}
+    .dashboard-header p {
+      font-size: 0.875rem;
+      color: var(--neutral);
+      margin: 0.25rem 0 0;
+    }
 
-.legend-item:hover {
-  background: #E6F0FA;
-}
+    .card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      padding: 1.5rem;
+      transition: box-shadow 0.2s ease;
+    }
 
-.legend-color {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  margin-right: 0.5rem;
-}
+    .card:hover {
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
 
-.legend-item.hidden {
-  opacity: 0.6;
-}
+    .card h2 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin: 0;
+    }
 
-.loading-spinner {
-  display: none;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  border: 4px solid #E4E7EB;
-  border-top: 4px solid #2563EB;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  animation: spin 0.8s linear infinite;
-}
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      height: 300px;
+      margin-top: 1rem;
+    }
 
-@keyframes spin {
-  0% { transform: translate(-50%, -50%) rotate(0deg); }
-  100% { transform: translate(-50%, -50%) rotate(360deg); }
-}
+    .slicer {
+      padding: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      font-size: 0.875rem;
+      color: var(--text);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      width: 150px;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 1rem;
+    }
 
-.canvas-container {
-  position: relative;
-  width: 100%;
-  padding: 1rem 0;
-}
+    .slicer:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+      outline: none;
+    }
 
-.canvas-container.large {
-  min-height: 400px;
-}
+    .btn {
+      background: var(--primary);
+      color: var(--card-bg);
+      padding: 0.75rem 1.5rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-align: center;
+      transition: background 0.2s ease;
+      display: block;
+      width: 100%;
+    }
 
-.canvas-container.standard {
-  min-height: 300px;
-}
+    .btn:hover {
+      background: #2563EB;
+    }
 
-.canvas-container.small {
-  min-height: 250px;
-}
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      padding: 1.5rem;
+      background: var(--card-bg);
+      border-radius: 8px;
+      margin: 1.5rem 2rem;
+    }
 
-.slicer {
-  padding: 0.75rem;
-  border-radius: 6px;
-  border: 1px solid #D1D5DB;
-  background: #FFFFFF;
-  font-size: 0.875rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  width: 160px;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  background-size: 1.25rem;
-}
+    .stat {
+      text-align: center;
+      background: #F3F4F6;
+      border-radius: 8px;
+      padding: 1rem;
+    }
 
-.slicer:focus {
-  border-color: #2563EB;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
-  outline: none;
-}
+    .stat strong {
+      font-size: 0.875rem;
+      color: var(--text);
+      display: block;
+      margin-bottom: 0.25rem;
+    }
 
-.btn-export {
-  background: #2563EB;
-  color: #FFFFFF;
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
+    .stat span {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
 
-.btn-export:hover {
-  background: #1D4ED8;
-  transform: translateY(-2px);
-}
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      padding: 1.5rem 2rem;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
 
-.highlight-text {
-  background: #F1F3F5;
-  padding: 0.75rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #1F2A44;
-}
+    .loading-spinner {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 4px solid var(--border);
+      border-top: 4px solid var(--primary);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      animation: spin 0.8s linear infinite;
+    }
 
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
-  padding: 1.5rem;
-  max-width: 1400px;
-  margin: 0 auto;
-}
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
 
-.dashboard-grid .large {
-  grid-column: span 2;
-}
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+      }
 
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-  padding: 1.5rem;
-  background: #FFFFFF;
-  border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  margin: 1.5rem;
-}
+      .stats {
+        grid-template-columns: 1fr;
+        margin: 1rem;
+      }
 
-.stat {
-  text-align: center;
-  background: #F1F3F5;
-  border-radius: 8px;
-  padding: 1.25rem;
-  transition: transform 0.2s ease;
-}
+      .slicer {
+        width: 100%;
+      }
 
-.stat:hover {
-  transform: translateY(-3px);
-}
+      .btn {
+        padding: 0.5rem 1rem;
+      }
 
-.stat strong {
-  font-size: 0.875rem;
-  color: #1F2A44;
-  display: block;
-  margin-bottom: 0.25rem;
-}
+      .canvas-container {
+        height: 250px;
+      }
 
-.stat span {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #2563EB;
-}
+      .dashboard-header {
+        padding: 1rem;
+      }
 
-@media (max-width: 1024px) {
-  .dashboard-grid {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1rem;
-    padding: 1rem;
-  }
+      .dashboard-header .flex {
+        flex-direction: column;
+        gap: 1rem;
+      }
+    }
 
-  .dashboard-grid .large {
-    grid-column: span 1;
-  }
+    @media (max-width: 480px) {
+      .dashboard-grid {
+        padding: 0.5rem;
+      }
 
-  .canvas-container.large {
-    min-height: 350px;
-  }
+      .card {
+        padding: 1rem;
+      }
 
-  .canvas-container.standard {
-    min-height: 280px;
-  }
-
-  .canvas-container.small {
-    min-height: 220px;
-  }
-}
-
-@media (max-width: 768px) {
-  .dashboard-header {
-    padding: 1rem;
-  }
-
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-    padding: 0.75rem;
-  }
-
-  .stats {
-    grid-template-columns: 1fr;
-    padding: 1rem;
-    margin: 1rem;
-  }
-
-  .slicer {
-    width: 140px;
-    font-size: 0.85rem;
-  }
-
-  .btn-export {
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
-  }
-
-  .canvas-container.large,
-  .canvas-container.standard,
-  .canvas-container.small {
-    min-height: 200px;
-  }
-
-  .legend-item {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.6rem;
-  }
-
-  .legend-color {
-    width: 14px;
-    height: 14px;
-  }
-}
+      .stats {
+        padding: 1rem;
+      }
+    }
   </style>
 </head>
 <body>
   <header class="dashboard-header">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h1 class="text-2xl font-semibold text-gray-900">Dental Clinic Analytics Dashboard</h1>
-        <p class="text-sm text-gray-600 mt-1">Real-time insights for appointments and patients</p>
+        <h1>Dental Clinic Analytics</h1>
+        <p>Real-time insights for appointments and patients</p>
       </div>
       <div class="flex items-center gap-4">
-        <label for="globalYearFilter" class="text-sm font-medium text-gray-700">Filter Year:</label>
+        <label for="globalYearFilter" class="text-sm font-medium">Year:</label>
         <select id="globalYearFilter" class="slicer" aria-label="Select year for all charts">
           <option value="">All Years</option>
         </select>
-        <a href="index.html" class="btn-export" aria-label="Back to Admin Dashboard">Back to Admin</a>
+        <a href="index.html" class="btn" aria-label="Back to Admin Dashboard">Back to Admin</a>
       </div>
     </div>
   </header>
-  <main class="container mx-auto px-4">
+  <main class="container mx-auto">
     <div class="stats">
-      <div class="stat"><strong>Patients</strong><span id="patientsCount">Loading...</span></div>
-      <div class="stat"><strong>Treatments</strong><span id="treatmentsCount">Loading...</span></div>
+      <div class="stat">
+        <strong>Patients</strong>
+        <span id="patientsCount">Loading...</span>
+      </div>
+      <div class="stat">
+        <strong>Treatments</strong>
+        <span id="treatmentsCount">Loading...</span>
+      </div>
     </div>
-    <div class="dashboard-grid" id="dashboardGrid">
-      <!-- Service Popularity Chart -->
-      <div class="card large" id="serviceCard">
-        <div class="loading-spinner" id="barChartSpinner"></div>
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="loading-spinner" id="serviceChartSpinner" role="status" aria-label="Loading service chart"></div>
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">Service Popularity</h2>
+          <h2>Service Popularity</h2>
           <select id="serviceYearFilter" class="slicer" aria-label="Select year for service chart"></select>
         </div>
-        <div id="serviceChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
-        <div class="canvas-container large">
+        <div class="canvas-container">
           <canvas id="serviceChart" aria-label="Chart showing service popularity"></canvas>
         </div>
-        <div class="flex justify-between items-center mt-4">
-          <p class="highlight-text" id="serviceHighlightText"></p>
-          <button id="exportServiceCsvBtn" class="btn-export" aria-label="Export service chart data as CSV">Export</button>
-        </div>
+        <button id="exportServiceCsvBtn" class="btn mt-4" aria-label="Export service chart data as CSV">Export CSV</button>
       </div>
-      <!-- Appointment Status Chart -->
-      <div class="card" id="statusCard">
-        <div class="loading-spinner" id="pieChartSpinner"></div>
+      <div class="card">
+        <div class="loading-spinner" id="statusChartSpinner" role="status" aria-label="Loading status chart"></div>
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">Appointment Status</h2>
+          <h2>Appointment Status</h2>
           <select id="statusYearFilter" class="slicer" aria-label="Select year for status chart"></select>
         </div>
-        <div id="statusChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
-        <div class="canvas-container small">
-          <canvas id="statusChartascorecard" aria-label="Pie chart showing appointment status distribution"></canvas>
+        <div class="canvas-container">
+          <canvas id="statusChart" aria-label="Chart showing appointment status distribution"></canvas>
         </div>
-        <div class="flex justify-between items-center mt-4">
-          <p class="highlight-text" id="statusHighlightText"></p>
-          <button id="exportStatusCsvBtn" class="btn-export" aria-label="Export status chart data as CSV">Export</button>
-        </div>
+        <button id="exportStatusCsvBtn" class="btn mt-4" aria-label="Export status chart data as CSV">Export CSV</button>
       </div>
-      <!-- Age Distribution Chart -->
-      <div class="card" id="ageCard">
-        <div class="loading-spinner" id="ageChartSpinner"></div>
+      <div class="card">
+        <div class="loading-spinner" id="ageChartSpinner" role="status" aria-label="Loading age chart"></div>
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">Patient Age Distribution</h2>
+          <h2>Patient Age Distribution</h2>
           <select id="ageYearFilter" class="slicer" aria-label="Select year for age chart"></select>
         </div>
-        <div id="ageChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
-        <div class="canvas-container standard">
-          <canvas id="ageChart" aria-label="Histogram showing patient age distribution"></canvas>
+        <div class="canvas-container">
+          <canvas id="ageChart" aria-label="Chart showing patient age distribution"></canvas>
         </div>
-        <div class="flex justify-between items-center mt-4">
-          <p class="highlight-text" id="ageHighlightText"></p>
-          <button id="exportAgeCsvBtn" class="btn-export" aria-label="Export age chart data as CSV">Export</button>
-        </div>
+        <button id="exportAgeCsvBtn" class="btn mt-4" aria-label="Export age chart data as CSV">Export CSV</button>
       </div>
-      <!-- Gender Distribution Chart -->
-      <div class="card" id="genderCard">
-        <div class="loading-spinner" id="genderChartSpinner"></div>
+      <div class="card">
+        <div class="loading-spinner" id="genderChartSpinner" role="status" aria-label="Loading gender chart"></div>
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">Count by Gender</h2>
+          <h2>Gender Distribution</h2>
           <select id="genderYearFilter" class="slicer" aria-label="Select year for gender chart"></select>
         </div>
-        <div id="genderChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
-        <div class="canvas-container small">
-          <canvas id="genderChart" aria-label="Chart showing count by gender distribution"></canvas>
+        <div class="canvas-container">
+          <canvas id="genderChart" aria-label="Chart showing gender distribution"></canvas>
         </div>
-        <div class="mt-4">
-          <p class="highlight-text mb-3" id="genderHighlightText"></p>
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-              <div class="flex items-center">
-                <div class="w-4 h-4 bg-pink-400 rounded mr-2"></div>
-                <span id="femaleCount">Female: 0</span>
-              </div>
-              <div class="flex items-center">
-                <div class="w-4 h-4 bg-blue-600 rounded mr-2"></div>
-                <span id="maleCount">Male: 0</span>
-              </div>
-            </div>
-            <button id="exportGenderCsvBtn" class="btn-export" aria-label="Export gender chart data as CSV">Export</button>
-          </div>
-        </div>
+        <button id="exportGenderCsvBtn" class="btn mt-4" aria-label="Export gender chart data as CSV">Export CSV</button>
       </div>
-      <!-- Weekday Chart -->
-      <div class="card" id="weekdayCard">
-        <div class="loading-spinner" id="weekdayChartSpinner"></div>
+      <div class="card">
+        <div class="loading-spinner" id="weekdayChartSpinner" role="status" aria-label="Loading weekday chart"></div>
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-900">Appointments by Weekday</h2>
+          <h2>Appointments by Weekday</h2>
           <select id="weekdayYearFilter" class="slicer" aria-label="Select year for weekday chart"></select>
         </div>
-        <div class="canvas-container standard">
-          <canvas id="weekdayChart" aria-label="Bar chart showing appointments by weekday"></canvas>
+        <div class="canvas-container">
+          <canvas id="weekdayChart" aria-label="Chart showing appointments by weekday"></canvas>
         </div>
-        <div class="flex justify-between items-center mt-4">
-          <p class="highlight-text" id="weekdayHighlightText"></p>
-          <button id="exportWeekdayCsvBtn" class="btn-export" aria-label="Export weekday chart data as CSV">Export</button>
-        </div>
+        <button id="exportWeekdayCsvBtn" class="btn mt-4" aria-label="Export weekday chart data as CSV">Export CSV</button>
       </div>
     </div>
   </main>
