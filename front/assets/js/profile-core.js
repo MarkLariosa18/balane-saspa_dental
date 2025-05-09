@@ -259,7 +259,7 @@ async function changePassword() {
     const email = profileData.email;
 
     await fetchCsrfToken();
-    const otpRequestResponse = await fetch(`${BASE_URL}/api/send`, {
+    const otpRequestResponse = await fetch(`${BASE_URL}/api/send-otp-password-change-user`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -288,7 +288,7 @@ async function changePassword() {
       }
 
       await fetchCsrfToken();
-      const verifyOtpResponse = await fetch(`${BASE_URL}/api/otp/verify`, {
+      const verifyOtpResponse = await fetch(`${BASE_URL}/api/verify`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -333,7 +333,7 @@ async function changePassword() {
 
     document.getElementById('resendOtp').addEventListener('click', async function() {
       await fetchCsrfToken();
-      const resendResponse = await fetch(`${BASE_URL}/api/otp/send`, {
+      const resendResponse = await fetch(`${BASE_URL}/api/send-otp-password-change-user`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
