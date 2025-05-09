@@ -380,12 +380,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   function initSocketIO() {
     socket = io('https://balane-saspa-dental-1.onrender.com', {
       withCredentials: true,
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'], // Prioritize polling for reliability
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 5000,
       reconnectionDelayMax: 10000,
-      randomizationFactor: 0.5
+      randomizationFactor: 0.5,
+      timeout: 20000 // Increased timeout to 20 seconds
     });
     socket.on('connect', () => {
       console.log('Socket.IO connected');
@@ -431,7 +432,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       handleSocketIOMessage(message);
     });
     socket.on('connect_error', (error) => {
-      console.error('Socket.IO error:', error);
+      console.error('Socket.IO connection error:', error);
+      Swal.fire({
+        icon: 'warning',
+        title: 'Connection Error',
+        text: 'Failed to connect to real-time updates. Retrying in 5 seconds...',
+        confirmButtonColor: '#0078D4',
+        timer: 3000
+      });
       setTimeout(initSocketIO, 5000);
     });
     socket.on('disconnect', () => {
@@ -488,7 +496,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             confirmButtonColor: '#0078D4',
             timer: 3000
           });
-          // Update stats after appointment status change
           await fetchStatsData();
         }
         break;
@@ -573,7 +580,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const csrfToken = await getCsrfToken();
       const authToken = localStorage.getItem('authToken');
 
-      // Fetch patient count
       const patientsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/patients/allPatients', {
         credentials: 'include',
         headers: {
@@ -584,9 +590,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!patientsResponse.ok) throw new Error('Failed to fetch patients');
       const patientsData = await patientsResponse.json();
       const patientsCount = patientsData.length;
-      document.getElementById('patientsCount').textContent = `${patientsCount}K`;
+      const patientsCountElement = document.getElementById('patientsCount');
+      if (patientsCountElement) {
+        patientsCountElement.textContent = `${patientsCount}K`;
+      } else {
+        console.warn('patientsCount element not found');
+      }
 
-      // Fetch treatment count (confirmed and completed appointments)
       const appointmentsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', {
         credentials: 'include',
         headers: {
@@ -601,11 +611,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       const treatmentsCount = appointments.filter(app => 
         app.status?.toLowerCase() === 'confirmed' || app.status?.toLowerCase() === 'completed'
       ).length;
-      document.getElementById('treatmentsCount').textContent = `${treatmentsCount}K`;
+      const treatmentsCountElement = document.getElementById('treatmentsCount');
+      if (treatmentsCountElement) {
+        treatmentsCountElement.textContent = `${treatmentsCount}K`;
+      } else {
+        console.warn('treatmentsCount element not found');
+      }
     } catch (error) {
       console.error('Error fetching stats data:', error);
-      document.getElementById('patientsCount').textContent = 'Error';
-      document.getElementById('treatmentsCount').textContent = 'Error';
+      const patientsCountElement = document.getElementById('patientsCount');
+      const treatmentsCountElement = document.getElementById('treatmentsCount');
+      if (patientsCountElement) patientsCountElement.textContent = 'Error';
+      if (treatmentsCountElement) treatmentsCountElement.textContent = 'Error';
     }
   }
 
@@ -715,11 +732,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         text: 'No appointment or patient data available to display.',
         confirmButtonColor: '#0078D4'
       });
-      document.getElementById('statusHighlightText').textContent = 'No appointment data available.';
-      document.getElementById('serviceHighlightText').textContent = 'No appointment data available.';
-      document.getElementById('ageHighlightText').textContent = 'No patient data available.';
-      document.getElementById('genderHighlightText').textContent = 'No patient data available.';
-      document.getElementById('weekdayHighlightText').textContent = 'No appointment data available.';
+      const highlightElements = [
+        'statusHighlightText', 'serviceHighlightText', 'ageHighlightText',
+        'genderHighlightText', 'weekdayHighlightText'
+      ];
+      highlightElements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.textContent = id.includes('patient') ? 'No patient data available.' : 'No appointment data available.';
+        } else {
+          console.warn(`${id} element not found`);
+        }
+      });
       spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
       return;
     }
@@ -813,11 +837,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       text: `Failed to load data: ${error.message}`,
       confirmButtonColor: '#0078D4'
     });
-    document.getElementById('statusHighlightText').textContent = 'Failed to load appointment data.';
-    document.getElementById('serviceHighlightText').textContent = 'Failed to load appointment data.';
-    document.getElementById('ageHighlightText').textContent = 'Failed to load patient data.';
-    document.getElementById('genderHighlightText').textContent = 'Failed to load patient data.';
-    document.getElementById('weekdayHighlightText').textContent = 'Failed to load appointment data.';
+    const highlightElements = [
+      'statusHighlightText', 'serviceHighlightText', 'ageHighlightText',
+      'genderHighlightText', 'weekdayHighlightText'
+    ];
+    highlightElements.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.textContent = id.includes('patient') ? 'Failed to load patient data.' : 'Failed to load appointment data.';
+      } else {
+        console.warn(`${id} element not found`);
+      }
+    });
     spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
   }
 });
@@ -890,23 +921,29 @@ function adjustChartSizes(appointments, services, patients, year) {
   };
 
   Object.values(cards).forEach(card => {
-    card.classList.remove('large');
-    const canvasContainer = card.querySelector('.canvas-container');
-    canvasContainer.classList.remove('large', 'standard', 'small');
-    if (card.id === 'statusCard' || card.id === 'genderCard') {
-      canvasContainer.classList.add('small');
-    } else if (card.id === 'serviceCard') {
-      canvasContainer.classList.add('large');
-    } else {
-      canvasContainer.classList.add('standard');
+    if (card) {
+      card.classList.remove('large');
+      const canvasContainer = card.querySelector('.canvas-container');
+      if (canvasContainer) {
+        canvasContainer.classList.remove('large', 'standard', 'small');
+        if (card.id === 'statusCard' || card.id === 'genderCard') {
+          canvasContainer.classList.add('small');
+        } else if (card.id === 'serviceCard') {
+          canvasContainer.classList.add('large');
+        } else {
+          canvasContainer.classList.add('standard');
+        }
+      }
     }
   });
 
-  if (maxCount > 0) {
+  if (maxCount > 0 && cards[largestChart]) {
     cards[largestChart].classList.add('large');
     const canvasContainer = cards[largestChart].querySelector('.canvas-container');
-    canvasContainer.classList.remove('standard', 'small');
-    canvasContainer.classList.add('large');
+    if (canvasContainer) {
+      canvasContainer.classList.remove('standard', 'small');
+      canvasContainer.classList.add('large');
+    }
   }
 }
 
@@ -921,7 +958,7 @@ function renderAllCharts(year) {
 
 function renderStatusChart(appointments, year) {
   const spinner = document.getElementById('pieChartSpinner');
-  spinner.style.display = 'block';
+  if (spinner) spinner.style.display = 'block';
   try {
     const canvas = document.getElementById('statusChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
@@ -998,36 +1035,43 @@ function renderStatusChart(appointments, year) {
     });
 
     const legendContainer = document.getElementById('statusChartLegend');
-    legendContainer.innerHTML = '';
-    datasets[0].data.forEach((count, index) => {
-      const legendItem = document.createElement('div');
-      legendItem.className = `legend-item`;
-      legendItem.setAttribute('role', 'button');
-      legendItem.setAttribute('tabindex', '0');
-      legendItem.innerHTML = `
-        <span class="legend-color" style="background-color: ${datasets[0].backgroundColor[index]};"></span>
-        <span>${statuses[index].capitalize()}</span>
-      `;
-      legendItem.addEventListener('click', () => {
-        const meta = statusChartInstance.getDatasetMeta(0);
-        meta.data[index].hidden = !meta.data[index].hidden;
-        legendItem.classList.toggle('hidden');
-        statusChartInstance.update();
-      });
-      legendItem.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+    if (legendContainer) {
+      legendContainer.innerHTML = '';
+      datasets[0].data.forEach((count, index) => {
+        const legendItem = document.createElement('div');
+        legendItem.className = `legend-item`;
+        legendItem.setAttribute('role', 'button');
+        legendItem.setAttribute('tabindex', '0');
+        legendItem.innerHTML = `
+          <span class="legend-color" style="background-color: ${datasets[0].backgroundColor[index]};"></span>
+          <span>${statuses[index].capitalize()}</span>
+        `;
+        legendItem.addEventListener('click', () => {
           const meta = statusChartInstance.getDatasetMeta(0);
           meta.data[index].hidden = !meta.data[index].hidden;
           legendItem.classList.toggle('hidden');
           statusChartInstance.update();
-        }
+        });
+        legendItem.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            const meta = statusChartInstance.getDatasetMeta(0);
+            meta.data[index].hidden = !meta.data[index].hidden;
+            legendItem.classList.toggle('hidden');
+            statusChartInstance.update();
+          }
+        });
+        legendContainer.appendChild(legendItem);
       });
-      legendContainer.appendChild(legendItem);
-    });
+    }
 
-    document.getElementById('statusHighlightText').textContent = total > 0
-      ? `Dominant Status: ${dominantStatus.capitalize()} (${maxCount} appointments)`
-      : 'No appointment data available.';
+    const statusHighlight = document.getElementById('statusHighlightText');
+    if (statusHighlight) {
+      statusHighlight.textContent = total > 0
+        ? `Dominant Status: ${dominantStatus.capitalize()} (${maxCount} appointments)`
+        : 'No appointment data available.';
+    } else {
+      console.warn('statusHighlightText element not found');
+    }
   } catch (error) {
     console.error('Error rendering pie chart:', error);
     Swal.fire({
@@ -1037,12 +1081,12 @@ function renderStatusChart(appointments, year) {
       confirmButtonColor: '#0078D4'
     });
   }
-  spinner.style.display = 'none';
+  if (spinner) spinner.style.display = 'none';
 }
 
 function renderServiceChart(appointments, services, year) {
   const spinner = document.getElementById('barChartSpinner');
-  spinner.style.display = 'block';
+  if (spinner) spinner.style.display = 'block';
   try {
     const canvas = document.getElementById('serviceChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
@@ -1164,36 +1208,43 @@ function renderServiceChart(appointments, services, year) {
     });
 
     const legendContainer = document.getElementById('serviceChartLegend');
-    legendContainer.innerHTML = '';
-    datasets[0].data.forEach((count, index) => {
-      const legendItem = document.createElement('div');
-      legendItem.className = `legend-item`;
-      legendItem.setAttribute('role', 'button');
-      legendItem.setAttribute('tabindex', '0');
-      legendItem.innerHTML = `
-        <span class="legend-color" style="background-color: ${datasets[0].backgroundColor[index]};"></span>
-        <span>${services[index].name}</span>
-      `;
-      legendItem.addEventListener('click', () => {
-        const meta = serviceChartInstance.getDatasetMeta(0);
-        meta.data[index].hidden = !meta.data[index].hidden;
-        legendItem.classList.toggle('hidden');
-        serviceChartInstance.update();
-      });
-      legendItem.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+    if (legendContainer) {
+      legendContainer.innerHTML = '';
+      datasets[0].data.forEach((count, index) => {
+        const legendItem = document.createElement('div');
+        legendItem.className = `legend-item`;
+        legendItem.setAttribute('role', 'button');
+        legendItem.setAttribute('tabindex', '0');
+        legendItem.innerHTML = `
+          <span class="legend-color" style="background-color: ${datasets[0].backgroundColor[index]};"></span>
+          <span>${services[index].name}</span>
+        `;
+        legendItem.addEventListener('click', () => {
           const meta = serviceChartInstance.getDatasetMeta(0);
           meta.data[index].hidden = !meta.data[index].hidden;
           legendItem.classList.toggle('hidden');
           serviceChartInstance.update();
-        }
+        });
+        legendItem.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            const meta = serviceChartInstance.getDatasetMeta(0);
+            meta.data[index].hidden = !meta.data[index].hidden;
+            legendItem.classList.toggle('hidden');
+            serviceChartInstance.update();
+          }
+        });
+        legendContainer.appendChild(legendItem);
       });
-      legendContainer.appendChild(legendItem);
-    });
+    }
 
-    document.getElementById('serviceHighlightText').textContent = maxCount > 0
-      ? `Top Service: ${topService} (${maxCount} appointments)`
-      : 'No appointment data available.';
+    const serviceHighlight = document.getElementById('serviceHighlightText');
+    if (serviceHighlight) {
+      serviceHighlight.textContent = maxCount > 0
+        ? `Top Service: ${topService} (${maxCount} appointments)`
+        : 'No appointment data available.';
+    } else {
+      console.warn('serviceHighlightText element not found');
+    }
   } catch (error) {
     console.error('Error rendering service chart:', error);
     Swal.fire({
@@ -1203,12 +1254,12 @@ function renderServiceChart(appointments, services, year) {
       confirmButtonColor: '#0078D4'
     });
   }
-  spinner.style.display = 'none';
+  if (spinner) spinner.style.display = 'none';
 }
 
 function renderAgeChart(patients, year) {
   const spinner = document.getElementById('ageChartSpinner');
-  spinner.style.display = 'block';
+  if (spinner) spinner.style.display = 'block';
   try {
     const canvas = document.getElementById('ageChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
@@ -1321,18 +1372,25 @@ function renderAgeChart(patients, year) {
     });
 
     const legendContainer = document.getElementById('ageChartLegend');
-    legendContainer.innerHTML = '';
-    const legendItem = document.createElement('div');
-    legendItem.className = `legend-item`;
-    legendItem.innerHTML = `
-      <span class="legend-color" style="background-color: ${datasets[0].backgroundColor};"></span>
-      <span>Patients</span>
-    `;
-    legendContainer.appendChild(legendItem);
+    if (legendContainer) {
+      legendContainer.innerHTML = '';
+      const legendItem = document.createElement('div');
+      legendItem.className = `legend-item`;
+      legendItem.innerHTML = `
+        <span class="legend-color" style="background-color: ${datasets[0].backgroundColor};"></span>
+        <span>Patients</span>
+      `;
+      legendContainer.appendChild(legendItem);
+    }
 
-    document.getElementById('ageHighlightText').textContent = maxCount > 0
-      ? `Peak Age Range: ${peakRange} (${maxCount} patients)`
-      : 'No patient data available.';
+    const ageHighlight = document.getElementById('ageHighlightText');
+    if (ageHighlight) {
+      ageHighlight.textContent = maxCount > 0
+        ? `Peak Age Range: ${peakRange} (${maxCount} patients)`
+        : 'No patient data available.';
+    } else {
+      console.warn('ageHighlightText element not found');
+    }
   } catch (error) {
     console.error('Error rendering age chart:', error);
     Swal.fire({
@@ -1342,12 +1400,12 @@ function renderAgeChart(patients, year) {
       confirmButtonColor: '#0078D4'
     });
   }
-  spinner.style.display = 'none';
+  if (spinner) spinner.style.display = 'none';
 }
 
 function renderGenderChart(patients, year) {
   const spinner = document.getElementById('genderChartSpinner');
-  spinner.style.display = 'block';
+  if (spinner) spinner.style.display = 'block';
   try {
     const canvas = document.getElementById('genderChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
@@ -1365,8 +1423,18 @@ function renderGenderChart(patients, year) {
     const maxCount = Math.max(...genderCounts);
     const dominantGender = genders[genderCounts.indexOf(maxCount)];
 
-    document.getElementById('femaleCount').textContent = `Female: ${genderCounts[0]}`;
-    document.getElementById('maleCount').textContent = `Male: ${genderCounts[1]}`;
+    const femaleCountElement = document.getElementById('femaleCount');
+    if (femaleCountElement) {
+      femaleCountElement.textContent = `Female: ${genderCounts[0]}`;
+    } else {
+      console.warn('femaleCount element not found');
+    }
+    const maleCountElement = document.getElementById('maleCount');
+    if (maleCountElement) {
+      maleCountElement.textContent = `Male: ${genderCounts[1]}`;
+    } else {
+      console.warn('maleCount element not found');
+    }
 
     if (genderChartInstance) genderChartInstance.destroy();
     genderChartInstance = new Chart(canvas.getContext('2d'), {
@@ -1425,36 +1493,43 @@ function renderGenderChart(patients, year) {
     });
 
     const legendContainer = document.getElementById('genderChartLegend');
-    legendContainer.innerHTML = '';
-    datasets[0].data.forEach((count, index) => {
-      const legendItem = document.createElement('div');
-      legendItem.className = `legend-item`;
-      legendItem.setAttribute('role', 'button');
-      legendItem.setAttribute('tabindex', '0');
-      legendItem.innerHTML = `
-        <span class="legend-color" style="background-color: ${datasets[0].backgroundColor[index]};"></span>
-        <span>${genders[index]}</span>
-      `;
-      legendItem.addEventListener('click', () => {
-        const meta = genderChartInstance.getDatasetMeta(0);
-        meta.data[index].hidden = !meta.data[index].hidden;
-        legendItem.classList.toggle('hidden');
-        genderChartInstance.update();
-      });
-      legendItem.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+    if (legendContainer) {
+      legendContainer.innerHTML = '';
+      datasets[0].data.forEach((count, index) => {
+        const legendItem = document.createElement('div');
+        legendItem.className = `legend-item`;
+        legendItem.setAttribute('role', 'button');
+        legendItem.setAttribute('tabindex', '0');
+        legendItem.innerHTML = `
+          <span class="legend-color" style="background-color: ${datasets[0].backgroundColor[index]};"></span>
+          <span>${genders[index]}</span>
+        `;
+        legendItem.addEventListener('click', () => {
           const meta = genderChartInstance.getDatasetMeta(0);
           meta.data[index].hidden = !meta.data[index].hidden;
           legendItem.classList.toggle('hidden');
           genderChartInstance.update();
-        }
+        });
+        legendItem.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            const meta = genderChartInstance.getDatasetMeta(0);
+            meta.data[index].hidden = !meta.data[index].hidden;
+            legendItem.classList.toggle('hidden');
+            genderChartInstance.update();
+          }
+        });
+        legendContainer.appendChild(legendItem);
       });
-      legendContainer.appendChild(legendItem);
-    });
+    }
 
-    document.getElementById('genderHighlightText').textContent = total > 0
-      ? `Total Patients: ${total} (Dominant Gender: ${dominantGender} with ${maxCount} patients)`
-      : 'No patient data available.';
+    const genderHighlight = document.getElementById('genderHighlightText');
+    if (genderHighlight) {
+      genderHighlight.textContent = total > 0
+        ? `Total Patients: ${total} (Dominant Gender: ${dominantGender} with ${maxCount} patients)`
+        : 'No patient data available.';
+    } else {
+      console.warn('genderHighlightText element not found');
+    }
   } catch (error) {
     console.error('Error rendering gender chart:', error);
     Swal.fire({
@@ -1464,12 +1539,12 @@ function renderGenderChart(patients, year) {
       confirmButtonColor: '#0078D4'
     });
   }
-  spinner.style.display = 'none';
+  if (spinner) spinner.style.display = 'none';
 }
 
 function renderWeekdayChart(appointments, year) {
   const spinner = document.getElementById('weekdayChartSpinner');
-  spinner.style.display = 'block';
+  if (spinner) spinner.style.display = 'block';
   try {
     const canvas = document.getElementById('weekdayChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
@@ -1580,9 +1655,14 @@ function renderWeekdayChart(appointments, year) {
       }
     });
 
-    document.getElementById('weekdayHighlightText').textContent = total > 0
-      ? `Busiest Day: ${busiestDay} (${maxPercentage}%)`
-      : 'No appointment data available.';
+    const weekdayHighlight = document.getElementById('weekdayHighlightText');
+    if (weekdayHighlight) {
+      weekdayHighlight.textContent = total > 0
+        ? `Busiest Day: ${busiestDay} (${maxPercentage}%)`
+        : 'No appointment data available.';
+    } else {
+      console.warn('weekdayHighlightText element not found');
+    }
   } catch (error) {
     console.error('Error rendering weekday chart:', error);
     Swal.fire({
@@ -1592,7 +1672,7 @@ function renderWeekdayChart(appointments, year) {
       confirmButtonColor: '#0078D4'
     });
   }
-  spinner.style.display = 'none';
+  if (spinner) spinner.style.display = 'none';
 }
 
 function exportStatusToCsv(appointments, year) {
