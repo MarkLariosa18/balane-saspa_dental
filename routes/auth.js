@@ -232,6 +232,7 @@ router.get('/csrf-token', (req, res) => {
 });
 
 // Login endpoint
+// Login endpoint
 router.post('/login', applyLoginRateLimiter, async (req, res) => {
   const { identifier, password, remember } = req.body;
 
@@ -294,7 +295,8 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
           return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
         }
       } else if (validator.isEmail(identifier)) {
-        // Check patients table by email
+        // Check patients table by email (lowercase the input email)
+        const lowerCaseIdentifier = identifier.toLowerCase();
         const { data: patients, error: patientEmailError } = await supabase
           .from('patients')
           .select('id, email');
@@ -308,7 +310,7 @@ router.post('/login', applyLoginRateLimiter, async (req, res) => {
         for (const patient of patients) {
           try {
             const decryptedEmail = decrypt(patient.email);
-            if (decryptedEmail === identifier) {
+            if (decryptedEmail && decryptedEmail.toLowerCase() === lowerCaseIdentifier) {
               patientByEmail = patient;
               break;
             }
