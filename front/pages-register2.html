@@ -713,27 +713,16 @@
         }
       };
 
-      // Check account data
-      const accountData = JSON.parse(sessionStorage.getItem('accountData') || '{}');
-      if (!accountData.username) {
-        await showAlert("Missing Information", "Please complete the account creation step first.", "warning");
-        window.location.href = "pages-register.html";
-        return;
-      }
-      if (accountUsername) {
-        accountUsername.textContent = accountData.username;
-      }
-
-      if (!form) {
-        console.error("Form not found!");
-        return;
-      }
-      if (registerButton) {
-        registerButton.disabled = true;
-      }
-      if (verifyOtpButton) {
-        verifyOtpButton.disabled = true;
-      }
+    // Check account data
+const accountData = JSON.parse(sessionStorage.getItem('accountData') || '{}');
+if (!accountData.username) {
+  await showAlert("Missing Information", "Please complete the account creation step first.", "warning");
+  window.location.href = "pages-register.html";
+  return;
+}
+if (accountUsername) {
+  accountUsername.textContent = accountData.username;
+}
 
       // Clear errors on input
       const inputFields = form.querySelectorAll("input, textarea");

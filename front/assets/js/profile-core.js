@@ -259,7 +259,7 @@ async function changePassword() {
     const email = profileData.email;
 
     await fetchCsrfToken();
-    const otpRequestResponse = await fetch(`${BASE_URL}/api/otp/send`, {
+    const otpRequestResponse = await fetch(`${BASE_URL}/api/send`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
