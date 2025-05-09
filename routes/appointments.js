@@ -1257,6 +1257,28 @@ router.get('/all', isAuthenticated, isAdmin, async (req, res) => {
   }
 });
 
+// POST /api/appointments/update-past-appointments
+router.post('/update-past-appointments', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    await updateAllPastAppointmentsToCompleted();
+    res.status(200).json({ success: true, message: 'All past appointments updated to completed' });
+  } catch (error) {
+    logger.error('Error updating past appointments:', error);
+    res.status(500).json({ error: 'server_error', message: 'Failed to update past appointments' });
+  }
+});
+
+// POST /api/appointments/expire-pending-requests
+router.post('/expire-pending-requests', isAuthenticated, isAdmin, async (req, res) => {
+  try {
+    await expirePendingRequests();
+    res.status(200).json({ success: true, message: 'All past pending appointment requests expired' });
+  } catch (error) {
+    logger.error('Error expiring pending requests:', error);
+    res.status(500).json({ error: 'server_error', message: 'Failed to expire pending requests' });
+  }
+});
+
 // Test encryption/decryption route (restricted to development)
 router.get('/test-encryption', async (req, res) => {
   if (process.env.NODE_ENV === 'production') {
@@ -1278,17 +1300,18 @@ router.get('/test-encryption', async (req, res) => {
   }
 });
 
-// Test completed appointments update route (restricted to development)
+// Test completed appointments and expired requests update route (restricted to development)
 router.get('/test-completed-appointments', async (req, res) => {
   if (process.env.NODE_ENV === 'production') {
     return res.status(403).json({ error: 'forbidden', message: 'Test route disabled in production' });
   }
   try {
-    await updateCompletedAppointments();
-    res.status(200).json({ success: true, message: 'Completed appointments update triggered' });
+    await expirePendingRequests();
+    await updateAllPastAppointmentsToCompleted();
+    res.status(200).json({ success: true, message: 'Past appointments and pending requests update triggered' });
   } catch (error) {
-    logger.error('Test completed appointments error:', error);
-    res.status(500).json({ error: 'server_error', message: 'Test completed appointments failed' });
+    logger.error('Test past appointments and requests update error:', error);
+    res.status(500).json({ error: 'server_error', message: 'Test past appointments and requests update failed' });
   }
 });
 
@@ -1456,35 +1479,105 @@ async function sendAppointmentReminders(targetDay = 'today') {
   }
 }
 
-// Update confirmed appointments with past dates to completed
-async function updateCompletedAppointments() {
+// Update all past appointments to completed
+async function updateAllPastAppointmentsToCompleted() {
   try {
     const now = new Date().toISOString();
     const { data: appointments, error: selectError } = await supabase
       .from('appointments')
-      .select('id, appointment_date')
-      .eq('status', 'confirmed')
-      .lt('appointment_date', now);
+      .select('id, appointment_date, status')
+      .lt('appointment_date', now)
+      .not('status', 'in', ['completed', 'cancelled', 'rejected']);
 
     if (selectError) throw new Error(`Supabase select error: ${selectError.message}`);
     if (!appointments.length) {
-      logger.info('No confirmed appointments with past dates found to update to completed');
+      logger.info('No past appointments found to update to completed');
       return;
     }
 
     const appointmentIds = appointments.map((app) => app.id);
-    const { error: updateError } = await supabase
-      .from('appointments')
-      .update({ status: 'completed', updated_at: now })
-      .in('id', appointmentIds);
+    const batchSize = 1000;
+    let updatedCount = 0;
 
-    if (updateError) throw new Error(`Supabase update error: ${updateError.message}`);
+    for (let i = 0; i < appointmentIds.length; i += batchSize) {
+      const batch = appointmentIds.slice(i, i + batchSize);
+      const { error: updateError } = await supabase
+        .from('appointments')
+        .update({ status: 'completed', updated_at: now })
+        .in('id', batch);
 
-    logger.info(`Updated ${appointments.length} appointments to completed status`, {
+      if (updateError) throw new Error(`Supabase update error in batch ${i / batchSize + 1}: ${updateError.message}`);
+      
+      updatedCount += batch.length;
+      logger.info(`Updated batch ${i / batchSize + 1} with ${batch.length} appointments to completed status`);
+    }
+
+    logger.info(`Updated ${updatedCount} past appointments to completed status`, {
       appointmentIds,
     });
   } catch (error) {
-    logger.error('Error in updateCompletedAppointments:', error);
+    logger.error('Error in updateAllPastAppointmentsToCompleted:', error);
+    throw error;
+  }
+}
+
+// Expire pending appointment requests for past appointments
+async function expirePendingRequests() {
+  try {
+    const now = new Date().toISOString();
+    const { data: requests, error: selectError } = await supabase
+      .from('appointment_requests')
+      .select('id, appointment_id, appointments (appointment_date)')
+      .eq('status', 'pending')
+      .lt('appointments.appointment_date', now);
+
+    if (selectError) throw new Error(`Supabase select error: ${selectError.message}`);
+    if (!requests.length) {
+      logger.info('No pending appointment requests with past dates found to expire');
+      return;
+    }
+
+    const requestIds = requests.map((req) => req.id);
+    const appointmentIds = [...new Set(requests.map((req) => req.appointment_id))];
+    const batchSize = 1000;
+    let expiredRequestCount = 0;
+    let expiredAppointmentCount = 0;
+
+    // Update appointment_requests in batches
+    for (let i = 0; i < requestIds.length; i += batchSize) {
+      const batch = requestIds.slice(i, i + batchSize);
+      const { error: updateError } = await supabase
+        .from('appointment_requests')
+        .update({ status: 'expired', updated_at: now })
+        .in('id', batch);
+
+      if (updateError) throw new Error(`Supabase request update error in batch ${i / batchSize + 1}: ${updateError.message}`);
+      
+      expiredRequestCount += batch.length;
+      logger.info(`Expired batch ${i / batchSize + 1} with ${batch.length} pending requests`);
+    }
+
+    // Update corresponding appointments in batches
+    for (let i = 0; i < appointmentIds.length; i += batchSize) {
+      const batch = appointmentIds.slice(i, i + batchSize);
+      const { error: updateError } = await supabase
+        .from('appointments')
+        .update({ status: 'expired', pending_action: null, updated_at: now })
+        .in('id', batch);
+
+      if (updateError) throw new Error(`Supabase appointment update error in batch ${i / batchSize + 1}: ${updateError.message}`);
+      
+      expiredAppointmentCount += batch.length;
+      logger.info(`Updated batch ${i / batchSize + 1} with ${batch.length} appointments to expired status`);
+    }
+
+    logger.info(`Expired ${expiredRequestCount} pending appointment requests and updated ${expiredAppointmentCount} appointments`, {
+      requestIds,
+      appointmentIds,
+    });
+  } catch (error) {
+    logger.error('Error in expirePendingRequests:', error);
+    throw error;
   }
 }
 
@@ -1499,7 +1592,8 @@ const cronJobs = cron.schedule(
         sendAdminScheduleReminder('tomorrow'),
         sendAppointmentReminders('today'),
         sendAppointmentReminders('tomorrow'),
-        updateCompletedAppointments(),
+        expirePendingRequests(),
+        updateAllPastAppointmentsToCompleted(),
       ]);
       logger.info('Daily tasks completed successfully');
     } catch (error) {
