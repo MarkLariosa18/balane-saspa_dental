@@ -1170,7 +1170,7 @@
           console.log('Sending appointment request:', payload);
 
           try {
-            const response = await withTimeout(fetch(`${BASE_URL}/api/appointments/appointments`, {
+            const response = await withTimeout(fetch(`${BASE_URL}/api/appointments`, {
               method: 'POST',
               credentials: 'include',
               headers: {
