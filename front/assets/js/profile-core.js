@@ -288,7 +288,7 @@ async function changePassword() {
       }
 
       await fetchCsrfToken();
-      const verifyOtpResponse = await fetch(`${BASE_URL}/api/verify`, {
+      const verifyOtpResponse = await fetch(`${BASE_URL}/api/verify-otp`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
