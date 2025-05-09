@@ -20,223 +20,535 @@
   <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
   <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
   <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 
   <link href="assets/css/main.css" rel="stylesheet">
 
-  <!-- SweetAlert2 CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-
-  <!-- Modern Enhancements to Original Design -->
   <style>
-    :root {
-      --primary: #007bff; /* Matches Bootstrap primary */
-      --secondary: #f8f9fa; /* Light background */
-      --text: #333333;
-      --light: #ffffff;
-      --accent: #0056b3; /* Darker primary for hover */
-    }
+   :root {
+  --primary-color: #b994c0;
+  --primary-hover: #a07dab;
+  --secondary-color: #f8f9fa;
+  --text-color: #333;
+  --border-radius: 8px;
+}
 
-    body {
-      font-family: 'Poppins', sans-serif;
-      color: var(--text);
-    }
+body {
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
+  color: var(--text-color);
+}
 
-    .header {
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      transition: all 0.3s ease;
-    }
+.header {
+  background: #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  border-bottom: 1px solid #eee;
+}
 
-    .topbar {
-      padding: 8px 0;
-      font-size: 14px;
-      transition: background 0.3s ease;
-    }
+.topbar {
+  background: var(--primary-color);
+  color: #fff;
+  padding: 10px 0;
+  font-size: 14px;
+}
 
-    .branding {
-      padding: 10px 0;
-    }
+.branding .logo img {
+  max-height: 60px;
+  transition: transform 0.3s ease;
+}
 
-    .logo img {
-      max-height: 50px;
-      transition: transform 0.3s ease;
-    }
+.branding .logo img:hover {
+  transform: scale(1.1);
+}
 
-    .logo img:hover {
-      transform: scale(1.05);
-    }
+.navmenu ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  align-items: center; /* Vertically center all items */
+  gap: 10px; /* Consistent spacing between items */
+}
 
-    .navmenu a {
-      transition: color 0.3s ease;
-    }
+.navmenu ul li {
+  display: flex; /* Ensure li aligns items consistently */
+  align-items: center; /* Vertically center content */
+}
 
-    .navmenu a:hover {
-      color: var(--accent);
-    }
+.navmenu ul li a,
+.navmenu ul li .cta-btn {
+  color: var(--text-color);
+  font-weight: 500;
+  padding: 10px 15px; /* Uniform padding for all nav items */
+  transition: all 0.3s ease;
+  display: inline-flex; /* Ensure consistent alignment */
+  align-items: center;
+  justify-content: center; /* Center content horizontally */
+  text-decoration: none;
+  font-size: 14px; /* Consistent font size */
+  line-height: 1.5; /* Consistent line height */
+  border-radius: var(--border-radius); /* Consistent border radius */
+  min-width: 80px; /* Minimum width for uniformity */
+  text-align: center; /* Center text */
+  box-sizing: border-box; /* Ensure padding doesn't affect width */
+  height: 36px; /* Fixed height for vertical alignment */
+}
 
-    .cta-btn {
-      border-radius: 20px;
-      padding: 8px 20px;
-      transition: all 0.3s ease;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      background-color: var(--primary); /* Ensure consistent background */
-      color: var(--light); /* White text for contrast */
-      border: none; /* Remove any border */
-    }
+.navmenu ul li a:hover,
+.navmenu ul li a.active {
+  color: var(--primary-color);
+}
 
-    .cta-btn:hover {
-      background: var(--accent);
-      transform: translateY(-2px);
-      color: var(--light);
-    }
+.cta-btn {
+  background: var(--primary-color);
+  color: #fff !important;
+  transition: background 0.3s ease, transform 0.3s ease;
+  padding: 10px 15px; /* Match padding with other nav items */
+  min-width: 80px; /* Match min-width with other nav items */
+  height: 36px; /* Match height with other nav items */
+  display: inline-flex; /* Ensure consistent alignment */
+  align-items: center;
+  justify-content: center; /* Center content */
+}
 
-    .hero .carousel-item img {
-      transition: transform 0.5s ease;
-    }
+.cta-btn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+  color: #fff; /* Ensure text color remains white on hover */
+}
 
-    .hero .carousel-item.active img {
-      transform: scale(1.02);
-    }
+.mobile-nav-toggle {
+  font-size: 28px;
+  color: var(--text-color);
+  cursor: pointer;
+  line-height: 0;
+  transition: color 0.3s ease;
+  margin-left: 15px;
+  display: flex;
+  align-items: center;
+}
 
-    .btn-get-started {
-      border-radius: 20px;
-      padding: 10px 25px;
-      transition: all 0.3s ease;
-    }
+.mobile-nav-toggle:hover {
+  color: var(--primary-color);
+}
 
-    .btn-get-started:hover {
-      background: var(--accent);
-      transform: translateY(-2px);
-    }
+.mobile-nav-active .mobile-nav-toggle {
+  color: var(--primary-color);
+}
 
-    .service-item {
-      border-radius: 10px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
+.navbar-mobile {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  background: #fff;
+  z-index: 9999;
+  overflow-y: auto;
+  padding: 20px;
+  transition: all 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
 
-    .service-item:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 5px 15px rgba(0,0,0,0.15);
-    }
+.navbar-mobile ul {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center items horizontally */
+  padding: 0;
+  width: 100%;
+  max-width: 300px; /* Limit width for better appearance */
+}
 
-    .card {
-      border-radius: 8px;
-      overflow: hidden;
-    }
+.navbar-mobile li {
+  margin-bottom: 15px;
+  width: 100%; /* Full width for consistency */
+}
 
-    .card img {
-      transition: transform 0.3s ease;
-    }
+.navbar-mobile a {
+  font-size: 18px;
+  padding: 12px 20px;
+  color: var(--text-color);
+  display: flex;
+  justify-content: center; /* Center text/button */
+  background: #f9f9f9;
+  border-radius: var(--border-radius);
+  transition: background 0.3s ease, color 0.3s ease;
+  text-decoration: none;
+  width: 100%; /* Ensure full-width buttons */
+  box-sizing: border-box;
+}
 
-    .card:hover img {
-      transform: scale(1.05);
-    }
+.navbar-mobile a:hover,
+.navbar-mobile a.active {
+  color: #fff;
+  background: var(--primary-color);
+}
 
-    .call-to-action {
-      border-radius: 10px;
-      padding: 30px 0;
-    }
+.navbar-mobile .cta-btn {
+  margin-top: 20px;
+  width: 100%; /* Full width for consistency */
+  padding: 12px 20px; /* Match padding with other links */
+  font-size: 18px; /* Match font size */
+  box-sizing: border-box;
+}
 
-    .team-member {
-      border-radius: 10px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.08);
-      transition: transform 0.3s ease;
-    }
+.hero .carousel-item img {
+  transition: transform 0.5s ease;
+}
 
-    .team-member:hover {
-      transform: translateY(-5px);
-    }
+.hero .carousel-item.active img {
+  transform: scale(1.02);
+}
 
-    .php-email-form .form-control {
-      border-radius: 20px;
-      padding: 10px 15px;
-      transition: border-color 0.3s ease;
-    }
+.btn-get-started {
+  border-radius: 20px;
+  padding: 10px 25px;
+  transition: all 0.3s ease;
+  background: var(--primary-color);
+  color: #fff;
+}
 
-    .php-email-form .form-control:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 5px rgba(0,123,255,0.3);
-    }
+.btn-get-started:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+}
 
-    .php-email-form button {
-      border-radius: 20px;
-      padding: 10px 25px;
-      transition: all 0.3s ease;
-    }
+.service-item {
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
 
-    .php-email-form button:hover {
-      background: var(--accent);
-      transform: translateY(-2px);
-    }
+.service-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
 
-    .footer {
-      padding: 30px 0;
-    }
+.card {
+  border-radius: 8px;
+  overflow: hidden;
+}
 
-    .scroll-top {
-      border-radius: 50%;
-      width: 45px;
-      height: 45px;
-      transition: background 0.3s ease;
-    }
+.card img {
+  transition: transform 0.3s ease;
+  width: 100%;
+  height: auto;
+}
 
-    .scroll-top:hover {
-      background: var(--accent);
-    }
+.card:hover img {
+  transform: scale(1.05);
+}
 
-    /* Ensure consistent service card styling */
-    .service-card-hidden {
-      display: none;
-    }
+.call-to-action {
+  border-radius: 10px;
+  padding: 30px 0;
+  background: var(--primary-color);
+  color: #fff;
+}
 
-    .service-card-hidden.show {
-      display: block;
-    }
+.call-to-action .cta-btn {
+  background: #fff;
+  color: #fff !important; /* Force white font color */
+}
 
-    /* Responsive Design */
-    @media (max-width: 768px) {
-      .hero .carousel-item img {
-        height: 400px;
-        object-fit: cover;
-      }
+.call-to-action .cta-btn:hover {
+  background: var(--primary-hover);
+  color: #fff;
+}
 
-      .hero {
-        min-height: 400px;
-      }
+.team-member {
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease;
+}
 
-      .navmenu ul {
-        flex-direction: column;
-        background: var(--light);
-        padding: 15px;
-        position: absolute;
-        top: 100%;
-        right: 0;
-        width: 200px;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-      }
+.team-member:hover {
+  transform: translateY(-5px);
+}
 
-      .mobile-nav-toggle {
-        display: block !important;
-      }
+.php-email-form .form-control {
+  border-radius: 20px;
+  padding: 10px 15px;
+  transition: border-color 0.3s ease;
+}
 
-      .section-title h2 {
-        font-size: 1.5rem;
-      }
+.php-email-form .form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 5px rgba(185,148,192,0.3);
+}
 
-      .cta-btn {
-        width: 100%; /* Ensure buttons take full width in mobile menu */
-        margin: 5px 0; /* Add spacing between buttons */
-      }
-    }
+.php-email-form button {
+  border-radius: 20px;
+  padding: 10px 25px;
+  transition: all 0.3s ease;
+  background: var(--primary-color);
+  color: #fff;
+}
 
-    @media (max-width: 576px) {
-      .topbar .col-6 {
-        font-size: 12px;
-      }
-    }
+.php-email-form button:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+}
+
+.footer {
+  padding: 30px 0;
+}
+
+.scroll-top {
+  border-radius: 50%;
+  width: 45px;
+  height: 45px;
+  transition: background 0.3s ease;
+  background: var(--primary-color);
+}
+
+.scroll-top:hover {
+  background: var(--primary-hover);
+}
+
+.service-card-hidden {
+  display: none;
+}
+
+.service-card-hidden.show {
+  display: block;
+}
+
+@media (max-width: 1200px) {
+  .container {
+    max-width: 100%;
+    padding: 0 15px;
+  }
+
+  .hero .carousel-item img {
+    height: 500px;
+    object-fit: cover;
+  }
+
+  .hero {
+    min-height: 500px;
+  }
+
+  .navmenu ul {
+    gap: 8px; /* Slightly reduced gap for smaller screens */
+  }
+}
+
+@media (max-width: 991px) {
+  .navmenu ul {
+    display: none;
+  }
+
+  .mobile-nav-toggle {
+    display: block;
+  }
+
+  .hero .carousel-item img {
+    height: 450px;
+  }
+
+  .hero {
+    min-height: 450px;
+  }
+
+  .hero .container h2 {
+    font-size: 1.8rem;
+  }
+
+  .hero .container p {
+    font-size: 1rem;
+  }
+
+  .service-item {
+    margin-bottom: 20px;
+  }
+
+  .about .content h3 {
+    font-size: 1.5rem;
+  }
+
+  .team-member {
+    max-width: 300px;
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 992px) {
+  .mobile-nav-toggle {
+    display: none;
+  }
+
+  .navbar-mobile {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    font-size: 12px;
+    padding: 8px 0;
+  }
+
+  .branding .logo img {
+    max-height: 50 50px;
+  }
+
+  .mobile-nav-toggle {
+    font-size: 24px;
+  }
+
+  .navbar-mobile a {
+    font-size: 18px;
+    padding: 12px 18px;
+  }
+
+  .hero .carousel-item img {
+    height: 400px;
+  }
+
+  .hero {
+    min-height: 400px;
+  }
+
+  .hero .container h2 {
+    font-size: 1.5rem;
+  }
+
+  .hero .container p {
+    font-size: 0.9rem;
+  }
+
+  .section-title h2 {
+    font-size: 1.5rem;
+  }
+
+  .service-item {
+    max-width: 350px;
+    margin: 0 auto 20px;
+  }
+
+  .call-to-action h3 {
+    font-size: 1.5rem;
+  }
+
+  .call-to-action p {
+    font-size: 0.9rem;
+  }
+
+  .about img {
+    max-width: 100%;
+  }
+
+  .features-image img {
+    max-width: 100%;
+  }
+
+  .contact iframe {
+    height: 400px;
+  }
+}
+
+@media (max-width: 576px) {
+  .topbar .row {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .topbar .col-6 {
+    justify-content: center !important;
+    margin-bottom: 5px;
+  }
+
+  .mobile-nav-toggle {
+    font-size: 22px;
+  }
+
+  .branding .logo img {
+    max-height: 40px;
+  }
+
+  .navbar-mobile a {
+    font-size: 18px;
+    padding: 10px 15px;
+  }
+
+  .hero .carousel-item img {
+    height: 300px;
+  }
+
+  .hero {
+    min-height: 300px;
+  }
+
+  .hero .container h2 {
+    font-size: 1.2rem;
+  }
+
+  .hero .container p {
+    font-size: 0.8rem;
+  }
+
+  .btn-get-started {
+    padding: 8px 20px;
+    font-size: 0.9rem;
+  }
+
+  .service-item {
+    max-width: 100%;
+  }
+
+  .stats-item {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .stats-item i {
+    margin-right: 0;
+    margin-bottom: 10px;
+  }
+
+  .contact .info-item {
+    padding: 15px;
+  }
+
+  .contact iframe {
+    height: 300px;
+  }
+
+  .footer .footer-contact p {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .hero .carousel-item img {
+    height: 250px;
+  }
+
+  .hero {
+    min-height: 250px;
+  }
+
+  .section-title h2 {
+    font-size: 1.2rem;
+  }
+
+  .cta-btn {
+    padding: 6px 15px;
+    font-size: 0.8rem;
+  }
+
+  .navbar-mobile a {
+    font-size: 16px;
+    padding: 8px 12px;
+  }
+}
   </style>
 </head>
 
@@ -256,18 +568,18 @@
     </div>
 
     <div class="branding d-flex align-items-center">
-      <div class="container position-relative d-flex align-items-center justify-content-end">
-        <a href="index.html" class="logo d-flex align-items-center me-auto">
+      <div class="container position-relative d-flex align-items-center justify-content-between">
+        <a href="index.html" class="logo d-flex align-items-center me-auto me-lg-0">
           <img src="assets/img/logo.jpeg" alt="">
         </a>
 
         <nav id="navmenu" class="navmenu">
           <ul>
             <li><a href="#home" id="home-link">Home</a></li>
-            <li><a href="index.html#about">About</a></li>
-            <li><a href="index.html#services">Services</a></li>
-            <li><a href="index.html#doctors">Doctors</a></li>
-            <li><a href="index.html#contact">Contact</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#services">Services</a></li>
+            <li><a href="#doctors">Doctors</a></li>
+            <li><a href="#contact">Contact</a></li>
             <li><a class="cta-btn" href="pages-login.html" id="account-link">Login</a></li>
             <li id="profile-link" style="display: none;"><a href="profile.html">Profile</a></li>
             <li id="appointment-link">
@@ -329,7 +641,7 @@
         </div>
 
         <div class="row gy-4 justify-content-center">
-          <div class="col-xl-3 col-md-6 d-flex" data-aos="fade-up" data-aos-delay="100">
+          <div class="col-xl-3 col-lg-4 col-md-6 d-flex" data-aos="fade-up" data-aos-delay="100">
             <div class="service-item">
               <div class="icon"></div>
               <h4><a href="#services" class="stretched-link">General & Cosmetic</a></h4>
@@ -337,7 +649,7 @@
             </div>
           </div>
 
-          <div class="col-xl-3 col-md-6 d-flex" data-aos="fade-up" data-aos-delay="200">
+          <div class="col-xl-3 col-lg-4 col-md-6 d-flex" data-aos="fade-up" data-aos-delay="200">
             <div class="service-item">
               <div class="icon"><i class="fas fa-tooth"></i></div>
               <h4><a href="#services" class="stretched-link">Dental Surgeries</a></h4>
@@ -345,7 +657,7 @@
             </div>
           </div>
 
-          <div class="col-xl-3 col-md-6 d-flex" data-aos="fade-up" data-aos-delay="300">
+          <div class="col-xl-3 col-lg-4 col-md-6 d-flex" data-aos="fade-up" data-aos-delay="300">
             <div class="service-item">
               <div class="icon"></div>
               <h4><a href="#services" class="stretched-link">Laser Treatments</a></h4>
@@ -362,7 +674,7 @@
           <div class="col-xl-10">
             <div class="text-center">
               <h3>In an emergency? Need help now?</h3>
-              <p>Don't let a dental emergency catch you off guard! We're here to provide quick and reliable care when you need it most. Our team is ready to help get you out of discomfort and back on track. Reach out now!</p>
+              <p>Don't let a dental reds emergency catch you off guard! We're here to provide quick and reliable care when you need it most. Our team is ready to help get you out of discomfort and back on track. Reach out now!</p>
               <a class="cta-btn" href="make-appointment.html">Make an Appointment</a>
             </div>
           </div>
@@ -463,7 +775,7 @@
             <div class="service-item position-relative">
               <h3>Consultation</h3>
               <div class="card">
-                <img src="assets/img/services/consultation.jpg" alt="Consultation" style="width: 100%; height: auto;">
+                <img src="assets/img/services/consultation.jpg" alt="Consultation">
                 <div class="card__content">
                   <p class="card-des">examination and discussion about your oral health</p>
                 </div>
@@ -475,7 +787,7 @@
             <div class="service-item position-relative">
               <h3>Oral Prophylaxis</h3>
               <div class="card">
-                <img src="assets/img/services/oralprophylaxis.jpg" alt="Oral Prophylaxis" style="width: 100%; height: auto;">
+                <img src="assets/img/services/oralprophylaxis.jpg" alt="Oral Prophylaxis">
                 <div class="card__content">
                   <p class="card-des">Light</p>
                   <p class="card-des">Moderate</p>
@@ -489,7 +801,7 @@
             <div class="service-item position-relative">
               <h3>Restorations Temporary Filling</h3>
               <div class="card">
-                <img src="assets/img/services/restorationtemporarydentalfillings.jpg" alt="Restorations Temporary Filling" style="width: 100%; height: auto;">
+                <img src="assets/img/services/restorationtemporarydentalfillings.jpg" alt="Restorations Temporary Filling">
                 <div class="card__content">
                   <p class="card-des">Small</p>
                   <p class="card-des">Medium</p>
@@ -503,7 +815,7 @@
             <div class="service-item position-relative">
               <h3>Composite Filling</h3>
               <div class="card">
-                <img src="assets/img/services/compositefilling.jpg" alt="Composite Filling" style="width: 100%; height: auto;">
+                <img src="assets/img/services/compositefilling.jpg" alt="Composite Filling">
                 <div class="card__content">
                   <p class="card-des">Small</p>
                   <p class="card-des">Medium</p>
@@ -518,7 +830,7 @@
             <div class="service-item position-relative">
               <h3>Surgery Extraction</h3>
               <div class="card">
-                <img src="assets/img/services/surgicaltoothextractions.jpg" alt="Surgery Extraction" style="width: 100%; height: auto;">
+                <img src="assets/img/services/surgicaltoothextractions.jpg" alt="Surgery Extraction">
                 <div class="card__content">
                   <p class="card-des">Deciduous ant/post</p>
                   <p class="card-des">Anterior</p>
@@ -533,7 +845,7 @@
             <div class="service-item position-relative">
               <h3>Special Case</h3>
               <div class="card">
-                <img src="assets/img/services/specialcase.jpg" alt="Special Case" style="width: 100%; height: auto;">
+                <img src="assets/img/services/specialcase.jpg" alt="Special Case">
                 <div class="card__content">
                   <p class="card-des">Mesio/Distoangular</p>
                   <p class="card-des">Upright position</p>
@@ -550,7 +862,7 @@
             <div class="service-item position-relative">
               <h3>Prosthodontic</h3>
               <div class="card">
-                <img src="assets/img/services/prosthodontic.jpg" alt="Prosthodontic" style="width: 100%; height: auto;">
+                <img src="assets/img/services/prosthodontic.jpg" alt="Prosthodontic">
                 <div class="card__content">
                   <p class="card-des">Removable Partial Ordinary</p>
                   <p class="card-des">Acrylic/Stayplate</p>
@@ -565,7 +877,7 @@
             <div class="service-item position-relative">
               <h3>Casted Metal</h3>
               <div class="card">
-                <img src="assets/img/services/castedmetalunilateral.jpg" alt="Casted Metal" style="width: 100%; height: auto;">
+                <img src="assets/img/services/castedmetalunilateral.jpg" alt="Casted Metal">
                 <div class="card__content">
                   <p class="card-des">Unilateral</p>
                   <p class="card-des">Bilateral</p>
@@ -578,7 +890,7 @@
             <div class="service-item position-relative">
               <h3>Jacket Crown</h3>
               <div class="card">
-                <img src="assets/img/services/jacketcrown.jpg" alt="Jacket Crown" style="width: 100%; height: auto;">
+                <img src="assets/img/services/jacketcrown.jpg" alt="Jacket Crown">
                 <div class="card__content">
                   <p class="card-des">Plastic w/out metal backing</p>
                   <p class="card-des">Porcelain fused to metal</p>
@@ -594,7 +906,7 @@
             <div class="service-item position-relative">
               <h3>Laminates</h3>
               <div class="card">
-                <img src="assets/img/services/laminates.jpg" alt="Laminates" style="width: 100%; height: auto;">
+                <img src="assets/img/services/laminates.jpg" alt="Laminates">
                 <div class="card__content">
                   <p class="card-des">Anterior</p>
                   <p class="card-des">Posterior</p>
@@ -607,7 +919,7 @@
             <div class="service-item position-relative">
               <h3>Veneers</h3>
               <div class="card">
-                <img src="assets/img/services/veneer.jpg" alt="Veneers" style="width: 100%; height: auto;">
+                <img src="assets/img/services/veneer.jpg" alt="Veneers">
                 <div class="card__content">
                   <p class="card-des">Anterior</p>
                   <p class="card-des">Posterior</p>
@@ -620,7 +932,7 @@
             <div class="service-item position-relative">
               <h3>Complete Denture sigue...</h3>
               <div class="card">
-                <img src="assets/img/services/completedenture.jpg" alt="Complete Denture" style="width: 100%; height: auto;">
+                <img src="assets/img/services/completedenture.jpg" alt="Complete Denture">
                 <div class="card__content">
                   <p class="card-des">Plastic new ace</p>
                   <p class="card-des">New ace px</p>
@@ -634,7 +946,7 @@
             <div class="service-item position-relative">
               <h3>Flexite</h3>
               <div class="card">
-                <img src="assets/img/services/flexite.jpg" alt="Flexite" style="width: 100%; height: auto;">
+                <img src="assets/img/services/flexite.jpg" alt="Flexite">
                 <div class="card__content">
                   <p class="card-des">Unilateral/Bilateral</p>
                   <p class="card-des">Anteropostero</p>
@@ -649,7 +961,7 @@
             <div class="service-item position-relative">
               <h3>Retainers</h3>
               <div class="card">
-                <img src="assets/img/services/retainer.png" alt="Retainers" style="width: 100%; height: auto;">
+                <img src="assets/img/services/retainer.png" alt="Retainers">
                 <div class="card__content">
                   <p class="card-des">Up/down,</p>
                   <p class="card-des">Up/down w/ pontic</p>
@@ -662,7 +974,7 @@
             <div class="service-item position-relative">
               <h3>Repair of Denture</h3>
               <div class="card">
-                <img src="assets/img/services/rapairdenture.jpg" alt="Repair of Denture" style="width: 100%; height: auto;">
+                <img src="assets/img/services/rapairdenture.jpg" alt="Repair of Denture">
                 <div class="card__content">
                   <p class="card-des">Rebasing u/l</p>
                   <p class="card-des">Relining u/l</p>
@@ -677,7 +989,7 @@
             <div class="service-item position-relative">
               <h3>Fiber Post</h3>
               <div class="card">
-                <img src="assets/img/services/fiberpost.jpg" alt="Fiber Post" style="width: 100%; height: auto;">
+                <img src="assets/img/services/fiberpost.jpg" alt="Fiber Post">
                 <div class="card__content">
                   <p class="card-des">Anterior</p>
                   <p class="card-des">Posterior</p>
@@ -690,7 +1002,7 @@
             <div class="service-item position-relative">
               <h3>Root Canal</h3>
               <div class="card">
-                <img src="assets/img/services/rootcanal.jpeg" alt="Root Canal" style="width: 100%; height: auto;">
+                <img src="assets/img/services/rootcanal.jpeg" alt="Root Canal">
                 <div class="card__content">
                   <p class="card-des">Mono rooted</p>
                   <p class="card-des">Multi rooted/canal</p>
@@ -703,7 +1015,7 @@
             <div class="service-item position-relative">
               <h3>Pediatrics</h3>
               <div class="card">
-                <img src="assets/img/services/pediatrics.jpeg" alt="Pediatrics" style="width: 100%; height: auto;">
+                <img src="assets/img/services/pediatrics.jpeg" alt="Pediatrics">
                 <div class="card__content">
                   <p class="card-des">OP and Fluoride</p>
                   <p class="card-des">Pulpotomy</p>
@@ -718,7 +1030,7 @@
             <div class="service-item position-relative">
               <h3>Sealant</h3>
               <div class="card">
-                <img src="assets/img/services/sealant.jpg" alt="Sealant" style="width: 100%; height: auto;">
+                <img src="assets/img/services/sealant.jpg" alt="Sealant">
                 <div class="card__content">
                   <p class="card-des">Premolar</p>
                   <p class="card-des">Molar</p>
@@ -731,7 +1043,7 @@
             <div class="service-item position-relative">
               <h3>Orthodontics</h3>
               <div class="card">
-                <img src="assets/img/services/orthodontics.jpeg" alt="Orthodontics" style="width: 100%; height: auto;">
+                <img src="assets/img/services/orthodontics.jpeg" alt="Orthodontics">
                 <div class="card__content">
                   <p class="card-des">Conventional</p>
                   <p class="card-des">Self ligating</p>
@@ -740,8 +1052,6 @@
               </div>
             </div>
           </div>
-
-
         </div>
       </div>
     </section>
@@ -825,11 +1135,9 @@
 
           <div class="col-lg-6">
             <form action="https://formsubmit.co/balanesaspa.clinic@gmail.com" method="POST" class="php-email-form" data-aos="fade-up" data-aos-delay="500">
-              <!-- FormSubmit configuration -->
               <input type="hidden" name="_subject" value="New message from Balane-Saspa Dental Clinic website">
               <input type="hidden" name="_captcha" value="false">
               <input type="hidden" name="_template" value="table">
-              <!-- Honeypot field to prevent spam without using reCAPTCHA -->
               <input type="text" name="_honey" style="display:none">
               
               <div class="row gy-4">
@@ -905,7 +1213,6 @@
   <div id="preloader"></div>
 
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-
   <script src="assets/vendor/aos/aos.js"></script>
   <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
   <script src="assets/vendor/purecounter/purecounter_vanilla.js"></script>
@@ -913,14 +1220,14 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-
-  <!-- SweetAlert2 JS -->
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
   <script>
     AOS.init();
 
-    // Smooth scrolling to top when Home is clicked
     document.getElementById('home-link').addEventListener('click', function(e) {
       e.preventDefault();
       window.scrollTo({
@@ -929,7 +1236,6 @@
       });
     });
 
-    // Check session status on page load
     document.addEventListener('DOMContentLoaded', function() {
       fetch('/check-auth', { credentials: 'include' })
         .then(response => response.json())
@@ -949,13 +1255,11 @@
         })
         .catch(err => {
           console.error('Error checking auth:', err);
-          // Default to logged-out state on error
           document.getElementById('account-link').style.display = 'block';
           document.getElementById('profile-link').style.display = 'none';
           document.getElementById('appointment-link').style.display = 'none';
         });
 
-      // Mobile Menu Toggle
       const mobileNavToggle = document.querySelector('.mobile-nav-toggle');
       const navmenu = document.querySelector('.navmenu');
       if (mobileNavToggle && navmenu) {
@@ -964,7 +1268,6 @@
         });
       }
 
-      // Enhanced See More Functionality
       const seeMoreBtn = document.getElementById('see-more-btn');
       const hiddenCards = document.querySelectorAll('.service-card-hidden');
       if (seeMoreBtn && hiddenCards.length > 0) {
@@ -973,79 +1276,71 @@
             card.classList.add('show');
             card.classList.remove('service-card-hidden');
             card.classList.add('service-card-visible');
-            // Re-trigger AOS for newly visible cards
             card.setAttribute('data-aos', 'fade-up');
             card.setAttribute('data-aos-delay', '100');
             AOS.refresh();
           });
-          seeMoreBtn.style.display = 'none'; // Hide button after showing all cards
+          seeMoreBtn.style.display = 'none';
         });
       }
     });
 
     document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('.php-email-form');
-    if (form) {
-      form.addEventListener('submit', function(e) {
-        // Optional: Add any client-side validation here
-        
-        // Show loading indicator if desired
-        const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) {
-          submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
-          submitBtn.disabled = true;
-        }
+      const form = document.querySelector('.php-email-form');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          
+          const submitBtn = form.querySelector('button[type="submit"]');
+          if (submitBtn) {
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
+            submitBtn.disabled = true;
+          }
 
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        
-        fetch('https://formsubmit.co/marklariosa18@gmail.com', {
-          method: 'POST',
-          body: formData
-        })
-        .then(response => {
-          if (response.ok) {
-            // Success message using SweetAlert2 if available
+          const formData = new FormData(this);
+          
+          fetch('https://formsubmit.co/balanesaspa.clinic@gmail.com', {
+            method: 'POST',
+            body: formData
+          })
+          .then(response => {
+            if (response.ok) {
+              if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                  title: 'Thank You!',
+                  text: 'Your message has been sent successfully.',
+                  icon: 'success',
+                  confirmButtonColor: '#b994c0'
+                });
+              } else {
+                alert('Thank you! Your message has been sent successfully.');
+              }
+              form.reset();
+            } else {
+              throw new Error('Something went wrong');
+            }
+          })
+          .catch(error => {
             if (typeof Swal !== 'undefined') {
               Swal.fire({
-                title: 'Thank You!',
-                text: 'Your message has been sent successfully.',
-                icon: 'success',
-                confirmButtonColor: '#007bff'
+                title: 'Oops!',
+                text: 'There was a problem sending your message. Please try again.',
+                icon: 'error', 
+                confirmButtonColor: '#b994c0'
               });
             } else {
-              alert('Thank you! Your message has been sent successfully.');
+              alert('Oops! There was a problem sending your message. Please try again.');
             }
-            form.reset();
-          } else {
-            throw new Error('Something went wrong');
-          }
-        })
-        .catch(error => {
-          // Error message
-          if (typeof Swal !== 'undefined') {
-            Swal.fire({
-              title: 'Oops!',
-              text: 'There was a problem sending your message. Please try again.',
-              icon: 'error', 
-              confirmButtonColor: '#007bff'
-            });
-          } else {
-            alert('Oops! There was a problem sending your message. Please try again.');
-          }
-        })
-        .finally(() => {
-          // Reset button state
-          if (submitBtn) {
-            submitBtn.innerHTML = 'Send Message';
-            submitBtn.disabled = false;
-          }
+          })
+          .finally(() => {
+            if (submitBtn) {
+              submitBtn.innerHTML = 'Send Message';
+              submitBtn.disabled = false;
+            }
+          });
         });
-        
-      });
-    }
-  });
+      }
+    });
   </script>
 
   <script src="assets/js/main.js"></script>
