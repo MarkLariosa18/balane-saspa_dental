@@ -5,10 +5,10 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');
 const Redis = require('ioredis');
-const { RateLimiterRedis } = require('rate-limiter-flexible'); // Added for advanced rate limiting
-const validator = require('validator'); // Added for input validation
-const helmet = require('helmet'); // Added for security headers
-const winston = require('winston'); // Added for structured logging
+const { RateLimiterRedis } = require('rate-limiter-flexible');
+const validator = require('validator');
+const helmet = require('helmet');
+const winston = require('winston');
 
 // Load environment variables
 require('dotenv').config();
@@ -43,9 +43,9 @@ const redis = new Redis(process.env.REDIS_URL, {
 });
 
 // Encryption settings
-const ALGORITHM = 'aes-256-gcm'; // Upgraded to GCM for authenticated encryption
-const IV_LENGTH = 12; // GCM recommends 12 bytes for IV
-const AUTH_TAG_LENGTH = 16; // GCM auth tag length
+const ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 12;
+const AUTH_TAG_LENGTH = 16;
 
 // Validate encryption key
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
@@ -63,11 +63,11 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
-  pool: true, // Use connection pooling for performance
+  pool: true,
   maxConnections: 5,
-  rateLimit: 14, // Gmail limit: ~14 emails/second
+  rateLimit: 14,
   rateDelta: 1000,
-  secure: true, // Enforce TLS
+  secure: true,
 });
 
 // Verify email transporter on startup
@@ -83,16 +83,16 @@ transporter.verify((error, success) => {
 const appointmentRateLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'appointment:limit',
-  points: 999, // 5 appointments per day
-  duration: 24 * 60 * 60, // 24 hours
-  blockDuration: 24 * 60 * 60, // Block for 24 hours if limit exceeded
+  points: 999,
+  duration: 24 * 60 * 60,
+  blockDuration: 24 * 60 * 60,
 });
 
 // Cooldown rate limiter for cancel/reschedule
 const cooldownRateLimiter = new RateLimiterRedis({
   storeClient: redis,
   keyPrefix: 'appointment:cooldown',
-  points: 1, // 1 action per 24 hours
+  points: 1,
   duration: 24 * 60 * 60,
   blockDuration: 24 * 60 * 60,
 });
@@ -696,7 +696,7 @@ router.put('/:id', isAuthenticated, isAdmin, async (req, res) => {
     if (cancel_reason && !validator.isLength(cancel_reason, { max: 500 })) {
       return res.status(400).json({ error: 'bad_request', message: 'Cancel reason must be less than 500 characters' });
     }
-    if (status && !['pending', 'confirmed', 'cancelled', 'rejected', 'expired'].includes(status)) {
+    if (status && !['pending', 'confirmed', 'cancelled', 'rejected', 'expired', 'completed'].includes(status)) {
       return res.status(400).json({ error: 'bad_request', message: 'Invalid status' });
     }
 
@@ -1023,7 +1023,7 @@ router.post('/requests/:requestId/approve', isAuthenticated, isAdmin, async (req
       const actionText = request.action === 'confirm' ? 'confirmed' : request.action === 'reschedule' ? 'rescheduled' : 'cancelled';
       const subject = request.action === 'cancel' ? 'Appointment Cancellation Confirmed' : 'Appointment Request Approved';
       const userMailOptions = {
- Agreements: process.env.EMAIL_USER,
+        from: process.env.EMAIL_USER,
         to: patientEmail,
         subject: `${subject} - Balane-Saspa Dental Clinic`,
         html: `
@@ -1172,7 +1172,7 @@ router.post('/bulk-update', isAuthenticated, isAdmin, async (req, res) => {
     const validUpdates = updates.every(
       (update) =>
         validator.isInt(update.id) &&
-        ['pending', 'confirmed', 'cancelled', 'rejected', 'expired'].includes(update.status)
+        ['pending', 'confirmed', 'cancelled', 'rejected', 'expired', 'completed'].includes(update.status)
     );
     if (!validUpdates) {
       return res.status(400).json({ error: 'bad_request', message: 'Invalid update format' });
@@ -1275,6 +1275,20 @@ router.get('/test-encryption', async (req, res) => {
   } catch (error) {
     logger.error('Test encryption error:', error);
     res.status(500).json({ error: 'server_error', message: 'Test encryption failed' });
+  }
+});
+
+// Test completed appointments update route (restricted to development)
+router.get('/test-completed-appointments', async (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'forbidden', message: 'Test route disabled in production' });
+  }
+  try {
+    await updateCompletedAppointments();
+    res.status(200).json({ success: true, message: 'Completed appointments update triggered' });
+  } catch (error) {
+    logger.error('Test completed appointments error:', error);
+    res.status(500).json({ error: 'server_error', message: 'Test completed appointments failed' });
   }
 });
 
@@ -1442,21 +1456,54 @@ async function sendAppointmentReminders(targetDay = 'today') {
   }
 }
 
+// Update confirmed appointments with past dates to completed
+async function updateCompletedAppointments() {
+  try {
+    const now = new Date().toISOString();
+    const { data: appointments, error: selectError } = await supabase
+      .from('appointments')
+      .select('id, appointment_date')
+      .eq('status', 'confirmed')
+      .lt('appointment_date', now);
+
+    if (selectError) throw new Error(`Supabase select error: ${selectError.message}`);
+    if (!appointments.length) {
+      logger.info('No confirmed appointments with past dates found to update to completed');
+      return;
+    }
+
+    const appointmentIds = appointments.map((app) => app.id);
+    const { error: updateError } = await supabase
+      .from('appointments')
+      .update({ status: 'completed', updated_at: now })
+      .in('id', appointmentIds);
+
+    if (updateError) throw new Error(`Supabase update error: ${updateError.message}`);
+
+    logger.info(`Updated ${appointments.length} appointments to completed status`, {
+      appointmentIds,
+    });
+  } catch (error) {
+    logger.error('Error in updateCompletedAppointments:', error);
+  }
+}
+
 // Cron scheduling with error handling
 const cronJobs = cron.schedule(
   '0 23 * * *',
   async () => {
-    logger.info('Running daily reminders at 11 PM Asia/Manila');
+    logger.info('Running daily tasks at 11 PM Asia/Manila');
     try {
       await Promise.all([
         sendAdminScheduleReminder('today'),
         sendAdminScheduleReminder('tomorrow'),
         sendAppointmentReminders('today'),
         sendAppointmentReminders('tomorrow'),
+        updateCompletedAppointments(),
       ]);
-      logger.info('Daily reminders completed successfully');
+      logger.info('Daily tasks completed successfully');
     } catch (error) {
-      logger.error('Error in daily reminders cron job:', error);
+      logger.error('Error in daily tasks cron job:', error);
     }
   },
   {

@@ -332,6 +332,25 @@
       height: 300px;
       border-radius: var(--border-radius);
       margin-top: 20px;
+      width: 100%;
+    }
+
+    .map-container {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 aspect ratio */
+      height: 0;
+      overflow: hidden;
+      border-radius: var(--border-radius);
+      margin-top: 20px;
+    }
+
+    .map-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
     }
 
     /* Enhanced Responsive Design */
@@ -356,6 +375,10 @@
 
       .col-xl-4, .col-xl-8 {
         padding-bottom: 20px;
+      }
+
+      .map-container {
+        padding-bottom: 75%; /* Adjust aspect ratio for smaller screens */
       }
     }
 
@@ -402,12 +425,8 @@
         margin-bottom: 15px;
       }
 
-      #map {
-        height: 200px;
-      }
-
-      .table-responsive {
-        overflow-x: auto;
+      .map-container {
+        padding-bottom: 100%; /* Square aspect ratio for mobile */
       }
     }
 
@@ -827,7 +846,9 @@
         </div>
         <div class="col-lg-8 col-md-6">
           <h4>Our Location</h4>
-          <div id="map" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3869.275503600869!2d122.95431701129162!3d14.119888786254391!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3398af188fddc25b%3A0x6da5116eb1e81013!2sBalane-%20Saspa%20Dental%20Clinic!5e0!3m2!1sen!2sph!4v1739682223635!5m2!1sen!2sph"></div>
+          <div class="map-container">
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3869.275503600869!2d122.95431701129162!3d14.119888786254391!2m3!1f0!2f0!3f0!3m2!1i102劝!4f13.1!3m3!1m2!1s0x3398af188fddc25b%3A0x6da5116eb1e81013!2sBalane-%20Saspa%20Dental%20Clinic!5e0!3m2!1sen!2sph!4v1739682223635!5m2!1sen!2sph" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          </div>
         </div>
       </div>
     </div>

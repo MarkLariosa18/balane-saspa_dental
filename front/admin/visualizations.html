@@ -12,7 +12,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <script src="dashboard.js"></script>
   <style>
     body {
       background: #F3F2F1;
@@ -166,16 +165,15 @@
       gap: 1rem;
     }
     .stat {
-  text-align: center;
-  background: #FFFFFF;
-  border-radius: 8px;
-  border: 1px solid #E1DFDD;
-  padding: 1rem;
-  flex: 1 1 150px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
-}
-
+      text-align: center;
+      background: #FFFFFF;
+      border-radius: 8px;
+      border: 1px solid #E1DFDD;
+      padding: 1rem;
+      flex: 1 1 150px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease;
+    }
     .stat:hover {
       transform: translateY(-3px);
     }
@@ -301,18 +299,21 @@
         <div class="canvas-container small">
           <canvas id="genderChart" aria-label="Chart showing count by gender distribution"></canvas>
         </div>
-        <div class="mt-4 flex items-center justify-between">
-          <div class="flex items-center gap-4">
-            <div class="flex items-center">
-              <div class="w-4 h-4 bg-pink-500 rounded mr-2"></div>
-              <span id="femaleCount">Female: 0</span>
+        <div class="mt-4">
+          <p class="highlight-text mb-2" id="genderHighlightText"></p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="flex items-center">
+                <div class="w-4 h-4 bg-pink-500 rounded mr-2"></div>
+                <span id="femaleCount">Female: 0</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-4 h-4 bg-blue-500 rounded mr-2"></div>
+                <span id="maleCount">Male: 0</span>
+              </div>
             </div>
-            <div class="flex items-center">
-              <div class="w-4 h-4 bg-blue-500 rounded mr-2"></div>
-              <span id="maleCount">Male: 0</span>
-            </div>
+            <button id="exportGenderCsvBtn" class="btn-export" aria-label="Export gender chart data as CSV">Export</button>
           </div>
-          <button id="exportGenderCsvBtn" class="btn-export" aria-label="Export gender chart data as CSV">Export</button>
         </div>
       </div>
       <!-- Weekday Chart -->
@@ -380,13 +381,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   function initSocketIO() {
     socket = io('https://balane-saspa-dental-1.onrender.com', {
       withCredentials: true,
-      transports: ['polling', 'websocket'], // Prioritize polling for reliability
+      transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 5000,
       reconnectionDelayMax: 10000,
       randomizationFactor: 0.5,
-      timeout: 20000 // Increased timeout to 20 seconds
+      timeout: 20000
     });
     socket.on('connect', () => {
       console.log('Socket.IO connected');
@@ -580,6 +581,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const csrfToken = await getCsrfToken();
       const authToken = localStorage.getItem('authToken');
 
+      // Fetch patient count
       const patientsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/patients/allPatients', {
         credentials: 'include',
         headers: {
@@ -587,16 +589,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           'CSRF-Token': csrfToken
         }
       });
-      if (!patientsResponse.ok) throw new Error('Failed to fetch patients');
+      if (!patientsResponse.ok) throw new Error(`Failed to fetch patients: ${patientsResponse.status}`);
       const patientsData = await patientsResponse.json();
       const patientsCount = patientsData.length;
       const patientsCountElement = document.getElementById('patientsCount');
       if (patientsCountElement) {
-        patientsCountElement.textContent = `${patientsCount}K`;
+        patientsCountElement.textContent = patientsCount >= 1000 ? `${(patientsCount / 1000).toFixed(1)}K` : patientsCount;
       } else {
         console.warn('patientsCount element not found');
       }
 
+      // Fetch completed appointments count
       const appointmentsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', {
         credentials: 'include',
         headers: {
@@ -604,16 +607,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           'CSRF-Token': csrfToken
         }
       });
-      if (!appointmentsResponse.ok) throw new Error('Failed to fetch appointments');
+      if (!appointmentsResponse.ok) throw new Error(`Failed to fetch appointments: ${appointmentsResponse.status}`);
       const appointmentsResult = await appointmentsResponse.json();
       if (!appointmentsResult.success) throw new Error(appointmentsResult.message);
       const appointments = appointmentsResult.appointments;
-      const treatmentsCount = appointments.filter(app => 
-        app.status?.toLowerCase() === 'confirmed' || app.status?.toLowerCase() === 'completed'
-      ).length;
+      const treatmentsCount = appointments.filter(app => app.status?.toLowerCase() === 'completed').length;
       const treatmentsCountElement = document.getElementById('treatmentsCount');
       if (treatmentsCountElement) {
-        treatmentsCountElement.textContent = `${treatmentsCount}K`;
+        treatmentsCountElement.textContent = treatmentsCount >= 1000 ? `${(treatmentsCount / 1000).toFixed(1)}K` : treatmentsCount;
       } else {
         console.warn('treatmentsCount element not found');
       }
@@ -623,6 +624,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       const treatmentsCountElement = document.getElementById('treatmentsCount');
       if (patientsCountElement) patientsCountElement.textContent = 'Error';
       if (treatmentsCountElement) treatmentsCountElement.textContent = 'Error';
+      Swal.fire({
+        icon: 'error',
+        title: 'Stats Fetch Error',
+        text: `Failed to fetch patient or treatment counts: ${error.message}`,
+        confirmButtonColor: '#0078D4'
+      });
     }
   }
 
@@ -1735,15 +1742,13 @@ function exportAgeToCsv(patients, year) {
   const ages = filteredPatients.map(p => parseInt(p.age));
   const minAge = Math.min(...ages, 0);
   const maxAge = Math.max(...ages, 100);
-  const binSize = (maxAge - minAge) <= 50 ? 5 : 10;
+  const range = maxAge - minAge;
+  const binSize = range <= 50 ? 5 : 10;
   const bins = [];
   for (let i = Math.floor(minAge / binSize) * binSize; i <= maxAge; i += binSize) {
     bins.push({
       range: `${i}-${i + binSize - 1}`,
-      count: filteredPatients.filter(p => {
-        const age = parseInt(p.age);
-        return age >= i && age < i + binSize;
-      }).length
+      count: ages.filter(age => age >= i && age < i + binSize).length
     });
   }
   const csvRows = [['Age Range', 'Count'].join(',')];
@@ -1754,14 +1759,14 @@ function exportAgeToCsv(patients, year) {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `patient_age${year ? `_${year}` : ''}.csv`;
+  link.download = `age_distribution${year ? `_${year}` : ''}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   Swal.fire({
     icon: 'success',
     title: 'Export Successful',
-    text: `Age data exported as patient_age${year ? `_${year}` : ''}.csv`,
+    text: `Age data exported as age_distribution${year ? `_${year}` : ''}.csv`,
     confirmButtonColor: '#0078D4',
     timer: 1500
   });
@@ -1782,14 +1787,14 @@ function exportGenderToCsv(patients, year) {
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `patient_gender${year ? `_${year}` : ''}.csv`;
+  link.download = `gender_distribution${year ? `_${year}` : ''}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   Swal.fire({
     icon: 'success',
     title: 'Export Successful',
-    text: `Gender data exported as patient_gender${year ? `_${year}` : ''}.csv`,
+    text: `Gender data exported as gender_distribution${year ? `_${year}` : ''}.csv`,
     confirmButtonColor: '#0078D4',
     timer: 1500
   });
@@ -1803,26 +1808,22 @@ function exportWeekdayToCsv(appointments, year) {
     const day = date.toLocaleString('en-US', { weekday: 'long' });
     if (weekdayCounts.hasOwnProperty(day)) weekdayCounts[day]++;
   });
-  const total = Object.values(weekdayCounts).reduce((a, b) => a + b, 0);
-  const percentages = Object.fromEntries(
-    Object.entries(weekdayCounts).map(([day, count]) => [day, total > 0 ? (count / total * 100).toFixed(2) : 0])
-  );
-  const csvRows = [['Weekday', 'Count', 'Percentage'].join(',')];
-  ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].forEach(day => {
-    csvRows.push([day, weekdayCounts[day], percentages[day]].join(','));
+  const csvRows = [['Weekday', 'Count'].join(',')];
+  Object.entries(weekdayCounts).forEach(([day, count]) => {
+    csvRows.push([day, count].join(','));
   });
   const csvContent = csvRows.join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `appointments_weekday${year ? `_${year}` : ''}.csv`;
+  link.download = `weekday_distribution${year ? `_${year}` : ''}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   Swal.fire({
     icon: 'success',
     title: 'Export Successful',
-    text: `Weekday data exported as appointments_weekday${year ? `_${year}` : ''}.csv`,
+    text: `Weekday data exported as weekday_distribution${year ? `_${year}` : ''}.csv`,
     confirmButtonColor: '#0078D4',
     timer: 1500
   });
