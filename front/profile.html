@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta contentMarketplace://width=device-width, initial-scale=1.0" name="viewport">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
   <title>Balane-Saspa Dental Clinic - Profile</title>
   <meta name="description" content="">
   <meta name="keywords" content="">
@@ -38,17 +38,12 @@
       font-family: 'Poppins', sans-serif;
       background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
       color: var(--text-color);
-      padding-top: 80px;
     }
 
     .header {
       background: #fff;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       border-bottom: 1px solid #eee;
-      position: fixed;
-      top: 0;
-      width: 100%;
-      z-index: 1000;
     }
 
     .topbar {
@@ -96,7 +91,6 @@
       border-radius: var(--border-radius);
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
       transition: transform 0.3s ease, box-shadow 0.3s ease;
-      margin-bottom: 20px;
     }
 
     .card:hover {
@@ -119,7 +113,6 @@
       align-items: center;
       justify-content: center;
       transition: background 0.3s ease;
-      margin: 0 auto;
     }
 
     .profile-pic-container:hover {
@@ -162,8 +155,6 @@
 
     .nav-tabs {
       border-bottom: 2px solid #eee;
-      flex-wrap: nowrap;
-      overflow-x: auto;
     }
 
     .nav-tabs .nav-link {
@@ -174,7 +165,6 @@
       padding: 10px 20px;
       font-weight: 500;
       transition: all 0.3s ease;
-      white-space: nowrap;
     }
 
     .nav-tabs .nav-link:hover,
@@ -327,70 +317,15 @@
       background: var(--primary-hover);
     }
 
-    .map-iframe {
-      border: 0;
-      width: 100%;
+    #map {
       height: 300px;
       border-radius: var(--border-radius);
-    }
-
-    /* Enhanced Responsive Design */
-    @media (max-width: 992px) {
-      .container {
-        padding-left: 15px;
-        padding-right: 15px;
-      }
-
-      .profile-card {
-        padding: 20px;
-      }
-
-      .profile-pic-container {
-        width: 100px;
-        height: 100px;
-      }
-
-      .profile-pic-container i {
-        font-size: 80px;
-      }
-
-      .col-xl-4, .col-xl-8 {
-        padding-bottom: 20px;
-      }
+      margin-top: 20px;
     }
 
     @media (max-width: 768px) {
-      body {
-        padding-top: 120px;
-      }
-
-      .topbar .row {
-        flex-direction: column;
-        text-align: center;
-      }
-
-      .topbar .col-6 {
-        margin-bottom: 10px;
-      }
-
-      .branding {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .navmenu ul {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .navmenu ul li {
-        width: 100%;
-        text-align: center;
-      }
-
-      .nav-tabs {
-        display: flex;
-        justify-content: center;
+      .card {
+        margin-bottom: 20px;
       }
 
       .nav-tabs .nav-link {
@@ -398,43 +333,13 @@
         font-size: 14px;
       }
 
-      .card {
-        margin-bottom: 15px;
+      .profile-pic-container {
+        width: 100px;
+        height: 100px;
       }
 
-      .map-iframe {
-        height: 200px !important;
-      }
-
-      .table-responsive {
-        overflow-x: auto;
-      }
-    }
-
-    @media (max-width: 576px) {
-      .profile-card h2 {
-        font-size: 1.5rem;
-      }
-
-      .btn {
-        padding: 8px 15px;
-        font-size: 14px;
-      }
-
-      .form-control, .form-select {
-        font-size: 14px;
-      }
-
-      .modal-dialog {
-        margin: 10px;
-      }
-
-      .modal-content {
-        padding: 10px;
-      }
-
-      .map-iframe {
-        height: 150px !important;
+      #map {
+        height: 200px;
       }
     }
   </style>
@@ -492,7 +397,7 @@
     <section class="section profile">
       <div class="container">
         <div class="row">
-          <div class="col-xl-4">
+          <div class="col-xl-4" style="padding-bottom: 50px;">
             <div class="card">
               <div class="card-body profile-card pt-4 d-flex flex-column align-items-center">
                 <div class="profile-pic-container mb-3">
@@ -522,15 +427,15 @@
             </div>
           </div>
 
-          <div class="col-xl-8">
+          <div class="col-xl-8" style="padding-bottom: 50px;">
             <div class="card">
               <div class="card-body pt-3">
                 <ul class="nav nav-tabs nav-tabs-bordered">
                   <li class="nav-item">
-                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#profile-appointments">Appointments</button>
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#profile-overview">Overview</button>
                   </li>
                   <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-overview">Overview</button>
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-appointments">Appointments</button>
                   </li>
                   <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-history">History Log</button>
@@ -539,37 +444,15 @@
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-edit">Edit Profile</button>
                   </li>
                   <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-settings">Settings</button>
+                  </li>
+                  <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-change-password">Password</button>
                   </li>
                 </ul>
 
                 <div class="tab-content pt-3">
-                  <div class="tab-pane fade show active profile-appointments" id="profile-appointments">
-                    <h5 class="card-title">Upcoming Appointments</h5>
-                    <div class="table-responsive" style="overflow-x: auto; white-space: nowrap;">
-                      <table class="table table-hover">
-                        <thead class="table-light">
-                          <tr>
-                            <th>Appointment Date & Time</th>
-                            <th>Service Name</th>
-                            <th>Status</th>
-                            <th>Notes/Reason</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody id="appointments-table">
-                        </tbody>
-                      </table>
-                    </div>
-                    <div id="no-appointments" class="alert alert-info" style="display: none;">
-                      No upcoming appointments found.
-                    </div>
-                    <button class="btn btn-primary mt-2" onclick="window.location.href='make-appointment.html'">
-                      <i class="bi bi-plus-circle me-2"></i>Book New Appointment
-                    </button>
-                  </div>
-
-                  <div class="tab-pane fade profile-overview" id="profile-overview">
+                  <div class="tab-pane fade show active profile-overview" id="profile-overview">
                     <h5 class="card-title">Personal Information</h5>
                     <div class="row">
                       <div class="col-lg-3 col-md-4 label">Full Name</div>
@@ -607,6 +490,31 @@
                       <div class="col-lg-3 col-md-4 label">Email</div>
                       <div class="col-lg-9 col-md-8" id="overview-email">Loading...</div>
                     </div>
+                  </div>
+
+                  <div class="tab-pane fade profile-appointments pt-3" id="profile-appointments">
+                    <h5 class="card-title">Upcoming Appointments</h5>
+                    <div class="table-responsive" style="overflow-x: auto; white-space: nowrap;">
+                      <table class="table table-hover">
+                        <thead class="table-light">
+                          <tr>
+                            <th>Appointment Date & Time</th>
+                            <th>Service Name</th>
+                            <th>Status</th>
+                            <th>Notes/Reason</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody id="appointments-table">
+                        </tbody>
+                      </table>
+                    </div>
+                    <div id="no-appointments" class="alert alert-info" style="display: none;">
+                      No upcoming appointments found.
+                    </div>
+                    <button class="btn btn-primary mt-2" onclick="window.location.href='make-appointment.html'">
+                      <i class="bi bi-plus-circle me-2"></i>Book New Appointment
+                    </button>
                   </div>
 
                   <div class="tab-pane fade" id="profile-history">
@@ -694,6 +602,60 @@
                     </form>
                   </div>
 
+                  <div class="tab-pane fade pt-3" id="profile-settings">
+                    <form id="settings-form">
+                      <div class="row mb-3">
+                        <label class="col-md-4 col-lg-3 col-form-label">Email Notifications</label>
+                        <div class="col-md-8 col-lg-9">
+                          <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="appointmentReminders" name="appointmentReminders">
+                            <label class="form-check-label" for="appointmentReminders">
+                              Appointment reminders
+                            </label>
+                          </div>
+                          <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="treatmentUpdates" name="treatmentUpdates">
+                            <label class="form-check-label" for="treatmentUpdates">
+                              Treatment updates and follow-ups
+                            </label>
+                          </div>
+                          <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="promotionalOffers" name="promotionalOffers">
+                            <label class="form-check-label" for="promotionalOffers">
+                              Promotional offers and news
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="securityNotifications" name="securityNotifications" disabled checked>
+                            <label class="form-check-label" for="securityNotifications">
+                              Security notifications
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="row mb-3">
+                        <label class="col-md-4 col-lg-3 col-form-label">Privacy Settings</label>
+                        <div class="col-md-8 col-lg-9">
+                          <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" id="dataSharing" name="dataSharing">
+                            <label class="form-check-label" for="dataSharing">
+                              Share my data with partners for improved services
+                            </label>
+                          </div>
+                          <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="analyticsConsent" name="analyticsConsent">
+                            <label class="form-check-label" for="analyticsConsent">
+                              Allow anonymous usage data collection for service improvement
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="text-center">
+                        <button type="button" class="btn btn-primary" onclick="saveSettings()">Save Preferences</button>
+                      </div>
+                    </form>
+                  </div>
+
                   <div class="tab-pane fade pt-3" id="profile-change-password">
                     <form id="change-password-form">
                       <div class="row mb-3">
@@ -710,7 +672,7 @@
                         </div>
                       </div>
                       <div class="row mb-3">
-                        <label uint256for="renewPassword" class="col-md-4 col-lg-3 col-form-label">Re-enter New Password</label>
+                        <label for="renewPassword" class="col-md-4 col-lg-3 col-form-label">Re-enter New Password</label>
                         <div class="col-md-8 col-lg-9">
                           <input name="renewPassword" type="password" class="form-control" id="renewPassword" required>
                         </div>
@@ -831,7 +793,7 @@
         </div>
         <div class="col-lg-8 col-md-6">
           <h4>Our Location</h4>
-          <iframe class="map-iframe" style="border:0; width: 100%; height: 300px;" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3869.275503600869!2d122.95431701129162!3d14.119888786254391!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3398af188fddc25b%3A0x6da5116eb1e81013!2sBalane-%20Saspa%20Dental%20Clinic!5e0!3m2!1sen!2sph!4v1739682223635!5m2!1sen!2sph" frameborder="0" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          <iframe id="map" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3869.275503600869!2d122.95431701129162!3d14.119888786254391!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3398af188fddc25b%3A0x6da5116eb1e81013!2sBalane-%20Saspa%20Dental%20Clinic!5e0!3m2!1sen!2sph!4v1739682223635!5m2!1sen!2sph" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
         </div>
       </div>
     </div>
@@ -849,7 +811,7 @@
 
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script src="assets/vendor/php-email-form/validate.js"></script>
-  <script src="assets/vendor/aos/aos.js"></script>
+  <script src="assets/vendor/aos/aos.js"></scriptaos.js"></script>
   <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
   <script src="assets/vendor/purecounter/purecounter_vanilla.js"></script>
   <script src="assets/vendor/swiper/swiper-bundle.min.js"></script>
