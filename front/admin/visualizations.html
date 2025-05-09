@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <script src="dashboard.js" defer></script>
+  <script src="dashboard.js"></script>
   <style>
     body {
       background: #F3F2F1;
@@ -166,15 +166,16 @@
       gap: 1rem;
     }
     .stat {
-      text-align: center;
-      background: #FFFFFF;
-      border-radius: 8px;
-      border: 1px solid #E1DFDD;
-      padding: 1rem;
-      flex: 1 1 150px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      transition: transform 0.3s ease;
-    }
+  text-align: center;
+  background: #FFFFFF;
+  border-radius: 8px;
+  border: 1px solid #E1DFDD;
+  padding: 1rem;
+  flex: 1 1 150px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
     .stat:hover {
       transform: translateY(-3px);
     }
@@ -239,7 +240,6 @@
     <div class="stats">
       <div class="stat"><strong>Patients</strong><br><span id="patientsCount">Loading...</span></div>
       <div class="stat"><strong>Treatments</strong><br><span id="treatmentsCount">Loading...</span></div>
-      <div class="stat"><strong>Daily Count</strong><br><span id="dailyCount">Loading...</span></div>
     </div>
     <div class="dashboard-grid" id="dashboardGrid">
       <!-- Appointment Status Chart -->
@@ -481,7 +481,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
           allAppointments[appointmentIndex] = appointment;
           renderAllCharts(currentYear);
-          fetchStatsData(); // Update stats after appointment changes
           Swal.fire({
             icon: message.status === 'approved' ? 'success' : 'error',
             title: `${message.type.replace('_response', '').capitalize()} ${message.status.capitalize()}`,
@@ -489,6 +488,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             confirmButtonColor: '#0078D4',
             timer: 3000
           });
+          // Update stats after appointment status change
+          await fetchStatsData();
         }
         break;
       case 'service_added':
@@ -496,7 +497,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!allServices.some(s => s.name === newService.name)) {
           allServices.push(newService);
           renderAllCharts(currentYear);
-          fetchStatsData(); // Update stats after service added
           Swal.fire({
             icon: 'info',
             title: 'New Service',
@@ -509,7 +509,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       case 'patient_added':
         allPatients.push(message.patient);
         renderAllCharts(currentYear);
-        fetchStatsData(); // Update stats after patient added
         Swal.fire({
           icon: 'success',
           title: 'Patient Added',
@@ -517,13 +516,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           confirmButtonColor: '#0078D4',
           timer: 3000
         });
+        await fetchStatsData();
         break;
       case 'patient_updated':
         const updateIndex = allPatients.findIndex(p => p.email === message.patient.email);
         if (updateIndex !== -1) {
           allPatients[updateIndex] = message.patient;
           renderAllCharts(currentYear);
-          fetchStatsData(); // Update stats after patient updated
           Swal.fire({
             icon: 'success',
             title: 'Patient Updated',
@@ -531,6 +530,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             confirmButtonColor: '#0078D4',
             timer: 3000
           });
+          await fetchStatsData();
         }
         break;
       case 'patient_deleted':
@@ -538,7 +538,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (deleteIndex !== -1) {
           allPatients.splice(deleteIndex, 1);
           renderAllCharts(currentYear);
-          fetchStatsData(); // Update stats after patient deleted
           Swal.fire({
             icon: 'info',
             title: 'Patient Deleted',
@@ -546,6 +545,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             confirmButtonColor: '#0078D4',
             timer: 3000
           });
+          await fetchStatsData();
         }
         break;
     }
@@ -570,47 +570,42 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function fetchStatsData() {
     try {
-      const token = await getCsrfToken();
-      // Fetch patients count
+      const csrfToken = await getCsrfToken();
+      const authToken = localStorage.getItem('authToken');
+
+      // Fetch patient count
       const patientsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/patients/allPatients', {
         credentials: 'include',
         headers: {
-          'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'CSRF-Token': token
+          'Authorization': 'Bearer ' + authToken,
+          'CSRF-Token': csrfToken
         }
       });
       if (!patientsResponse.ok) throw new Error('Failed to fetch patients');
       const patientsData = await patientsResponse.json();
       const patientsCount = patientsData.length;
-      document.getElementById('patientsCount').textContent = patientsCount.toLocaleString();
+      document.getElementById('patientsCount').textContent = `${patientsCount}K`;
 
-      // Fetch treatments count (based on appointments with services)
+      // Fetch treatment count (confirmed and completed appointments)
       const appointmentsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', {
         credentials: 'include',
         headers: {
-          'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
-          'CSRF-Token': token
+          'Authorization': 'Bearer ' + authToken,
+          'CSRF-Token': csrfToken
         }
       });
       if (!appointmentsResponse.ok) throw new Error('Failed to fetch appointments');
       const appointmentsResult = await appointmentsResponse.json();
       if (!appointmentsResult.success) throw new Error(appointmentsResult.message);
       const appointments = appointmentsResult.appointments;
-      const treatmentsCount = appointments.filter(app => app.services && ['confirmed', 'completed'].includes(app.status.toLowerCase())).length;
-      document.getElementById('treatmentsCount').textContent = treatmentsCount.toLocaleString();
-
-      // Calculate daily count (total confirmed/completed appointments and treatments for today)
-      const today = new Date().toISOString().split('T')[0];
-      const dailyCount = appointments.filter(app =>
-        app.appointment_date.startsWith(today) &&
-        ['confirmed', 'completed'].includes(app.status.toLowerCase())
+      const treatmentsCount = appointments.filter(app => 
+        app.status?.toLowerCase() === 'confirmed' || app.status?.toLowerCase() === 'completed'
       ).length;
-      document.getElementById('dailyCount').textContent = dailyCount.toLocaleString();
+      document.getElementById('treatmentsCount').textContent = `${treatmentsCount}K`;
     } catch (error) {
       console.error('Error fetching stats data:', error);
       document.getElementById('patientsCount').textContent = 'Error';
       document.getElementById('treatmentsCount').textContent = 'Error';
-      document.getElementById('dailyCount').textContent = 'Error';
     }
   }
 
@@ -650,9 +645,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!appointmentsResponse.ok) throw new Error(`Failed to fetch appointments: ${appointmentsResponse.status}`);
     const appointmentsData = await appointmentsResponse.json();
     if (!appointmentsData.success) throw new Error(appointmentsData.message);
-    allAppointments = appointmentsData.appointments.filter(app =>
-      ['confirmed', 'completed'].includes(app.status.toLowerCase())
-    );
+    allAppointments = appointmentsData.appointments;
     console.log('Appointments loaded:', allAppointments);
 
     try {
@@ -737,7 +730,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderAllCharts(null);
     });
 
-    fetchStatsData();
+    await fetchStatsData();
 
     const globalYearFilter = document.getElementById('globalYearFilter');
     const statusYearFilter = document.getElementById('statusYearFilter');
@@ -932,7 +925,7 @@ function renderStatusChart(appointments, year) {
   try {
     const canvas = document.getElementById('statusChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
-    const statuses = ['confirmed', 'completed'];
+    const statuses = ['confirmed', 'pending', 'cancelled', 'rejected'];
     const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
     const statusCounts = statuses.map(status =>
       filteredAppointments.filter(app => app.status?.toLowerCase() === status).length
@@ -940,7 +933,7 @@ function renderStatusChart(appointments, year) {
     const total = statusCounts.reduce((sum, count) => sum + count, 0);
     const datasets = [{
       data: statusCounts,
-      backgroundColor: ['#107C10', '#FFB900'],
+      backgroundColor: ['#107C10', '#FFB900', '#D83B01', '#A80000'],
       borderColor: '#FFFFFF',
       borderWidth: 2
     }];
@@ -1159,7 +1152,7 @@ function renderServiceChart(appointments, services, year) {
             const serviceAppointments = filteredAppointments.filter(app => app.services?.name === service);
             Swal.fire({
               title: `${service} Appointments${year ? ` in ${year}` : ''}`,
-              html: serviceCharts.length
+              html: serviceAppointments.length
                 ? `<ul class="list-disc pl-5">${serviceAppointments.map(app => `<li>${new Date(app.appointment_date).toLocaleDateString()}</li>`).join('')}</ul>`
                 : 'No appointments found.',
               confirmButtonColor: '#0078D4'
@@ -1603,7 +1596,7 @@ function renderWeekdayChart(appointments, year) {
 }
 
 function exportStatusToCsv(appointments, year) {
-  const statuses = ['confirmed', 'completed'];
+  const statuses = ['confirmed', 'pending', 'cancelled', 'rejected'];
   const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
   const statusCounts = statuses.map(status => ({
     status,
@@ -1725,30 +1718,34 @@ function exportGenderToCsv(patients, year) {
 function exportWeekdayToCsv(appointments, year) {
   const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
   const weekdayCounts = { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0, Sunday: 0 };
-filteredAppointments.forEach(app => {
-  const date = new Date(app.appointment_date);
-  const day = date.toLocaleString('en-US', { weekday: 'long' });
-  if (weekdayCounts.hasOwnProperty(day)) weekdayCounts[day]++;
-});
-const csvRows = [['Weekday', 'Count'].join(',')];
-Object.entries(weekdayCounts).forEach(([day, count]) => {
-  csvRows.push([day, count].join(','));
-});
-const csvContent = csvRows.join('\n');
-const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-const link = document.createElement('a');
-link.href = URL.createObjectURL(blob);
-link.download = `appointments_weekday${year ? `_${year}` : ''}.csv`;
-document.body.appendChild(link);
-link.click();
-document.body.removeChild(link);
-Swal.fire({
-  icon: 'success',
-  title: 'Export Successful',
-  text: `Weekday data exported as appointments_weekday${year ? `_${year}` : ''}.csv`,
-  confirmButtonColor: '#0078D4',
-  timer: 1500
-});
+  filteredAppointments.forEach(app => {
+    const date = new Date(app.appointment_date);
+    const day = date.toLocaleString('en-US', { weekday: 'long' });
+    if (weekdayCounts.hasOwnProperty(day)) weekdayCounts[day]++;
+  });
+  const total = Object.values(weekdayCounts).reduce((a, b) => a + b, 0);
+  const percentages = Object.fromEntries(
+    Object.entries(weekdayCounts).map(([day, count]) => [day, total > 0 ? (count / total * 100).toFixed(2) : 0])
+  );
+  const csvRows = [['Weekday', 'Count', 'Percentage'].join(',')];
+  ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].forEach(day => {
+    csvRows.push([day, weekdayCounts[day], percentages[day]].join(','));
+  });
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `appointments_weekday${year ? `_${year}` : ''}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  Swal.fire({
+    icon: 'success',
+    title: 'Export Successful',
+    text: `Weekday data exported as appointments_weekday${year ? `_${year}` : ''}.csv`,
+    confirmButtonColor: '#0078D4',
+    timer: 1500
+  });
 }
   </script>
 </body>

@@ -34,22 +34,31 @@
       --text: #333333;
       --light: #ffffff;
       --accent: #0056b3;
+      --border-radius: 20px; /* Added from profile.html for consistency */
     }
 
     body {
       font-family: 'Poppins', sans-serif;
       color: var(--text);
+      padding-top: 80px; /* Adjusted to match profile.html */
     }
 
     .header {
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       transition: all 0.3s ease;
+      background: var(--light);
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 1000;
     }
 
     .topbar {
       padding: 8px 0;
       font-size: 14px;
       transition: background 0.3s ease;
+      background: var(--primary); /* Aligned with profile.html's topbar */
+      color: var(--light);
     }
 
     .branding {
@@ -67,6 +76,9 @@
 
     .navmenu a {
       transition: color 0.3s ease;
+      color: var(--text);
+      font-weight: 500;
+      padding: 10px 15px;
     }
 
     .navmenu a:hover {
@@ -74,7 +86,7 @@
     }
 
     .cta-btn {
-      border-radius: 20px;
+      border-radius: var(--border-radius);
       padding: 8px 20px;
       transition: all 0.3s ease;
       display: flex;
@@ -101,9 +113,11 @@
     }
 
     .btn-get-started {
-      border-radius: 20px;
+      border-radius: var(--border-radius);
       padding: 10px 25px;
       transition: all 0.3s ease;
+      background: var(--primary);
+      color: var(--light);
     }
 
     .btn-get-started:hover {
@@ -151,7 +165,7 @@
     }
 
     .php-email-form .form-control {
-      border-radius: 20px;
+      border-radius: var(--border-radius);
       padding: 10px 15px;
       transition: border-color 0.3s ease;
     }
@@ -162,9 +176,11 @@
     }
 
     .php-email-form button {
-      border-radius: 20px;
+      border-radius: var(--border-radius);
       padding: 10px 25px;
       transition: all 0.3s ease;
+      background: var(--primary);
+      color: var(--light);
     }
 
     .php-email-form button:hover {
@@ -174,6 +190,8 @@
 
     .footer {
       padding: 30px 0;
+      background: var(--light);
+      box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
     }
 
     .scroll-top {
@@ -181,6 +199,7 @@
       width: 45px;
       height: 45px;
       transition: background 0.3s ease;
+      background: var(--primary);
     }
 
     .scroll-top:hover {
@@ -220,14 +239,23 @@
       background: var(--accent);
     }
 
-    /* Hamburger menu styles */
+    /* Hamburger Menu Styles from profile.html */
     .mobile-nav-toggle {
       display: none;
-      cursor: pointer;
-      font-size: 1.5rem;
+      font-size: 1.8rem;
       color: var(--text);
-      line-height: 0;
+      cursor: pointer;
+      line-height: 1;
       transition: color 0.3s ease;
+      z-index: 1001;
+    }
+
+    .mobile-nav-toggle.bi-list::before {
+      content: "\f479"; /* Bootstrap Icons hamburger */
+    }
+
+    .mobile-nav-toggle.bi-x::before {
+      content: "\f62a"; /* Bootstrap Icons close */
     }
 
     .mobile-nav-toggle:hover {
@@ -246,11 +274,81 @@
       padding: 0;
     }
 
-    .navmenu-active {
-      display: block !important;
+    .navmenu.navmenu-active {
+      display: block;
     }
 
-    /* Responsive Design */
+    /* Dropdown Menu Styles from profile.html */
+    @media (max-width: 992px) {
+      body {
+        padding-top: 120px; /* Increased to account for header height */
+      }
+
+      .mobile-nav-toggle {
+        display: block;
+      }
+
+      .navmenu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: var(--light);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+        padding: 10px 0;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+        transform: translateY(-10px);
+        opacity: 0;
+      }
+
+      .navmenu.navmenu-active {
+        display: block;
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      .navmenu ul {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .navmenu ul li {
+        width: 100%;
+        text-align: center;
+        margin: 5px 0;
+      }
+
+      .navmenu ul li a,
+      .navmenu ul li a.cta-btn {
+        display: block;
+        padding: 12px 20px;
+        font-size: 1rem;
+        color: var(--text);
+        transition: background 0.3s ease, color 0.3s ease;
+      }
+
+      .navmenu ul li a:hover,
+      .navmenu ul li a.cta-btn:hover {
+        background: var(--secondary);
+        color: var(--primary);
+      }
+
+      .navmenu ul li a.cta-btn {
+        background: var(--primary);
+        color: var(--light);
+        border-radius: var(--border-radius);
+        margin: 0 15px;
+        text-align: center;
+      }
+
+      .navmenu ul li a.cta-btn:hover {
+        background: var(--accent);
+      }
+    }
+
+    /* Responsive Design Adjustments */
     @media (max-width: 768px) {
       .hero .carousel-item img {
         height: 400px;
@@ -259,41 +357,6 @@
 
       .hero {
         min-height: 400px;
-      }
-
-      .mobile-nav-toggle {
-        display: inline-block !important;
-      }
-
-      .navmenu {
-        display: none;
-        width: 100%;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        background: var(--light);
-        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-        z-index: 1000;
-      }
-
-      .navmenu ul {
-        flex-direction: column;
-        padding: 15px;
-      }
-
-      .navmenu li {
-        margin: 10px 0;
-      }
-
-      .navmenu a {
-        display: block;
-        padding: 10px;
-        text-align: center;
-      }
-
-      .cta-btn {
-        width: 100%;
-        margin: 5px 0;
       }
 
       .section-title h2 {
@@ -425,7 +488,8 @@
               <a class="cta-btn" href="make-appointment.html">Appointment</a>
             </li>
           </ul>
-          <i class="mobile-nav-toggle bi bi-list"></i>
+          <!-- Updated from profile.html -->
+          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
         </nav>
       </div>
     </div>
@@ -862,7 +926,7 @@
                     <p class="card-des">Stainless steel crown</p>
                     <p class="card-des">Strip off crown</p>
                   </div>
-                </ करकेdiv>
+                </div>
               </div>
             </div>
 
@@ -1075,8 +1139,9 @@
       });
     });
 
-    // Check session status on page load
+    // Check session status and mobile menu toggle from profile.html
     document.addEventListener('DOMContentLoaded', function() {
+      // Session status check
       fetch('/check-auth', { credentials: 'include' })
         .then(response => response.json())
         .then(data => {
@@ -1100,26 +1165,27 @@
           document.getElementById('appointment-link').style.display = 'none';
         });
 
-      // Mobile Menu Toggle
+      // Mobile Menu Toggle from profile.html
       const mobileNavToggle = document.querySelector('.mobile-nav-toggle');
       const navmenu = document.querySelector('.navmenu');
+
       if (mobileNavToggle && navmenu) {
         mobileNavToggle.addEventListener('click', () => {
           navmenu.classList.toggle('navmenu-active');
           mobileNavToggle.classList.toggle('bi-list');
           mobileNavToggle.classList.toggle('bi-x');
         });
-      }
 
-      // Close mobile menu when clicking a link
-      const navLinks = document.querySelectorAll('.navmenu a');
-      navLinks.forEach(link => {
-        link.addEventListener('click', () => {
-          navmenu.classList.remove('navmenu-active');
-          mobileNavToggle.classList.add('bi-list');
-          mobileNavToggle.classList.remove('bi-x');
+        // Close mobile menu when clicking a link
+        const navLinks = document.querySelectorAll('.navmenu a');
+        navLinks.forEach(link => {
+          link.addEventListener('click', () => {
+            navmenu.classList.remove('navmenu-active');
+            mobileNavToggle.classList.add('bi-list');
+            mobileNavToggle.classList.remove('bi-x');
+          });
         });
-      });
+      }
 
       // Enhanced See More Functionality
       const seeMoreBtn = document.getElementById('see-more-btn');
@@ -1139,6 +1205,7 @@
       }
     });
 
+    // Form submission handling
     document.addEventListener('DOMContentLoaded', function() {
       const form = document.querySelector('.php-email-form');
       if (form) {
