@@ -45,6 +45,9 @@
       background: #fff;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       border-bottom: 1px solid #eee;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
     }
 
     .topbar {
@@ -400,540 +403,25 @@
       background: var(--primary-hover);
     }
 
-    #map {
-      height: 300px;
+    #google-map-container {
+      min-height: 350px;
       border-radius: var(--border-radius);
       margin-top: 20px;
-    }
-
-    .policy-links {
-      margin-top: 15px;
-      text-align: center;
-    }
-
-    .policy-links a {
-      color: var(--primary-color);
-      text-decoration: none;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    .policy-links a:hover {
-      text-decoration: underline;
-    }
-
-    .modal-body {
-      max-height: 60vh;
-      overflow-y: auto;
-      padding: 20px;
-    }
-
-    .modal-body h1, .modal-body h2, .modal-body h3, .modal-body h4, .modal-body h5, .modal-body h6 {
-      color: #333;
-      margin-top: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .modal-body p {
-      margin-bottom: 1rem;
-      line-height: 1.6;
-    }
-
-    .modal-body ul, .modal-body ol {
-      margin-bottom: 1rem;
-      padding-left: 20px;
-    }
-
-    .modal-body li {
-      margin-bottom: 0.5rem;
-    }
-
-    @media (max-width: 768px) {
-      .card {
-        margin-bottom: 20px;
-      }
-
-      .nav-tabs .nav-link {
-        padding: 8px 10px;
-        font-size: 14px;
-      }
-
-      .profile-pic-container {
-        width: 100px;
-        height: 100px;
-      }
-
-      #map {
-        height: 200px;
-      }
-    }
-  </style>
-</head>
-
-<body>
-  <header id="header" class="header sticky-top">
-    <div class="topbar d-flex align-items-center">
-      <div class="container">
-        <div class="row">
-          <div class="col-6 d-flex align-items-center justify-content-center justify-content-md-start">
-            <i class="bi bi-clock me-1"></i> Mon - Sat, 9AM to 4PM
-          </div>
-          <div class="col-6 d-flex align-items-center justify-content-center justify-content-md-end">
-            <i class="bi bi-phone me-1"></i> +63 920 797 6690
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="branding d-flex align-items-center">
-      <div class="container position-relative d-flex align-items-center justify-content-end">
-        <a href="index.html" class="logo d-flex align-items-center me-auto">
-          <img src="assets/img/logo.jpeg" alt="">
-        </a>
-
-        <nav id="navmenu" class="navmenu">
-          <ul>
-            <li><a href="index.html#hero">Home</a></li>
-            <li><a href="index.html#about">About</a></li>
-            <li><a href="index.html#services">Services</a></li>
-            <li><a href="index.html#doctors">Doctors</a></li>
-            <li><a href="index.html#contact">Contact</a></li>
-            <li><a href="pages-login.html" id="account-link">Account</a></li>
-            <li id="profile-link" style="display: none;"><a href="profile.html">Profile</a></li>
-            <li><a href="make-appointment.html" class="cta-btn">Appointment</a></li>
-          </ul>
-          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
-        </nav>
-      </div>
-    </div>
-  </header>
-
-  <main id="main" class="main">
-    <div class="pagetitle container mt-3">
-      <nav>
-        <ol class="breadcrumb
-System: You are Grok 3 built by xAI.
-
-I notice your message was cut off. It seems you were providing an updated `profile.html` file with changes to match the navigation bar design from `index.html`, remove the "Settings" and "Change Photo" options, and switch the placement of "Overview" and "Appointments" tabs. However, the artifact content is incomplete, ending mid-sentence in the HTML.
-
-To assist you properly, I’ll assume you want me to complete the `profile.html` file based on the requirements you outlined:
-1. Match the navigation bar design to `index.html`.
-2. Remove the "Settings" tab and "Change Photo" button.
-3. Switch the "Overview" and "Appointments" tabs in the profile section.
-4. Update only design-related aspects, leaving JavaScript unchanged unless necessary.
-5. Ensure the `Login` button’s font color is white, as previously addressed.
-
-Since you confirmed the JavaScript doesn’t need updates for these design changes, I’ll focus on completing the HTML and CSS, incorporating the provided styles and making the requested modifications. I’ll use the same `artifact_id` (`28f69273-7825-4ce5-af65-034dd404ca6c`) as your partial artifact to indicate this is an updated version, and I’ll generate a complete `profile.html` file.
-
-Below is the complete `profile.html` with the navigation bar styled to match `index.html`, the "Settings" tab and "Change Photo" button removed, the "Appointments" and "Overview" tabs switched, and all design changes applied. The JavaScript remains unchanged, as you confirmed it’s unaffected by these design updates.
-
-<xaiArtifact artifact_id="937fd3b4-784c-48e5-8c67-4c8f901c8c2c" artifact_version_id="70db8f0e-0d84-41ba-84d4-94ee8c21ca28" title="profile.html" contentType="text/html">
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>Balane-Saspa Dental Clinic - Profile</title>
-  <meta name="description" content="">
-  <meta name="keywords" content="">
-
-  <link href="assets/img/icon.png" rel="icon">
-  <link href="assets/img/apple-touch-icon.png" rel="apple-touch-icon">
-
-  <link href="https://fonts.googleapis.com" rel="preconnect">
-  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
-
-  <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
-  <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-  <link href="assets/vendor/aos/aos.css" rel="stylesheet">
-  <link href="assets/vendor/fontawesome-free/css/all.min.css" rel="stylesheet">
-  <link href="assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
-  <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-
-  <link href="assets/css/profile.css" rel="stylesheet">
-
-  <style>
-    :root {
-      --primary-color: #b994c0;
-      --primary-hover: #a07dab;
-      --secondary-color: #f8f9fa;
-      --text-color: #333;
-      --border-radius: 8px;
-    }
-
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
-      color: var(--text-color);
-    }
-
-    .header {
-      background: #fff;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      border-bottom: 1px solid #eee;
-    }
-
-    .topbar {
-      background: var(--primary-color);
-      color: #fff;
-      padding: 10px 0;
-      font-size: 14px;
-    }
-
-    .branding .logo img {
-      max-height: 60px;
-      transition: transform 0.3s ease;
-    }
-
-    .branding .logo img:hover {
-      transform: scale(1.1);
-    }
-
-    .navmenu ul {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .navmenu ul li {
-      display: flex;
-      align-items: center;
-    }
-
-    .navmenu ul li a,
-    .navmenu ul li .cta-btn {
-      color: var(--text-color);
-      font-weight: 500;
-      padding: 10px 15px;
-      transition: all 0.3s ease;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      text-decoration: none;
-      font-size: 14px;
-      line-height: 1.5;
-      border-radius: var(--border-radius);
-      min-width: 80px;
-      text-align: center;
-      box-sizing: border-box;
-      height: 36px;
-    }
-
-    .navmenu ul li a:hover,
-    .navmenu ul li a.active {
-      color: var(--primary-color);
-      background: rgba(185, 148, 192, 0.1);
-    }
-
-    .cta-btn {
-      background: var(--primary-color);
-      color: #fff;
-      transition: background 0.3s ease, transform 0.3s ease;
-      padding: 10px 15px;
-      min-width: 80px;
-      height: 36px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .cta-btn:hover {
-      background: var(--primary-hover);
-      transform: translateY(-2px);
-      color: #fff;
-    }
-
-    .navmenu ul li a.cta-btn#account-link {
-      color: #fff !important;
-    }
-
-    .mobile-nav-toggle {
-      font-size: 24px;
-      cursor: pointer;
-      color: var(--text-color);
-      transition: color 0.3s ease;
-    }
-
-    .mobile-nav-toggle:hover {
-      color: var(--primary-color);
-    }
-
-    @media (max-width: 991px) {
-      .navmenu {
-        display: none;
-      }
-
-      .navmenu.active {
-        display: block;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background: #fff;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        padding: 15px;
-        z-index: 1000;
-      }
-
-      .navmenu ul {
-        flex-direction: column;
-        gap: 5px;
-      }
-
-      .navmenu ul li {
-        width: 100%;
-      }
-
-      .navmenu ul li a,
-      .navmenu ul li .cta-btn {
-        width: 100%;
-        justify-content: flex-start;
-        padding: 12px 15px;
-      }
-    }
-
-    .card {
-      border: none;
-      border-radius: var(--border-radius);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-    }
-
-    .profile-card {
-      background: #fff;
-      text-align: center;
-      padding: 30px;
-    }
-
-    .profile-pic-container {
-      width: 120px;
-      height: 120px;
-      background: var(--secondary-color);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.3s ease;
-    }
-
-    .profile-pic-container:hover {
-      background: #e0e0e0;
-    }
-
-    .btn-primary {
-      background: var(--primary-color);
-      border: none;
-      border-radius: var(--border-radius);
-      padding: 10px 20px;
-      transition: background 0.3s ease;
-    }
-
-    .btn-primary:hover {
-      background: var(--primary-hover);
-    }
-
-    .btn-outline-secondary {
-      border-color: var(--primary-color);
-      color: var(--primary-color);
-      border-radius: var(--border-radius);
-      transition: all 0.3s ease;
-    }
-
-    .btn-outline-secondary:hover {
-      background: var(--primary-color);
-      color: #fff;
-    }
-
-    .btn-danger {
-      background: #dc3545;
-      border-radius: var(--border-radius);
-      transition: background 0.3s ease;
-    }
-
-    .btn-danger:hover {
-      background: #c82333;
-    }
-
-    .nav-tabs {
-      border-bottom: 2px solid #eee;
-    }
-
-    .nav-tabs .nav-link {
-      color: var(--text-color);
-      border: none;
-      border-bottom: 3px solid transparent;
-      margin-bottom: -2px;
-      padding: 10px 20px;
-      font-weight: 500;
-      transition: all 0.3s ease;
-    }
-
-    .nav-tabs .nav-link:hover,
-    .nav-tabs .nav-link.active {
-      color: var(--primary-color);
-      border-bottom: 3px solid var(--primary-color);
-    }
-
-    .form-control,
-    .form-select {
-      border-radius: var(--border-radius);
-      border: 1px solid #ced4da;
-      padding: 10px;
-      transition: border-color 0.3s ease;
-    }
-
-    .form-control:focus,
-    .form-select:focus {
-      border-color: var(--primary-color);
-      box-shadow: 0 0 5px rgba(185, 148, 192, 0.5);
-    }
-
-    .appointment-status {
-      padding: 4px 12px;
-      border-radius: 15px;
-      font-size: 0.9em;
-      color: #fff;
-      display: inline-block;
-    }
-
-    .status-pending { background-color: #ffc107; }
-    .status-confirmed { background-color: #28a745; }
-    .status-cancelled { background-color: #dc3545; }
-    .status-completed { background-color: #6c757d; }
-
-    .timeline-item {
-      margin-bottom: 25px;
       position: relative;
-      padding-left: 35px;
-      background: #fff;
+    }
+
+    #google-map-container iframe {
+      width: 100%;
+      height: 100%;
+      min-height: 350px;
+      border: 0;
+    }
+
+    #google-map-container .map-fallback {
+      display: none;
+      text-align: center;
       padding: 20px;
-      border-radius: var(--border-radius);
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-
-    .timeline-item::before {
-      content: '';
-      position: absolute;
-      left: 15px;
-      top: 0;
-      bottom: 0;
-      width: 3px;
-      background: var(--primary-color);
-    }
-
-    .timeline-item .timeline-dot {
-      position: absolute;
-      left: 10px;
-      top: 20px;
-      width: 14px;
-      height: 14px;
-      background: var(--primary-color);
-      border-radius: 50%;
-      border: 2px solid #fff;
-    }
-
-    .time-picker {
-      padding: 15px;
-      border: 1px solid #e0e0e0;
-      border-radius: var(--border-radius);
-      background: #fff;
-    }
-
-    .time-picker-header {
-      font-weight: 600;
-      margin-bottom: 10px;
-      color: var(--primary-color);
-    }
-
-    .time-picker-slots {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .time-slot {
-      padding: 8px 15px;
-      border: 1px solid #ced4da;
-      border-radius: var(--border-radius);
-      cursor: pointer;
-      background: #fff;
-      transition: all 0.3s ease;
-    }
-
-    .time-slot:hover {
-      background: var(--primary-color);
-      color: #fff;
-      border-color: var(--primary-color);
-    }
-
-    .time-slot.selected {
-      background: var(--primary-color);
-      color: #fff;
-      border-color: var(--primary-color);
-    }
-
-    .time-slot.disabled {
-      background: #e9ecef;
-      color: #6c757d;
-      pointer-events: none;
-    }
-
-    .modal-content {
-      border-radius: var(--border-radius);
-      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-    }
-
-    .modal-header {
-      background: var(--primary-color);
-      color: #fff;
-      border-top-left-radius: var(--border-radius);
-      border-top-right-radius: var(--border-radius);
-    }
-
-    .modal-footer {
-      border-top: none;
-      padding: 15px;
-    }
-
-    .footer {
-      background: #fff;
-      padding: 40px 0;
-      box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
-    }
-
-    .footer .sitename {
-      color: var(--primary-color);
-      font-weight: 600;
-    }
-
-    .scroll-top {
-      background: var(--primary-color);
-      border-radius: 50%;
-      width: 45px;
-      height: 45px;
-      transition: background 0.3s ease;
-    }
-
-    .scroll-top:hover {
-      background: var(--primary-hover);
-    }
-
-    #map {
-      height: 300px;
-      border-radius: var(--border-radius);
-      margin-top: 20px;
+      color: #dc3545;
     }
 
     .policy-links {
@@ -993,8 +481,12 @@ Below is the complete `profile.html` with the navigation bar styled to match `in
         height: 100px;
       }
 
-      #map {
-        height: 200px;
+      #google-map-container {
+        min-height: 250px;
+      }
+
+      #google-map-container iframe {
+        min-height: 250px;
       }
     }
   </style>
@@ -1490,9 +982,9 @@ Below is the complete `profile.html` with the navigation bar styled to match `in
             <p><strong>Monday - Saturday, 9AM to 4PM</strong></p>
           </div>
         </div>
-        <div class="container">
+        <div class="col-lg-8 col-md-12">
           <h5 class="mb-3">Clinic Location</h5>
-          <div id="map">
+          <div id="google-map-container">
             <iframe
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3869.275503600869!2d122.95431701129162!3d14.119888786254391!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3398af188fddc25b%3A0x6da5116eb1e81013!2sBalane-%20Saspa%20Dental%20Clinic!5e0!3m2!1sen!2sph!4v1739682223635!5m2!1sen!2sph"
               width="100%"
@@ -1502,8 +994,11 @@ Below is the complete `profile.html` with the navigation bar styled to match `in
               loading="lazy"
               referrerpolicy="no-referrer-when-downgrade">
             </iframe>
+            <div class="map-fallback">
+              Unable to load map. Please check your internet connection or try again later.
+            </div>
           </div>
-        </div>        
+        </div>
       </div>
     </div>
 
@@ -1537,5 +1032,39 @@ Below is the complete `profile.html` with the navigation bar styled to match `in
   <script src="assets/js/card-overlay.js"></script>
   <script src="assets/js/profile-core.js"></script>
   <script src="assets/js/profile-ui.js"></script>
+
+  <script>
+    // Prevent duplicate navigation bars
+    document.addEventListener('DOMContentLoaded', function() {
+      const headers = document.querySelectorAll('header.header');
+      if (headers.length > 1) {
+        for (let i = 1; i < headers.length; i++) {
+          headers[i].remove();
+        }
+      }
+
+      // Ensure map iframe is visible and fallback is hidden
+      const mapIframe = document.querySelector('#google-map-container iframe');
+      const mapFallback = document.querySelector('#google-map-container .map-fallback');
+      if (mapIframe && mapIframe.complete) {
+        mapFallback.style.display = 'none';
+      } else {
+        mapIframe.addEventListener('load', function() {
+          mapFallback.style.display = 'none';
+        });
+        mapIframe.addEventListener('error', function() {
+          mapFallback.style.display = 'block';
+        });
+      }
+
+      // Prevent Leaflet from initializing on google-map-container
+      if (typeof L !== 'undefined' && L.map) {
+        const mapContainer = document.getElementById('google-map-container');
+        if (mapContainer) {
+          mapContainer.classList.add('no-leaflet');
+        }
+      }
+    });
+  </script>
 </body>
 </html>
