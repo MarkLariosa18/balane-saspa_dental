@@ -1,16 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta content="width=device-width, initial-scale=1.0" name="viewport">
-  <title>Admin - Dynamic Analytics Dashboard</title>
-  <meta content="Power BI-inspired dynamic dashboard for appointment and patient analytics" name="description">
-  <meta content="dashboard, analytics, appointments, patients, power bi, dynamic" name="keywords">
-  <link href="assets/img/icon.png" rel="icon">
-  <link href="assets/img/icon.png" rel="apple-touch-icon">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dental Clinic Analytics Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     body {
       background: #F3F2F1;
@@ -102,18 +103,6 @@
     .canvas-container.small {
       min-height: 250px;
     }
-    #statusChart, #genderChart {
-      height: 250px !important;
-    }
-    #serviceChart {
-      height: 400px !important;
-    }
-    #ageChart {
-      height: 300px !important;
-    }
-    .large #statusChart, .large #serviceChart, .large #ageChart, .large #genderChart {
-      height: 400px !important;
-    }
     .slicer {
       padding: 0.5rem 1rem;
       border-radius: 6px;
@@ -168,16 +157,32 @@
     .dashboard-grid .large {
       grid-column: span 2;
     }
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      margin-bottom: 20px;
+      gap: 1rem;
+    }
+    .stat {
+      text-align: center;
+      background: #FFFFFF;
+      border-radius: 8px;
+      border: 1px solid #E1DFDD;
+      padding: 1rem;
+      flex: 1 1 150px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease;
+    }
+    .stat:hover {
+      transform: translateY(-3px);
+    }
     @media (max-width: 768px) {
       .dashboard-header {
         padding: 1rem;
       }
       .canvas-container.large, .canvas-container.standard, .canvas-container.small {
         min-height: 250px;
-      }
-      #statusChart, #serviceChart, #ageChart, #genderChart,
-      .large #statusChart, .large #serviceChart, .large #ageChart, .large #genderChart {
-        height: 250px !important;
       }
       .slicer {
         font-size: 0.85rem;
@@ -207,20 +212,18 @@
       .dashboard-grid .large {
         grid-column: span 1;
       }
+      .stat {
+        flex: 1 1 100%;
+      }
     }
   </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 </head>
 <body>
   <header class="dashboard-header">
     <div class="flex justify-between items-center">
       <div>
-        <h1 class="text-2xl font-semibold text-gray-800">Dental Clinic Dynamic Analytics</h1>
-        <p class="text-sm text-gray-600">Adaptive insights for appointments and patients</p>
+        <h1 class="text-2xl font-semibold text-gray-800">Dental Clinic Analytics Dashboard</h1>
+        <p class="text-sm text-gray-600">Real-time insights for appointments and patients</p>
       </div>
       <div class="flex items-center gap-4">
         <label for="globalYearFilter" class="text-sm font-medium text-gray-700">Filter Year:</label>
@@ -232,6 +235,11 @@
     </div>
   </header>
   <main class="container mx-auto">
+    <div class="stats">
+      <div class="stat"><strong>Patients</strong><br><span id="patientsCount">Loading...</span></div>
+      <div class="stat"><strong>Treatments</strong><br><span id="treatmentsCount">Loadingseekable="true" /><span id="treatmentsCount">Loading...</span></div>
+      <div class="stat"><strong>Daily Visits</strong><br><span id="dailyVisits">Loading...</span></div>
+    </div>
     <div class="dashboard-grid" id="dashboardGrid">
       <!-- Appointment Status Chart -->
       <div class="card p-6" id="statusCard">
@@ -285,16 +293,40 @@
       <div class="card p-6" id="genderCard">
         <div class="loading-spinner" id="genderChartSpinner"></div>
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-medium text-gray-800">Patient Gender Distribution</h2>
+          <h2 class="text-lg font-medium text-gray-800">Count by Gender</h2>
           <select id="genderYearFilter" class="slicer" aria-label="Select year for gender chart"></select>
         </div>
         <div id="genderChartLegend" class="flex flex-wrap gap-2 mb-4"></div>
         <div class="canvas-container small">
-          <canvas id="genderChart" aria-label="Pie chart showing patient gender distribution"></canvas>
+          <canvas id="genderChart" aria-label="Chart showing count by gender distribution"></canvas>
+        </div>
+        <div class="mt-4 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="flex items-center">
+              <div class="w-4 h-4 bg-pink-500 rounded mr-2"></div>
+              <span id="femaleCount">Female: 0</span>
+            </div>
+            <div class="flex items-center">
+              <div class="w-4 h-4 bg-blue-500 rounded mr-2"></div>
+              <span id="maleCount">Male: 0</span>
+            </div>
+          </div>
+          <button id="exportGenderCsvBtn" class="btn-export" aria-label="Export gender chart data as CSV">Export</button>
+        </div>
+      </div>
+      <!-- Weekday Chart -->
+      <div class="card p-6" id="weekdayCard">
+        <div class="loading-spinner" id="weekdayChartSpinner"></div>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-medium text-gray-800">Appointments by Weekday</h2>
+          <select id="weekdayYearFilter" class="slicer" aria-label="Select year for weekday chart"></select>
+        </div>
+        <div class="canvas-container standard">
+          <canvas id="weekdayChart" aria-label="Bar chart showing appointments by weekday"></canvas>
         </div>
         <div class="flex justify-between items-center mt-4">
-          <p class="highlight-text" id="genderHighlightText"></p>
-          <button id="exportGenderCsvBtn" class="btn-export" aria-label="Export gender chart data as CSV">Export</button>
+          <p class="highlight-text" id="weekdayHighlightText"></p>
+          <button id="exportWeekdayCsvBtn" class="btn-export" aria-label="Export weekday chart data as CSV">Export</button>
         </div>
       </div>
     </div>
@@ -304,6 +336,7 @@ let statusChartInstance = null;
 let serviceChartInstance = null;
 let ageChartInstance = null;
 let genderChartInstance = null;
+let weekdayChartInstance = null;
 let allAppointments = [];
 let allServices = [];
 let allPatients = [];
@@ -313,7 +346,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('pieChartSpinner'),
     document.getElementById('barChartSpinner'),
     document.getElementById('ageChartSpinner'),
-    document.getElementById('genderChartSpinner')
+    document.getElementById('genderChartSpinner'),
+    document.getElementById('weekdayChartSpinner')
   ];
   spinners.forEach(spinner => spinner && (spinner.style.display = 'block'));
 
@@ -528,6 +562,75 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  async function fetchStatsData() {
+    try {
+      const csrfToken = await getCsrfToken();
+      const headers = {
+        'Authorization': 'Bearer ' + localStorage.getItem('authToken'),
+        'CSRF-Token': csrfToken
+      };
+
+      // Fetch patients count
+      let patientsCount = 0;
+      try {
+        const patientsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/patients/allPatients', {
+          credentials: 'include',
+          headers
+        });
+        if (!patientsResponse.ok) throw new Error('Failed to fetch patients');
+        const patientsData = await patientsResponse.json();
+        patientsCount = Array.isArray(patientsData) ? patientsData.length : 0;
+        document.getElementById('patientsCount').textContent = patientsCount > 1000 ? `${(patientsCount / 1000).toFixed(1)}K` : patientsCount;
+      } catch (error) {
+        console.error('Error fetching patients count:', error);
+        document.getElementById('patientsCount').textContent = 'Error';
+      }
+
+      // Fetch treatments count (confirmed and completed appointments)
+      let treatmentsCount = 0;
+      try {
+        const appointmentsResponse = await fetch('https://balane-saspa-dental-1.onrender.com/api/appointments/all', {
+          credentials: 'include',
+          headers
+        });
+        if (!appointmentsResponse.ok) throw new Error('Failed to fetch appointments');
+        const appointmentsResult = await appointmentsResponse.json();
+        if (!appointmentsResult.success) throw new Error(appointmentsResult.message);
+        const appointments = appointmentsResult.appointments;
+        treatmentsCount = appointments.filter(app => 
+          app.status?.toLowerCase() === 'confirmed' || app.status?.toLowerCase() === 'completed'
+        ).length;
+        document.getElementById('treatmentsCount').textContent = treatmentsCount > 1000 ? `${(treatmentsCount / 1000).toFixed(1)}K` : treatmentsCount;
+      } catch (error) {
+        console.error('Error fetching treatments count:', error);
+        document.getElementById('treatmentsCount').textContent = 'Error';
+      }
+
+      // Fetch daily visits (total appointments for today)
+      let dailyVisits = 0;
+      try {
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+        const dailyResponse = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/date?date=${today}`, {
+          credentials: 'include',
+          headers
+        });
+        if (!dailyResponse.ok) throw new Error('Failed to fetch daily appointments');
+        const dailyResult = await dailyResponse.json();
+        if (!dailyResult.success) throw new Error(dailyResult.message);
+        dailyVisits = Array.isArray(dailyResult.appointments) ? dailyResult.appointments.length : 0;
+        document.getElementById('dailyVisits').textContent = dailyVisits;
+      } catch (error) {
+        console.error('Error fetching daily visits:', error);
+        document.getElementById('dailyVisits').textContent = 'Error';
+      }
+    } catch (error) {
+      console.error('Error fetching stats data:', error);
+      document.getElementById('patientsCount').textContent = 'Error';
+      document.getElementById('treatmentsCount').textContent = 'Error';
+      document.getElementById('dailyVisits').textContent = 'Error';
+    }
+  }
+
   try {
     const authResponse = await fetch('https://balane-saspa-dental-1.onrender.com/auth/check-auth', {
       credentials: 'include',
@@ -638,6 +741,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('serviceHighlightText').textContent = 'No appointment data available.';
       document.getElementById('ageHighlightText').textContent = 'No patient data available.';
       document.getElementById('genderHighlightText').textContent = 'No patient data available.';
+      document.getElementById('weekdayHighlightText').textContent = 'No appointment data available.';
       spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
       return;
     }
@@ -648,6 +752,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderAllCharts(null);
     });
 
+    fetchStatsData();
+
     const globalYearFilter = document.getElementById('globalYearFilter');
     const statusYearFilter = document.getElementById('statusYearFilter');
     const exportStatusCsvBtn = document.getElementById('exportStatusCsvBtn');
@@ -657,12 +763,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const exportAgeCsvBtn = document.getElementById('exportAgeCsvBtn');
     const genderYearFilter = document.getElementById('genderYearFilter');
     const exportGenderCsvBtn = document.getElementById('exportGenderCsvBtn');
+    const weekdayYearFilter = document.getElementById('weekdayYearFilter');
+    const exportWeekdayCsvBtn = document.getElementById('exportWeekdayCsvBtn');
 
     if (globalYearFilter) {
       globalYearFilter.addEventListener('change', (e) => {
         const year = e.target.value ? parseInt(e.target.value) : null;
         renderAllCharts(year);
-        [statusYearFilter, serviceYearFilter, ageYearFilter, genderYearFilter].forEach(filter => {
+        [statusYearFilter, serviceYearFilter, ageYearFilter, genderYearFilter, weekdayYearFilter].forEach(filter => {
           if (filter) filter.value = e.target.value;
         });
       });
@@ -707,6 +815,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         exportGenderToCsv(allPatients, parseInt(genderYearFilter?.value || globalYearFilter?.value || currentYear));
       });
     }
+    if (weekdayYearFilter) {
+      weekdayYearFilter.addEventListener('change', (e) => {
+        renderWeekdayChart(allAppointments, e.target.value ? parseInt(e.target.value) : null);
+      });
+    }
+    if (exportWeekdayCsvBtn) {
+      exportWeekdayCsvBtn.addEventListener('click', () => {
+        exportWeekdayToCsv(allAppointments, parseInt(weekdayYearFilter?.value || globalYearFilter?.value || currentYear));
+      });
+    }
 
     spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
   } catch (error) {
@@ -721,6 +839,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('serviceHighlightText').textContent = 'Failed to load appointment data.';
     document.getElementById('ageHighlightText').textContent = 'Failed to load patient data.';
     document.getElementById('genderHighlightText').textContent = 'Failed to load patient data.';
+    document.getElementById('weekdayHighlightText').textContent = 'Failed to load appointment data.';
     spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
   }
 });
@@ -731,7 +850,8 @@ function populateYearFilter(appointments, patients, currentYear) {
     document.getElementById('statusYearFilter'),
     document.getElementById('serviceYearFilter'),
     document.getElementById('ageYearFilter'),
-    document.getElementById('genderYearFilter')
+    document.getElementById('genderYearFilter'),
+    document.getElementById('weekdayYearFilter')
   ];
   const appointmentYears = [...new Set(appointments.map(app => new Date(app.appointment_date).getFullYear()))];
   const patientYears = [...new Set(patients.map(p => new Date(p.effective_date || new Date()).getFullYear()))];
@@ -767,17 +887,19 @@ function adjustChartSizes(appointments, services, patients, year) {
   const serviceCount = filteredAppointments.reduce((sum, app) => sum + (app.services ? 1 : 0), 0);
   const ageCount = filteredPatients.length;
   const genderCount = filteredPatients.length;
+  const weekdayCount = filteredAppointments.length;
 
   const counts = [
     { id: 'statusCard', count: statusCount },
     { id: 'serviceCard', count: serviceCount, priority: 1 },
     { id: 'ageCard', count: ageCount },
-    { id: 'genderCard', count: genderCount }
+    { id: 'genderCard', count: genderCount },
+    { id: 'weekdayCard', count: weekdayCount }
   ];
 
   const maxCount = Math.max(...counts.map(c => c.count));
-  const largestChart = counts.reduce((prev, curr) => 
-    curr.count === maxCount && (curr.priority || 0) > (prev.priority || 0) ? curr : prev, 
+  const largestChart = counts.reduce((prev, curr) =>
+    curr.count === maxCount && (curr.priority || 0) > (prev.priority || 0) ? curr : prev,
     counts[0]
   ).id;
 
@@ -785,7 +907,8 @@ function adjustChartSizes(appointments, services, patients, year) {
     statusCard: document.getElementById('statusCard'),
     serviceCard: document.getElementById('serviceCard'),
     ageCard: document.getElementById('ageCard'),
-    genderCard: document.getElementById('genderCard')
+    genderCard: document.getElementById('genderCard'),
+    weekdayCard: document.getElementById('weekdayCard')
   };
 
   Object.values(cards).forEach(card => {
@@ -815,6 +938,7 @@ function renderAllCharts(year) {
   renderServiceChart(allAppointments, allServices, year);
   renderAgeChart(allPatients, year);
   renderGenderChart(allPatients, year);
+  renderWeekdayChart(allAppointments, year);
 }
 
 function renderStatusChart(appointments, year) {
@@ -825,7 +949,7 @@ function renderStatusChart(appointments, year) {
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
     const statuses = ['confirmed', 'pending', 'cancelled', 'rejected'];
     const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
-    const statusCounts = statuses.map(status => 
+    const statusCounts = statuses.map(status =>
       filteredAppointments.filter(app => app.status?.toLowerCase() === status).length
     );
     const total = statusCounts.reduce((sum, count) => sum + count, 0);
@@ -848,21 +972,21 @@ function renderStatusChart(appointments, year) {
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          title: { 
-            display: true, 
-            text: `Appointment Status${year ? ` (${year})` : ''}`, 
-            font: { size: 16, weight: '600', family: 'Segoe UI' }, 
-            color: '#252423', 
-            padding: { top: 10, bottom: 10 } 
+          title: {
+            display: true,
+            text: `Appointment Status${year ? ` (${year})` : ''}`,
+            font: { size: 16, weight: '600', family: 'Segoe UI' },
+            color: '#252423',
+            padding: { top: 10, bottom: 10 }
           },
-          tooltip: { 
-            backgroundColor: '#FFFFFF', 
-            titleColor: '#252423', 
-            bodyColor: '#605E5C', 
-            borderColor: '#E1DFDD', 
-            borderWidth: 1, 
-            cornerRadius: 4, 
-            padding: 10 
+          tooltip: {
+            backgroundColor: '#FFFFFF',
+            titleColor: '#252423',
+            bodyColor: '#605E5C',
+            borderColor: '#E1DFDD',
+            borderWidth: 1,
+            cornerRadius: 4,
+            padding: 10
           },
           datalabels: {
             display: (ctx) => ctx.dataset.data[ctx.dataIndex] / total > 0.05,
@@ -884,8 +1008,8 @@ function renderStatusChart(appointments, year) {
             const statusAppointments = filteredAppointments.filter(app => app.status?.toLowerCase() === status);
             Swal.fire({
               title: `${status.capitalize()} Appointments${year ? ` in ${year}` : ''}`,
-              html: statusAppointments.length 
-                ? `<ul class="list-disc pl-5">${statusAppointments.map(app => `<li>${new Date(app.appointment_date).toLocaleDateString()}</li>`).join('')}</ul>` 
+              html: statusAppointments.length
+                ? `<ul class="list-disc pl-5">${statusAppointments.map(app => `<li>${new Date(app.appointment_date).toLocaleDateString()}</li>`).join('')}</ul>`
                 : 'No appointments found.',
               confirmButtonColor: '#0078D4'
             });
@@ -923,7 +1047,7 @@ function renderStatusChart(appointments, year) {
       legendContainer.appendChild(legendItem);
     });
 
-    document.getElementById('statusHighlightText').textContent = total > 0 
+    document.getElementById('statusHighlightText').textContent = total > 0
       ? `Dominant Status: ${dominantStatus.capitalize()} (${maxCount} appointments)`
       : 'No appointment data available.';
   } catch (error) {
@@ -957,7 +1081,7 @@ function renderServiceChart(appointments, services, year) {
 
     const isPieChart = services.length <= 5;
     const chartType = isPieChart ? 'pie' : 'bar';
-    const datasets = isPieChart 
+    const datasets = isPieChart
       ? [{
           data: serviceCounts.map(s => s.count),
           backgroundColor: serviceCounts.map(s => s.color),
@@ -982,27 +1106,27 @@ function renderServiceChart(appointments, services, year) {
         scales: isPieChart ? {} : {
           y: {
             beginAtZero: true,
-            title: { 
-              display: true, 
-              text: 'Number of Appointments', 
-              font: { size: 12, weight: '600', family: 'Segoe UI' }, 
-              color: '#252423' 
+            title: {
+              display: true,
+              text: 'Number of Appointments',
+              font: { size: 12, weight: '600', family: 'Segoe UI' },
+              color: '#252423'
             },
-            ticks: { 
-              stepSize: 1, 
-              font: { size: 10, family: 'Segoe UI' }, 
-              color: '#605E5C' 
+            ticks: {
+              stepSize: 1,
+              font: { size: 10, family: 'Segoe UI' },
+              color: '#605E5C'
             }
           },
           x: {
-            title: { 
-              display: true, 
-              text: 'Service', 
-              font: { size: 12, weight: '600', family: 'Segoe UI' }, 
-              color: '#252423' 
+            title: {
+              display: true,
+              text: 'Service',
+              font: { size: 12, weight: '600', family: 'Segoe UI' },
+              color: '#252423'
             },
-            ticks: { 
-              font: { size: 10, family: 'Segoe UI' }, 
+            ticks: {
+              font: { size: 10, family: 'Segoe UI' },
               color: '#605E5C',
               autoSkip: true,
               maxRotation: 45,
@@ -1012,21 +1136,21 @@ function renderServiceChart(appointments, services, year) {
         },
         plugins: {
           legend: { display: false },
-          title: { 
-            display: true, 
-            text: `Service Popularity${year ? ` (${year})` : ''}`, 
-            font: { size: 16, weight: '600', family: 'Segoe UI' }, 
-            color: '#252423', 
-            padding: { top: 10, bottom: 10 } 
+          title: {
+            display: true,
+            text: `Service Popularity${year ? ` (${year})` : ''}`,
+            font: { size: 16, weight: '600', family: 'Segoe UI' },
+            color: '#252423',
+            padding: { top: 10, bottom: 10 }
           },
-          tooltip: { 
-            backgroundColor: '#FFFFFF', 
-            titleColor: '#252423', 
-            bodyColor: '#605E5C', 
-            borderColor: '#E1DFDD', 
-            borderWidth: 1, 
-            cornerRadius: 4, 
-            padding: 10 
+          tooltip: {
+            backgroundColor: '#FFFFFF',
+            titleColor: '#252423',
+            bodyColor: '#605E5C',
+            borderColor: '#E1DFDD',
+            borderWidth: 1,
+            cornerRadius: 4,
+            padding: 10
           },
           datalabels: {
             display: isPieChart && total > 0 && total <= 10,
@@ -1050,8 +1174,8 @@ function renderServiceChart(appointments, services, year) {
             const serviceAppointments = filteredAppointments.filter(app => app.services?.name === service);
             Swal.fire({
               title: `${service} Appointments${year ? ` in ${year}` : ''}`,
-              html: serviceAppointments.length 
-                ? `<ul class="list-disc pl-5">${serviceAppointments.map(app => `<li>${new Date(app.appointment_date).toLocaleDateString()}</li>`).join('')}</ul>` 
+              html: serviceAppointments.length
+                ? `<ul class="list-disc pl-5">${serviceAppointments.map(app => `<li>${new Date(app.appointment_date).toLocaleDateString()}</li>`).join('')}</ul>`
                 : 'No appointments found.',
               confirmButtonColor: '#0078D4'
             });
@@ -1089,7 +1213,7 @@ function renderServiceChart(appointments, services, year) {
       legendContainer.appendChild(legendItem);
     });
 
-    document.getElementById('serviceHighlightText').textContent = maxCount > 0 
+    document.getElementById('serviceHighlightText').textContent = maxCount > 0
       ? `Top Service: ${topService} (${maxCount} appointments)`
       : 'No appointment data available.';
   } catch (error) {
@@ -1144,27 +1268,27 @@ function renderAgeChart(patients, year) {
         scales: {
           y: {
             beginAtZero: true,
-            title: { 
-              display: true, 
-              text: 'Number of Patients', 
-              font: { size: 12, weight: '600', family: 'Segoe UI' }, 
-              color: '#252423' 
+            title: {
+              display: true,
+              text: 'Number of Patients',
+              font: { size: 12, weight: '600', family: 'Segoe UI' },
+              color: '#252423'
             },
-            ticks: { 
-              stepSize: 1, 
-              font: { size: 10, family: 'Segoe UI' }, 
-              color: '#605E5C' 
+            ticks: {
+              stepSize: 1,
+              font: { size: 10, family: 'Segoe UI' },
+              color: '#605E5C'
             }
           },
           x: {
-            title: { 
-              display: true, 
-              text: 'Age Range', 
-              font: { size: 12, weight: '600', family: 'Segoe UI' }, 
-              color: '#252423' 
+            title: {
+              display: true,
+              text: 'Age Range',
+              font: { size: 12, weight: '600', family: 'Segoe UI' },
+              color: '#252423'
             },
-            ticks: { 
-              font: { size: 10, family: 'Segoe UI' }, 
+            ticks: {
+              font: { size: 10, family: 'Segoe UI' },
               color: '#605E5C',
               autoSkip: true,
               maxRotation: 45,
@@ -1174,21 +1298,21 @@ function renderAgeChart(patients, year) {
         },
         plugins: {
           legend: { display: false },
-          title: { 
-            display: true, 
-            text: `Patient Age Distribution${year ? ` (${year})` : ''}`, 
-            font: { size: 16, weight: '600', family: 'Segoe UI' }, 
-            color: '#252423', 
-            padding: { top: 10, bottom: 10 } 
+          title: {
+            display: true,
+            text: `Patient Age Distribution${year ? ` (${year})` : ''}`,
+            font: { size: 16, weight: '600', family: 'Segoe UI' },
+            color: '#252423',
+            padding: { top: 10, bottom: 10 }
           },
-          tooltip: { 
-            backgroundColor: '#FFFFFF', 
-            titleColor: '#252423', 
-            bodyColor: '#605E5C', 
-            borderColor: '#E1DFDD', 
-            borderWidth: 1, 
-            cornerRadius: 4, 
-            padding: 10 
+          tooltip: {
+            backgroundColor: '#FFFFFF',
+            titleColor: '#252423',
+            bodyColor: '#605E5C',
+            borderColor: '#E1DFDD',
+            borderWidth: 1,
+            cornerRadius: 4,
+            padding: 10
           }
         },
         animation: {
@@ -1208,8 +1332,8 @@ function renderAgeChart(patients, year) {
             });
             Swal.fire({
               title: `Patients in Age Range ${ageRange}${year ? ` (${year})` : ''}`,
-              html: agePatients.length 
-                ? `<p>${agePatients.length} patients in this range.</p>` 
+              html: agePatients.length
+                ? `<p>${agePatients.length} patients in this range.</p>`
                 : 'No patients found.',
               confirmButtonColor: '#0078D4'
             });
@@ -1228,7 +1352,7 @@ function renderAgeChart(patients, year) {
     `;
     legendContainer.appendChild(legendItem);
 
-    document.getElementById('ageHighlightText').textContent = maxCount > 0 
+    document.getElementById('ageHighlightText').textContent = maxCount > 0
       ? `Peak Age Range: ${peakRange} (${maxCount} patients)`
       : 'No patient data available.';
   } catch (error) {
@@ -1250,18 +1374,21 @@ function renderGenderChart(patients, year) {
     const canvas = document.getElementById('genderChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
     const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
-    const genders = ['Male', 'Female'];
+    const genders = ['Female', 'Male'];
     const genderCounts = genders.map(gender => filteredPatients.filter(p => p.sex === gender).length);
     const total = genderCounts.reduce((sum, count) => sum + count, 0);
     const datasets = [{
       data: genderCounts,
-      backgroundColor: ['#0078D4', '#D83B01'],
+      backgroundColor: ['#FF69B4', '#0078D4'],
       borderColor: '#FFFFFF',
       borderWidth: 2
     }];
 
     const maxCount = Math.max(...genderCounts);
     const dominantGender = genders[genderCounts.indexOf(maxCount)];
+
+    document.getElementById('femaleCount').textContent = `Female: ${genderCounts[0]}`;
+    document.getElementById('maleCount').textContent = `Male: ${genderCounts[1]}`;
 
     if (genderChartInstance) genderChartInstance.destroy();
     genderChartInstance = new Chart(canvas.getContext('2d'), {
@@ -1272,21 +1399,21 @@ function renderGenderChart(patients, year) {
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          title: { 
-            display: true, 
-            text: `Patient Gender Distribution${year ? ` (${year})` : ''}`, 
-            font: { size: 16, weight: '600', family: 'Segoe UI' }, 
-            color: '#252423', 
-            padding: { top: 10, bottom: 10 } 
+          title: {
+            display: true,
+            text: `Count by Gender${year ? ` (${year})` : ''}`,
+            font: { size: 16, weight: '600', family: 'Segoe UI' },
+            color: '#252423',
+            padding: { top: 10, bottom: 10 }
           },
-          tooltip: { 
-            backgroundColor: '#FFFFFF', 
-            titleColor: '#252423', 
-            bodyColor: '#605E5C', 
-            borderColor: '#E1DFDD', 
-            borderWidth: 1, 
-            cornerRadius: 4, 
-            padding: 10 
+          tooltip: {
+            backgroundColor: '#FFFFFF',
+            titleColor: '#252423',
+            bodyColor: '#605E5C',
+            borderColor: '#E1DFDD',
+            borderWidth: 1,
+            cornerRadius: 4,
+            padding: 10
           },
           datalabels: {
             display: (ctx) => ctx.dataset.data[ctx.dataIndex] / total > 0.05,
@@ -1308,8 +1435,8 @@ function renderGenderChart(patients, year) {
             const genderPatients = filteredPatients.filter(p => p.sex === gender);
             Swal.fire({
               title: `${gender} Patients${year ? ` in ${year}` : ''}`,
-              html: genderPatients.length 
-                ? `<p>${genderPatients.length} ${gender} patients.</p>` 
+              html: genderPatients.length
+                ? `<p>${genderPatients.length} ${gender} patients.</p>`
                 : 'No patients found.',
               confirmButtonColor: '#0078D4'
             });
@@ -1347,8 +1474,8 @@ function renderGenderChart(patients, year) {
       legendContainer.appendChild(legendItem);
     });
 
-    document.getElementById('genderHighlightText').textContent = total > 0 
-      ? `Dominant Gender: ${dominantGender} (${maxCount} patients)`
+    document.getElementById('genderHighlightText').textContent = total > 0
+      ? `Total Patients: ${total} (Dominant Gender: ${dominantGender} with ${maxCount} patients)`
       : 'No patient data available.';
   } catch (error) {
     console.error('Error rendering gender chart:', error);
@@ -1356,6 +1483,134 @@ function renderGenderChart(patients, year) {
       icon: 'error',
       title: 'Graph Error',
       text: `Failed to render gender chart: ${error.message}`,
+      confirmButtonColor: '#0078D4'
+    });
+  }
+  spinner.style.display = 'none';
+}
+
+function renderWeekdayChart(appointments, year) {
+  const spinner = document.getElementById('weekdayChartSpinner');
+  spinner.style.display = 'block';
+  try {
+    const canvas = document.getElementById('weekdayChart');
+    if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
+    const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
+    const weekdayCounts = { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0, Sunday: 0 };
+    filteredAppointments.forEach(app => {
+      const date = new Date(app.appointment_date);
+      const day = date.toLocaleString('en-US', { weekday: 'long' });
+      if (weekdayCounts.hasOwnProperty(day)) weekdayCounts[day]++;
+    });
+    const total = Object.values(weekdayCounts).reduce((a, b) => a + b, 0);
+    const percentages = Object.fromEntries(
+      Object.entries(weekdayCounts).map(([day, count]) => [day, total > 0 ? (count / total * 100).toFixed(2) : 0])
+    );
+    const datasets = [{
+      label: 'Appointments',
+      data: [
+        percentages.Monday, percentages.Tuesday, percentages.Wednesday,
+        percentages.Thursday, percentages.Friday, percentages.Saturday, percentages.Sunday
+      ],
+      backgroundColor: 'rgba(75, 192, 192, 0.2)',
+      borderColor: 'rgba(75, 192, 192, 1)',
+      borderWidth: 1
+    }];
+
+    const maxPercentage = Math.max(...Object.values(percentages));
+    const busiestDay = Object.keys(percentages).find(day => percentages[day] == maxPercentage);
+
+    if (weekdayChartInstance) weekdayChartInstance.destroy();
+    weekdayChartInstance = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Percentage',
+              font: { size: 12, weight: '600', family: 'Segoe UI' },
+              color: '#252423'
+            },
+            ticks: {
+              font: { size: 10, family: 'Segoe UI' },
+              color: '#605E5C'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Day of Week',
+              font: { size: 12, weight: '600', family: 'Segoe UI' },
+              color: '#252423'
+            },
+            ticks: {
+              font: { size: 10, family: 'Segoe UI' },
+              color: '#605E5C'
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: `Appointments by Weekday${year ? ` (${year})` : ''}`,
+            font: { size: 16, weight: '600', family: 'Segoe UI' },
+            color: '#252423',
+            padding: { top: 10, bottom: 10 }
+          },
+          tooltip: {
+            backgroundColor: '#FFFFFF',
+            titleColor: '#252423',
+            bodyColor: '#605E5C',
+            borderColor: '#E1DFDD',
+            borderWidth: 1,
+            cornerRadius: 4,
+            padding: 10
+          }
+        },
+        animation: {
+          duration: 1200,
+          easing: 'easeOutQuart',
+          y: { from: 0 },
+          delay: (context) => context.dataIndex * 100
+        },
+        onClick: (e, elements) => {
+          if (elements.length) {
+            const index = elements[0].index;
+            const day = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][index];
+            const dayAppointments = filteredAppointments.filter(app => {
+              const date = new Date(app.appointment_date);
+              return date.toLocaleString('en-US', { weekday: 'long' }) === day;
+            });
+            Swal.fire({
+              title: `${day} Appointments${year ? ` in ${year}` : ''}`,
+              html: dayAppointments.length
+                ? `<ul class="list-disc pl-5">${dayAppointments.map(app => `<li>${new Date(app.appointment_date).toLocaleDateString()}</li>`).join('')}</ul>`
+                : 'No appointments found.',
+              confirmButtonColor: '#0078D4'
+            });
+          }
+        }
+      }
+    });
+
+    document.getElementById('weekdayHighlightText').textContent = total > 0
+      ? `Busiest Day: ${busiestDay} (${maxPercentage}%)`
+      : 'No appointment data available.';
+  } catch (error) {
+    console.error('Error rendering weekday chart:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Graph Error',
+      text: `Failed to render weekday chart: ${error.message}`,
       confirmButtonColor: '#0078D4'
     });
   }
@@ -1456,7 +1711,7 @@ function exportAgeToCsv(patients, year) {
 
 function exportGenderToCsv(patients, year) {
   const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
-  const genders = ['Male', 'Female'];
+  const genders = ['Female', 'Male'];
   const genderCounts = genders.map(gender => ({
     gender,
     count: filteredPatients.filter(p => p.sex === gender).length
@@ -1477,6 +1732,35 @@ function exportGenderToCsv(patients, year) {
     icon: 'success',
     title: 'Export Successful',
     text: `Gender data exported as patient_gender${year ? `_${year}` : ''}.csv`,
+    confirmButtonColor: '#0078D4',
+    timer: 1500
+  });
+}
+
+function exportWeekdayToCsv(appointments, year) {
+  const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
+  const weekdayCounts = { Monday: 0, Tuesday: 0, Wednesday: 0, Thursday: 0, Friday: 0, Saturday: 0, Sunday: 0 };
+  filteredAppointments.forEach(app => {
+    const date = new Date(app.appointment_date);
+    const day = date.toLocaleString('en-US', { weekday: 'long' });
+    if (weekdayCounts.hasOwnProperty(day)) weekdayCounts[day]++;
+  });
+  const csvRows = [['Weekday', 'Count'].join(',')];
+  Object.entries(weekdayCounts).forEach(([day, count]) => {
+    csvRows.push([day, count].join(','));
+  });
+  const csvContent = csvRows.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `appointments_weekday${year ? `_${year}` : ''}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  Swal.fire({
+    icon: 'success',
+    title: 'Export Successful',
+    text: `Weekday data exported as appointments_weekday${year ? `_${year}` : ''}.csv`,
     confirmButtonColor: '#0078D4',
     timer: 1500
   });
