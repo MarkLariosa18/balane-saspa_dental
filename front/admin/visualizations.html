@@ -1020,16 +1020,16 @@
     }
 
     function renderStatusChart(appointments, year) {
-      const spinner = document.getElementById('pieChartSpinner');
-      if (spinner) spinner.style.display = 'block';
-      try {
-        const canvas = document.getElementById('statusChart');
-        if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
-        const statuses = ['confirmed', 'pending', 'cancelled', 'rejected', 'completed'];
-        const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
-        const statusCounts = statuses.map(status =>
-          filteredAppointments.filter(app => app.status?.toLowerCase() === status).length
-        );
+  const spinner = document.getElementById('pieChartSpinner');
+  if (spinner) spinner.style.display = 'block';
+  try {
+    const canvas = document.getElementById('statusChartascorecard'); // Updated ID
+    if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
+    const statuses = ['confirmed', 'pending', 'cancelled', 'rejected', 'completed'];
+    const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
+    const statusCounts = statuses.map(status =>
+      filteredAppointments.filter(app => app.status?.toLowerCase() === status).length
+    );
         const total = statusCounts.reduce((sum, count) => sum + count, 0);
         const datasets = [{
           data: statusCounts,
@@ -1134,16 +1134,16 @@
           console.warn('statusHighlightText element not found');
         }
       } catch (error) {
-        console.error('Error rendering pie chart:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Graph Error',
-          text: `Failed to render status chart: ${error.message}`,
-          confirmButtonColor: '#0078D4'
-        });
-      }
-      if (spinner) spinner.style.display = 'none';
-    }
+    console.error('Error rendering pie chart:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Graph Error',
+      text: `Failed to render status chart: ${error.message}`,
+      confirmButtonColor: '#0078D4'
+    });
+  }
+  if (spinner) spinner.style.display = 'none';
+}
 
     function renderServiceChart(appointments, services, year) {
       const spinner = document.getElementById('barChartSpinner');
