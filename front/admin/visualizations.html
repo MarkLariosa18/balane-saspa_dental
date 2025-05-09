@@ -14,16 +14,16 @@
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <style>
     :root {
-      --primary: #1E40AF;
-      --primary-hover: #1E3A8A;
-      --secondary: #10B981;
+      --primary: #005B96;
+      --primary-hover: #003F6C;
+      --secondary: #00A896;
       --neutral: #6B7280;
-      --background: #F3F4F6;
+      --background: #F5F7FA;
       --card-bg: #FFFFFF;
-      --border: #E5E7EB;
-      --text: #111827;
-      --shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-      --gradient: linear-gradient(135deg, #3B82F6, #10B981);
+      --border: #DDE1E6;
+      --text: #1F2A44;
+      --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --gradient: linear-gradient(135deg, #005B96, #00A896);
     }
 
     body {
@@ -37,7 +37,7 @@
     .dashboard-header {
       background: var(--card-bg);
       border-bottom: 1px solid var(--border);
-      padding: 1.5rem 2rem;
+      padding: 1rem 1.5rem;
       position: sticky;
       top: 0;
       z-index: 20;
@@ -46,55 +46,55 @@
 
     .card {
       background: var(--card-bg);
-      border-radius: 12px;
+      border-radius: 8px;
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
-      padding: 1.5rem;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      padding: 1rem;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
       animation: fadeIn 0.5s ease-out;
     }
 
     .card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     }
 
     .canvas-container {
       position: relative;
       width: 100%;
-      height: 320px;
-      margin-top: 1rem;
+      height: 300px;
+      margin-top: 0.5rem;
     }
 
     .slicer {
-      padding: 0.75rem;
-      border-radius: 8px;
+      padding: 0.5rem;
+      border-radius: 6px;
       border: 1px solid var(--border);
       background: var(--card-bg);
-      font-size: 0.875rem;
+      font-size: 0.85rem;
       color: var(--text);
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
       width: 100%;
-      max-width: 160px;
+      max-width: 200px;
       appearance: none;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%236B7280' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
-      background-position: right 0.75rem center;
-      background-size: 1rem;
+      background-position: right 0.5rem center;
+      background-size: 0.9rem;
     }
 
     .slicer:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.2);
+      box-shadow: 0 0 0 2px rgba(0, 91, 150, 0.2);
       outline: none;
     }
 
     .btn {
       background: var(--primary);
       color: var(--card-bg);
-      padding: 0.75rem 1.5rem;
-      border-radius: 8px;
-      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
       font-weight: 500;
       text-align: center;
       transition: background 0.2s ease, transform 0.2s ease;
@@ -102,7 +102,7 @@
 
     .btn:hover {
       background: var(--primary-hover);
-      transform: scale(1.05);
+      transform: scale(1.03);
     }
 
     .btn-secondary {
@@ -110,31 +110,31 @@
     }
 
     .btn-secondary:hover {
-      background: #059669;
+      background: #008A76;
     }
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1.5rem;
-      padding: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      padding: 1rem;
       background: var(--card-bg);
-      border-radius: 12px;
-      margin: 1.5rem 2rem;
+      border-radius: 8px;
+      margin: 1rem;
       box-shadow: var(--shadow);
     }
 
     .stat {
       text-align: center;
       background: #F9FAFB;
-      border-radius: 10px;
-      padding: 1.25rem;
+      border-radius: 8px;
+      padding: 1rem;
       transition: background 0.2s ease, transform 0.2s ease;
     }
 
     .stat:hover {
       background: #E5E7EB;
-      transform: scale(1.02);
+      transform: scale(1.01);
     }
 
     .loading-spinner {
@@ -143,57 +143,63 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      border: 5px solid var(--border);
-      border-top: 5px solid var(--primary);
+      border: 4px solid var(--border);
+      border-top: 4px solid var(--primary);
       border-radius: 50%;
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       animation: spin 0.8s linear infinite;
     }
 
     .legend-container {
       display: flex;
       flex-wrap: wrap;
-      gap: 1rem;
-      margin-top: 1rem;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
     }
 
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      font-size: 0.875rem;
+      gap: 0.4rem;
       cursor: pointer;
       transition: opacity 0.2s ease, transform 0.2s ease;
     }
 
     .legend-item:hover {
-      transform: translateX(2px);
+      transform: translateX(1px);
     }
 
     .legend-item.hidden {
-      opacity: 0.5;
+      opacity: 0.6;
     }
 
     .legend-color {
-      width: 18px;
-      height: 18px;
-      border-radius: 4px;
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
       display: inline-block;
     }
 
     .highlight-text {
-      font-size: 0.875rem;
+      font-size: 0.85rem;
       color: var(--neutral);
-      margin-top: 1rem;
+      margin-top: 0.5rem;
     }
 
     .dashboard-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-      padding: 2rem;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 1rem;
+      padding: 1rem;
     }
+
+    .card.status { grid-column: span 4; }
+    .card.service { grid-column: span 4; }
+    .card.age { grid-column: span 4; }
+    .card.gender { grid-column: span 6; }
+    .card.weekday { grid-column: span 6; }
 
     .export-menu {
       position: relative;
@@ -205,10 +211,10 @@
       right: 0;
       background: var(--card-bg);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 6px;
       box-shadow: var(--shadow);
       z-index: 10;
-      min-width: 120px;
+      min-width: 100px;
     }
 
     .export-menu:hover .export-menu-content {
@@ -216,8 +222,8 @@
     }
 
     .export-option {
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
+      padding: 0.4rem 0.8rem;
+      font-size: 0.85rem;
       color: var(--text);
       cursor: pointer;
       transition: background 0.2s ease;
@@ -229,7 +235,7 @@
 
     .hamburger {
       display: none;
-      font-size: 1.5rem;
+      font-size: 1.25rem;
       cursor: pointer;
     }
 
@@ -239,64 +245,42 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
+      from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: repeat(6, 1fr);
+      }
+      .card.status { grid-column: span 6; }
+      .card.service { grid-column: span 6; }
+      .card.age { grid-column: span 6; }
+      .card.gender { grid-column: span 3; }
+      .card.weekday { grid-column: span 3; }
+      .canvas-container { height: 280px; }
     }
 
     @media (max-width: 768px) {
       .dashboard-grid {
         grid-template-columns: 1fr;
-        padding: 1rem;
       }
-
-      .stats {
-        grid-template-columns: 1fr;
-        margin: 1rem;
-      }
-
-      .slicer {
-        max-width: 100%;
-      }
-
-      .canvas-container {
-        height: 280px;
-      }
-
-      .dashboard-header {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .header-controls {
-        flex-direction: column;
-        width: 100%;
-      }
-
-      .hamburger {
-        display: block;
-      }
-
-      .header-controls {
-        display: none;
-      }
-
-      .header-controls.active {
-        display: flex;
-      }
+      .card { grid-column: span 1; }
+      .stats { grid-template-columns: 1fr; margin: 0.5rem; }
+      .slicer { max-width: 100%; }
+      .canvas-container { height: 260px; }
+      .dashboard-header { padding: 0.75rem; }
+      .header-controls { flex-direction: column; width: 100%; gap: 0.5rem; }
+      .hamburger { display: block; }
+      .header-controls { display: none; }
+      .header-controls.active { display: flex; }
     }
 
     @media (max-width: 480px) {
-      .dashboard-grid {
-        padding: 0.5rem;
-      }
-
-      .card {
-        padding: 1rem;
-      }
-
-      .canvas-container {
-        height: 240px;
-      }
+      .dashboard-grid { padding: 0.5rem; }
+      .card { padding: 0.75rem; }
+      .canvas-container { height: 240px; }
+      .dashboard-header { padding: 0.5rem; }
     }
   </style>
 </head>
@@ -304,15 +288,15 @@
   <header class="dashboard-header">
     <div class="flex justify-between items-center">
       <div>
-        <h1 class="text-2xl font-bold">Dental Clinic Analytics</h1>
-        <p class="text-sm text-gray-500">Real-time insights for appointments and patients</p>
+        <h1 class="text-xl font-semibold">Dental Clinic Analytics</h1>
+        <p class="text-xs text-gray-500">Real-time insights for appointments and patients</p>
       </div>
       <div class="hamburger" aria-label="Toggle menu" role="button" tabindex="0">
         <i class="fas fa-bars"></i>
       </div>
-      <div class="header-controls flex items-center gap-4">
+      <div class="header-controls flex items-center gap-2">
         <label for="globalYearFilter" class="text-sm font-medium">Year:</label>
-        <select id="globalYearFilter" class="slicer" aria-label="Select year for all charts">
+        <select id="globalYearFilter" class="slicer" multiple aria-label="Select years for all charts">
           <option value="">All Years</option>
         </select>
         <button id="resetFilters" class="btn btn-secondary" aria-label="Reset all filters">
@@ -328,20 +312,20 @@
     <div class="stats" aria-live="polite">
       <div class="stat">
         <strong class="text-sm">Patients</strong>
-        <span id="patientsCount" class="text-xl font-semibold text-blue-600">Loading...</span>
+        <span id="patientsCount" class="text-lg font-semibold text-blue-600">Loading...</span>
       </div>
       <div class="stat">
         <strong class="text-sm">Treatments</strong>
-        <span id="treatmentsCount" class="text-xl font-semibold text-blue-600">Loading...</span>
+        <span id="treatmentsCount" class="text-lg font-semibold text-blue-600">Loading...</span>
       </div>
     </div>
     <div class="dashboard-grid">
-      <div class="card" id="statusCard">
+      <div class="card status" id="statusCard">
         <div class="loading-spinner" id="statusChartSpinner" role="status" aria-label="Loading status chart"></div>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold">Appointment Status</h2>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold">Appointment Status</h2>
           <div class="flex items-center gap-2">
-            <select id="statusYearFilter" class="slicer" aria-label="Select year for status chart"></select>
+            <select id="statusYearFilter" class="slicer" multiple aria-label="Select years for status chart"></select>
             <div class="export-menu">
               <button class="btn" aria-label="Export options"><i class="fas fa-download"></i></button>
               <div class="export-menu-content">
@@ -357,12 +341,12 @@
         <div class="legend-container" id="statusChartLegend"></div>
         <p class="highlight-text" id="statusHighlightText">Loading...</p>
       </div>
-      <div class="card" id="serviceCard">
+      <div class="card service" id="serviceCard">
         <div class="loading-spinner" id="serviceChartSpinner" role="status" aria-label="Loading service chart"></div>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold">Service Popularity</h2>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold">Service Popularity</h2>
           <div class="flex items-center gap-2">
-            <select id="serviceYearFilter" class="slicer" aria-label="Select year for service chart"></select>
+            <select id="serviceYearFilter" class="slicer" multiple aria-label="Select years for service chart"></select>
             <div class="export-menu">
               <button class="btn" aria-label="Export options"><i class="fas fa-download"></i></button>
               <div class="export-menu-content">
@@ -378,12 +362,12 @@
         <div class="legend-container" id="serviceChartLegend"></div>
         <p class="highlight-text" id="serviceHighlightText">Loading...</p>
       </div>
-      <div class="card" id="ageCard">
+      <div class="card age" id="ageCard">
         <div class="loading-spinner" id="ageChartSpinner" role="status" aria-label="Loading age chart"></div>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold">Patient Age Distribution</h2>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold">Patient Age Distribution</h2>
           <div class="flex items-center gap-2">
-            <select id="ageYearFilter" class="slicer" aria-label="Select year for age chart"></select>
+            <select id="ageYearFilter" class="slicer" multiple aria-label="Select years for age chart"></select>
             <div class="export-menu">
               <button class="btn" aria-label="Export options"><i class="fas fa-download"></i></button>
               <div class="export-menu-content">
@@ -399,12 +383,12 @@
         <div class="legend-container" id="ageChartLegend"></div>
         <p class="highlight-text" id="ageHighlightText">Loading...</p>
       </div>
-      <div class="card" id="genderCard">
+      <div class="card gender" id="genderCard">
         <div class="loading-spinner" id="genderChartSpinner" role="status" aria-label="Loading gender chart"></div>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold">Gender Distribution</h2>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold">Gender Distribution</h2>
           <div class="flex items-center gap-2">
-            <select id="genderYearFilter" class="slicer" aria-label="Select year for gender chart"></select>
+            <select id="genderYearFilter" class="slicer" multiple aria-label="Select years for gender chart"></select>
             <div class="export-menu">
               <button class="btn" aria-label="Export options"><i class="fas fa-download"></i></button>
               <div class="export-menu-content">
@@ -420,12 +404,12 @@
         <div class="legend-container" id="genderChartLegend"></div>
         <p class="highlight-text" id="genderHighlightText">Loading...</p>
       </div>
-      <div class="card" id="weekdayCard">
+      <div class="card weekday" id="weekdayCard">
         <div class="loading-spinner" id="weekdayChartSpinner" role="status" aria-label="Loading weekday chart"></div>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold">Appointments by Weekday</h2>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-base font-semibold">Appointments by Weekday</h2>
           <div class="flex items-center gap-2">
-            <select id="weekdayYearFilter" class="slicer" aria-label="Select year for weekday chart"></select>
+            <select id="weekdayYearFilter" class="slicer" multiple aria-label="Select years for weekday chart"></select>
             <div class="export-menu">
               <button class="btn" aria-label="Export options"><i class="fas fa-download"></i></button>
               <div class="export-menu-content">
@@ -444,7 +428,7 @@
     </div>
   </main>
   <script>
-    const BASE_URL = 'https://balane-saspa-dental-1.onrender.com';
+const BASE_URL = 'https://balane-saspa-dental-1.onrender.com';
 let statusChartInstance = null;
 let serviceChartInstance = null;
 let ageChartInstance = null;
@@ -453,6 +437,7 @@ let weekdayChartInstance = null;
 let allAppointments = [];
 let allServices = [];
 let allPatients = [];
+let selectedYears = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   const spinners = [
@@ -482,7 +467,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'error',
         title: 'Chart Error',
         text: 'Failed to initialize Chart.js: ' + error.message,
-        confirmButtonColor: '#1E40AF'
+        confirmButtonColor: '#005B96'
       });
     }
   }
@@ -549,7 +534,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'warning',
         title: 'Connection Error',
         text: 'Failed to connect to real-time updates. Retrying in 5 seconds...',
-        confirmButtonColor: '#1E40AF',
+        confirmButtonColor: '#005B96',
         timer: 3000
       });
       setTimeout(initSocketIO, 5000);
@@ -564,7 +549,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function handleSocketIOMessage(message) {
     console.log('Processing Socket.IO message:', message);
     const globalYearFilter = document.getElementById('globalYearFilter');
-    const currentYear = globalYearFilter ? parseInt(globalYearFilter.value) || null : null;
+    const currentYears = selectedYears.length ? selectedYears : null;
     switch (message.type) {
       case 'reschedule_request':
       case 'cancel_request':
@@ -572,7 +557,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           icon: 'info',
           title: `${message.type === 'reschedule_request' ? 'Reschedule' : 'Cancel'} Request`,
           text: `New ${message.type === 'reschedule_request' ? 'reschedule' : 'cancel'} request received.`,
-          confirmButtonColor: '#1E40AF',
+          confirmButtonColor: '#005B96',
           timer: 3000,
           toast: true,
           position: 'top-end'
@@ -602,12 +587,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             appointment.pending_action = null;
           }
           allAppointments[appointmentIndex] = appointment;
-          animateChartUpdate(currentYear);
+          animateChartUpdate(currentYears);
           Swal.fire({
             icon: message.status === 'approved' ? 'success' : 'error',
             title: `${message.type.replace('_response', '').capitalize()} ${message.status.capitalize()}`,
             text: `Appointment ${message.status}.`,
-            confirmButtonColor: '#1E40AF',
+            confirmButtonColor: '#005B96',
             timer: 3000,
             toast: true,
             position: 'top-end'
@@ -619,12 +604,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const newService = message.service;
         if (!allServices.some(s => s.name === newService.name)) {
           allServices.push(newService);
-          animateChartUpdate(currentYear);
+          animateChartUpdate(currentYears);
           Swal.fire({
             icon: 'info',
             title: 'New Service',
             text: `Service "${newService.name}" added.`,
-            confirmButtonColor: '#1E40AF',
+            confirmButtonColor: '#005B96',
             timer: 3000,
             toast: true,
             position: 'top-end'
@@ -633,12 +618,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         break;
       case 'patient_added':
         allPatients.push(message.patient);
-        animateChartUpdate(currentYear);
+        animateChartUpdate(currentYears);
         Swal.fire({
           icon: 'success',
           title: 'Patient Added',
           text: `New patient added.`,
-          confirmButtonColor: '#1E40AF',
+          confirmButtonColor: '#005B96',
           timer: 3000,
           toast: true,
           position: 'top-end'
@@ -649,12 +634,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const updateIndex = allPatients.findIndex(p => p.email === message.patient.email);
         if (updateIndex !== -1) {
           allPatients[updateIndex] = message.patient;
-          animateChartUpdate(currentYear);
+          animateChartUpdate(currentYears);
           Swal.fire({
             icon: 'success',
             title: 'Patient Updated',
             text: `Patient updated.`,
-            confirmButtonColor: '#1E40AF',
+            confirmButtonColor: '#005B96',
             timer: 3000,
             toast: true,
             position: 'top-end'
@@ -666,12 +651,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const deleteIndex = allPatients.findIndex(p => p.email === message.patient.email);
         if (deleteIndex !== -1) {
           allPatients.splice(deleteIndex, 1);
-          animateChartUpdate(currentYear);
+          animateChartUpdate(currentYears);
           Swal.fire({
             icon: 'info',
             title: 'Patient Deleted',
             text: `Patient removed.`,
-            confirmButtonColor: '#1E40AF',
+            confirmButtonColor: '#005B96',
             timer: 3000,
             toast: true,
             position: 'top-end'
@@ -682,9 +667,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  function animateChartUpdate(year) {
+  function animateChartUpdate(years) {
     requestAnimationFrame(() => {
-      renderAllCharts(year);
+      renderAllCharts(years);
       $('.card').addClass('animate-pulse');
       setTimeout(() => $('.card').removeClass('animate-pulse'), 500);
     });
@@ -757,7 +742,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'error',
         title: 'Stats Fetch Error',
         text: `Failed to fetch stats: ${error.message}`,
-        confirmButtonColor: '#1E40AF'
+        confirmButtonColor: '#005B96'
       });
     }
   }
@@ -780,7 +765,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'error',
         title: 'Unauthorized',
         text: 'You are not authorized to access this page. Redirecting to login page.',
-        confirmButtonColor: '#1E40AF',
+        confirmButtonColor: '#005B96',
         allowOutsideClick: false
       }).then(() => {
         window.location.href = '/pages-login.html';
@@ -819,7 +804,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'warning',
         title: 'Service Fetch Failed',
         text: 'Could not load services. Using appointment data as fallback.',
-        confirmButtonColor: '#1E40AF'
+        confirmButtonColor: '#005B96'
       });
       const uniqueServices = [...new Set(allAppointments.map(app => app.services?.name).filter(name => name))];
       allServices = uniqueServices.map(name => ({ name }));
@@ -844,7 +829,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'warning',
         title: 'Invalid Data',
         text: `${invalidAppointments.length} appointment(s) have invalid dates and will be excluded.`,
-        confirmButtonColor: '#1E40AF'
+        confirmButtonColor: '#005B96'
       });
       allAppointments = allAppointments.filter(app => !isNaN(new Date(app.appointment_date).getTime()));
     }
@@ -856,7 +841,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'warning',
         title: 'Invalid Data',
         text: `${invalidPatients.length} patient(s) have invalid age or gender and will be excluded.`,
-        confirmButtonColor: '#1E40AF'
+        confirmButtonColor: '#005B96'
       });
       allPatients = allPatients.filter(p => p.age && ['Male', 'Female'].includes(p.sex));
     }
@@ -866,7 +851,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         icon: 'info',
         title: 'No Data',
         text: 'No appointment or patient data available to display.',
-        confirmButtonColor: '#1E40AF'
+        confirmButtonColor: '#005B96'
       });
       const highlightElements = [
         'statusHighlightText', 'serviceHighlightText', 'ageHighlightText',
@@ -900,25 +885,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (globalYearFilter) {
       globalYearFilter.addEventListener('change', (e) => {
-        const year = e.target.value ? parseInt(e.target.value) : null;
-        animateChartUpdate(year);
+        selectedYears = Array.from(e.target.selectedOptions).map(opt => parseInt(opt.value)).filter(v => v);
+        animateChartUpdate(selectedYears);
         [statusYearFilter, serviceYearFilter, ageYearFilter, genderYearFilter, weekdayYearFilter].forEach(filter => {
-          if (filter) filter.value = e.target.value;
+          if (filter) {
+            Array.from(filter.options).forEach(opt => {
+              opt.selected = selectedYears.includes(parseInt(opt.value)) || opt.value === '';
+            });
+          }
         });
       });
     }
 
     if (resetFilters) {
       resetFilters.addEventListener('click', () => {
+        selectedYears = [];
         [globalYearFilter, statusYearFilter, serviceYearFilter, ageYearFilter, genderYearFilter, weekdayYearFilter].forEach(filter => {
-          if (filter) filter.value = '';
+          if (filter) {
+            Array.from(filter.options).forEach(opt => opt.selected = opt.value === '');
+          }
         });
         animateChartUpdate(null);
         Swal.fire({
           icon: 'success',
           title: 'Filters Reset',
           text: 'All filters have been cleared.',
-          confirmButtonColor: '#1E40AF',
+          confirmButtonColor: '#005B96',
           timer: 1500,
           toast: true,
           position: 'top-end'
@@ -929,7 +921,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     [statusYearFilter, serviceYearFilter, ageYearFilter, genderYearFilter, weekdayYearFilter].forEach((filter, index) => {
       if (filter) {
         filter.addEventListener('change', (e) => {
-          const year = e.target.value ? parseInt(e.target.value) : null;
+          const years = Array.from(e.target.selectedOptions).map(opt => parseInt(opt.value)).filter(v => v);
           const renderFunctions = [
             renderStatusChart,
             renderServiceChart,
@@ -937,7 +929,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderGenderChart,
             renderWeekdayChart
           ];
-          renderFunctions[index](index === 1 ? [allAppointments, allServices, year] : [index < 2 ? allAppointments : allPatients, year]);
+          renderFunctions[index](index === 1 ? [allAppointments, allServices, years] : [index < 2 ? allAppointments : allPatients, years]);
         });
       }
     });
@@ -954,7 +946,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             gender: exportGenderToCsv,
             weekday: exportWeekdayToCsv
           };
-          exportFunctions[chart](chart === 'age' || chart === 'gender' ? allPatients : allAppointments, parseInt(document.getElementById(`${chart}YearFilter`)?.value || globalYearFilter?.value || currentYear));
+          exportFunctions[chart](chart === 'age' || chart === 'gender' ? allPatients : allAppointments, selectedYears.length ? selectedYears : [currentYear]);
         } else if (format === 'png') {
           const chartInstances = {
             status: statusChartInstance,
@@ -967,15 +959,15 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (instance) {
             const link = document.createElement('a');
             link.href = instance.toBase64Image();
-            link.download = `${chart}_chart${globalYearFilter?.value ? `_${globalYearFilter.value}` : ''}.png`;
+            link.download = `${chart}_chart${selectedYears.length ? `_${selectedYears.join('_')}` : ''}.png`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             Swal.fire({
               icon: 'success',
               title: 'Export Successful',
-              text: `Chart exported as ${chart}_chart${globalYearFilter?.value ? `_${globalYearFilter.value}` : ''}.png`,
-              confirmButtonColor: '#1E40AF',
+              text: `Chart exported as ${chart}_chart${selectedYears.length ? `_${selectedYears.join('_')}` : ''}.png`,
+              confirmButtonColor: '#005B96',
               timer: 1500,
               toast: true,
               position: 'top-end'
@@ -985,7 +977,7 @@ document.addEventListener('DOMContentLoaded', async () => {
               icon: 'error',
               title: 'Export Failed',
               text: 'Chart not available for export.',
-              confirmButtonColor: '#1E40AF'
+              confirmButtonColor: '#005B96'
             });
           }
         }
@@ -999,7 +991,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       icon: 'error',
       title: 'Error',
       text: `Failed to load data: ${error.message}`,
-      confirmButtonColor: '#1E40AF'
+      confirmButtonColor: '#005B96'
     });
     const highlightElements = [
       'statusHighlightText', 'serviceHighlightText', 'ageHighlightText',
@@ -1013,6 +1005,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     spinners.forEach(spinner => spinner && (spinner.style.display = 'none'));
   }
+
+  $(document).ready(function() {
+    $('.hamburger').on('click keypress', function(e) {
+      if (e.type === 'click' || e.key === 'Enter' || e.key === ' ') {
+        $('.header-controls').toggleClass('active');
+      }
+    });
+  });
 });
 
 function populateYearFilter(appointments, patients, currentYear) {
@@ -1043,36 +1043,26 @@ function populateYearFilter(appointments, patients, currentYear) {
 
 function generateColor(index) {
   const colors = [
-    '#1E40AF', '#EF4444', '#10B981', '#F59E0B', '#06B6D4',
+    '#005B96', '#EF4444', '#00A896', '#F59E0B', '#06B6D4',
     '#EC4899', '#8B5CF6', '#047857', '#A16207', '#0891B2',
     '#F97316', '#7C3AED', '#0284C7', '#DB2777', '#DC2626'
   ];
   return colors[index % colors.length];
 }
 
-function adjustChartSizes(appointments, services, patients, year) {
-  const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
-  const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
+function adjustChartSizes(appointments, services, patients, years) {
+  const filteredAppointments = years && years.length
+    ? appointments.filter(app => years.includes(new Date(app.appointment_date).getFullYear()))
+    : appointments;
+  const filteredPatients = years && years.length
+    ? patients.filter(p => years.includes(new Date(p.effective_date || new Date()).getFullYear()))
+    : patients;
 
   const statusCount = filteredAppointments.length;
   const serviceCount = filteredAppointments.reduce((sum, app) => sum + (app.services ? 1 : 0), 0);
   const ageCount = filteredPatients.length;
   const genderCount = filteredPatients.length;
   const weekdayCount = filteredAppointments.length;
-
-  const counts = [
-    { id: 'statusCard', count: statusCount },
-    { id: 'serviceCard', count: serviceCount, priority: 1 },
-    { id: 'ageCard', count: ageCount },
-    { id: 'genderCard', count: genderCount },
-    { id: 'weekdayCard', count: weekdayCount }
-  ];
-
-  const maxCount = Math.max(...counts.map(c => c.count));
-  const largestChart = counts.reduce((prev, curr) =>
-    curr.count === maxCount && (curr.priority || 0) > (prev.priority || 0) ? curr : prev,
-    counts[0]
-  ).id;
 
   const cards = {
     statusCard: document.getElementById('statusCard'),
@@ -1084,49 +1074,40 @@ function adjustChartSizes(appointments, services, patients, year) {
 
   Object.values(cards).forEach(card => {
     if (card) {
-      card.classList.remove('large');
       const canvasContainer = card.querySelector('.canvas-container');
       if (canvasContainer) {
-        canvasContainer.classList.remove('large', 'standard', 'small');
-        canvasContainer.style.height = window.innerWidth < 768 ? '280px' : '320px';
+        canvasContainer.style.height = window.innerWidth < 768 ? '260px' : '300px';
       }
     }
   });
-
-  if (maxCount > 0 && cards[largestChart]) {
-    cards[largestChart].classList.add('large');
-    const canvasContainer = cards[largestChart].querySelector('.canvas-container');
-    if (canvasContainer) {
-      canvasContainer.classList.add('large');
-      canvasContainer.style.height = window.innerWidth < 768 ? '300px' : '360px';
-    }
-  }
 }
 
-function renderAllCharts(year) {
-  adjustChartSizes(allAppointments, allServices, allPatients, year);
-  renderStatusChart(allAppointments, year);
-  renderServiceChart([allAppointments, allServices, year]);
-  renderAgeChart(allPatients, year);
-  renderGenderChart(allPatients, year);
-  renderWeekdayChart(allAppointments, year);
+function renderAllCharts(years) {
+  adjustChartSizes(allAppointments, allServices, allPatients, years);
+  renderStatusChart(allAppointments, years);
+  renderServiceChart([allAppointments, allServices, years]);
+  renderAgeChart(allPatients, years);
+  renderGenderChart(allPatients, years);
+  renderWeekdayChart(allAppointments, years);
 }
 
-function renderStatusChart(appointments, year) {
+function renderStatusChart(appointments, years) {
   const spinner = document.getElementById('statusChartSpinner');
   if (spinner) spinner.style.display = 'block';
   try {
     const canvas = document.getElementById('statusChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
     const statuses = ['confirmed', 'pending', 'cancelled', 'rejected', 'completed'];
-    const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
+    const filteredAppointments = years && years.length
+      ? appointments.filter(app => years.includes(new Date(app.appointment_date).getFullYear()))
+      : appointments;
     const statusCounts = statuses.map(status =>
       filteredAppointments.filter(app => app.status?.toLowerCase() === status).length
     );
     const total = statusCounts.reduce((sum, count) => sum + count, 0);
     const datasets = [{
       data: statusCounts,
-      backgroundColor: ['#10B981', '#F59E0B', '#EF4444', '#B91C1C', '#06B6D4'],
+      backgroundColor: ['#00A896', '#F59E0B', '#EF4444', '#B91C1C', '#06B6D4'],
       borderColor: '#FFFFFF',
       borderWidth: 2,
       hoverOffset: 20
@@ -1146,17 +1127,17 @@ function renderStatusChart(appointments, year) {
           legend: { display: false },
           title: {
             display: true,
-            text: `Appointment Status${year ? ` (${year})` : ''}`,
+            text: `Appointment Status${years && years.length ? ` (${years.join(', ')})` : ''}`,
             font: { size: 16, weight: '600', family: 'Inter' },
-            color: '#111827',
+            color: '#1F2A44',
             padding: { top: 10, bottom: 10 }
           },
           tooltip: {
             enabled: true,
             backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            titleColor: '#111827',
+            titleColor: '#1F2A44',
             bodyColor: '#6B7280',
-            borderColor: '#E5E7EB',
+            borderColor: '#DDE1E6',
             borderWidth: 1,
             cornerRadius: 6,
             padding: 10,
@@ -1188,10 +1169,10 @@ function renderStatusChart(appointments, year) {
               ? `<table class="w-full text-sm"><thead><tr><th class="text-left p-2">Date</th><th class="text-left p-2">Patient</th><th class="text-left p-2">Service</th></tr></thead><tbody>${statusAppointments.map(app => `<tr><td class="p-2">${new Date(app.appointment_date).toLocaleDateString()}</td><td class="p-2">${app.patient?.name || 'N/A'}</td><td class="p-2">${app.services?.name || 'N/A'}</td></tr>`).join('')}</tbody></table>`
               : 'No appointments found.';
             Swal.fire({
-              title: `${status.capitalize()} Appointments${year ? ` in ${year}` : ''}`,
+              title: `${status.capitalize()} Appointments${years && years.length ? ` in ${years.join(', ')}` : ''}`,
               html: htmlContent,
               width: '80%',
-              confirmButtonColor: '#1E40AF',
+              confirmButtonColor: '#005B96',
               customClass: {
                 popup: 'rounded-xl',
                 content: 'overflow-auto max-h-96'
@@ -1248,19 +1229,21 @@ function renderStatusChart(appointments, year) {
       icon: 'error',
       title: 'Graph Error',
       text: `Failed to render status chart: ${error.message}`,
-      confirmButtonColor: '#1E40AF'
+      confirmButtonColor: '#005B96'
     });
   }
   if (spinner) spinner.style.display = 'none';
 }
 
-function renderServiceChart([appointments, services, year]) {
+function renderServiceChart([appointments, services, years]) {
   const spinner = document.getElementById('serviceChartSpinner');
   if (spinner) spinner.style.display = 'block';
   try {
     const canvas = document.getElementById('serviceChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
-    const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
+    const filteredAppointments = years && years.length
+      ? appointments.filter(app => years.includes(new Date(app.appointment_date).getFullYear()))
+      : appointments;
     const serviceCounts = services.map((service, index) => ({
       name: service.name.length > 15 ? service.name.substring(0, 12) + '...' : service.name,
       count: filteredAppointments.filter(app => app.services?.name === service.name).length,
@@ -1303,7 +1286,7 @@ function renderServiceChart([appointments, services, year]) {
               display: true,
               text: 'Number of Appointments',
               font: { size: 14, weight: '600', family: 'Inter' },
-              color: '#111827'
+              color: '#1F2A44'
             },
             ticks: {
               stepSize: 1,
@@ -1316,7 +1299,7 @@ function renderServiceChart([appointments, services, year]) {
               display: true,
               text: 'Service',
               font: { size: 14, weight: '600', family: 'Inter' },
-              color: '#111827'
+              color: '#1F2A44'
             },
             ticks: {
               font: { size: 12, family: 'Inter' },
@@ -1331,17 +1314,17 @@ function renderServiceChart([appointments, services, year]) {
           legend: { display: false },
           title: {
             display: true,
-            text: `Service Popularity${year ? ` (${year})` : ''}`,
+            text: `Service Popularity${years && years.length ? ` (${years.join(', ')})` : ''}`,
             font: { size: 16, weight: '600', family: 'Inter' },
-            color: '#111827',
+            color: '#1F2A44',
             padding: { top: 10, bottom: 10 }
           },
           tooltip: {
             enabled: true,
             backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            titleColor: '#111827',
+            titleColor: '#1F2A44',
             bodyColor: '#6B7280',
-            borderColor: '#E5E7EB',
+            borderColor: '#DDE1E6',
             borderWidth: 1,
             cornerRadius: 6,
             padding: 10,
@@ -1373,10 +1356,10 @@ function renderServiceChart([appointments, services, year]) {
               ? `<table class="w-full text-sm"><thead><tr><th class="text-left p-2">Date</th><th class="text-left p-2">Patient</th><th class="text-left p-2">Status</th></tr></thead><tbody>${serviceAppointments.map(app => `<tr><td class="p-2">${new Date(app.appointment_date).toLocaleDateString()}</td><td class="p-2">${app.patient?.name || 'N/A'}</td><td class="p-2">${app.status || 'N/A'}</td></tr>`).join('')}</tbody></table>`
               : 'No appointments found.';
             Swal.fire({
-              title: `${service} Appointments${year ? ` in ${year}` : ''}`,
+              title: `${service} Appointments${years && years.length ? ` in ${years.join(', ')}` : ''}`,
               html: htmlContent,
               width: '80%',
-              confirmButtonColor: '#1E40AF',
+              confirmButtonColor: '#005B96',
               customClass: {
                 popup: 'rounded-xl',
                 content: 'overflow-auto max-h-96'
@@ -1433,19 +1416,21 @@ function renderServiceChart([appointments, services, year]) {
       icon: 'error',
       title: 'Graph Error',
       text: `Failed to render service chart: ${error.message}`,
-      confirmButtonColor: '#1E40AF'
+      confirmButtonColor: '#005B96'
     });
   }
   if (spinner) spinner.style.display = 'none';
 }
 
-function renderAgeChart(patients, year) {
+function renderAgeChart(patients, years) {
   const spinner = document.getElementById('ageChartSpinner');
   if (spinner) spinner.style.display = 'block';
   try {
     const canvas = document.getElementById('ageChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
-    const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
+    const filteredPatients = years && years.length
+      ? patients.filter(p => years.includes(new Date(p.effective_date || new Date()).getFullYear()))
+      : patients;
     const ages = filteredPatients.map(p => parseInt(p.age));
     const minAge = Math.min(...ages, 0);
     const maxAge = Math.max(...ages, 100);
@@ -1461,8 +1446,8 @@ function renderAgeChart(patients, year) {
     const datasets = [{
       label: 'Patients',
       data: bins.map(b => b.count),
-      backgroundColor: '#1E40AF',
-      borderColor: '#1E3A8A',
+      backgroundColor: '#005B96',
+      borderColor: '#003F6C',
       borderWidth: 1
     }];
 
@@ -1483,7 +1468,7 @@ function renderAgeChart(patients, year) {
               display: true,
               text: 'Number of Patients',
               font: { size: 14, weight: '600', family: 'Inter' },
-              color: '#111827'
+              color: '#1F2A44'
             },
             ticks: {
               stepSize: 1,
@@ -1496,7 +1481,7 @@ function renderAgeChart(patients, year) {
               display: true,
               text: 'Age Range',
               font: { size: 14, weight: '600', family: 'Inter' },
-              color: '#111827'
+              color: '#1F2A44'
             },
             ticks: {
               font: { size: 12, family: 'Inter' },
@@ -1511,17 +1496,17 @@ function renderAgeChart(patients, year) {
           legend: { display: false },
           title: {
             display: true,
-            text: `Patient Age Distribution${year ? ` (${year})` : ''}`,
+            text: `Patient Age Distribution${years && years.length ? ` (${years.join(', ')})` : ''}`,
             font: { size: 16, weight: '600', family: 'Inter' },
-            color: '#111827',
+            color: '#1F2A44',
             padding: { top: 10, bottom: 10 }
           },
           tooltip: {
             enabled: true,
             backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            titleColor: '#111827',
+            titleColor: '#1F2A44',
             bodyColor: '#6B7280',
-            borderColor: '#E5E7EB',
+            borderColor: '#DDE1E6',
             borderWidth: 1,
             cornerRadius: 6,
             padding: 10,
@@ -1552,10 +1537,10 @@ function renderAgeChart(patients, year) {
               ? `<table class="w-full text-sm"><thead><tr><th class="text-left p-2">Name</th><th class="text-left p-2">Age</th><th class="text-left p-2">Gender</th></tr></thead><tbody>${agePatients.map(p => `<tr><td class="p-2">${p.name || 'N/A'}</td><td class="p-2">${p.age}</td><td class="p-2">${p.sex}</td></tr>`).join('')}</tbody></table>`
               : 'No patients found.';
             Swal.fire({
-              title: `Patients in Age Range ${ageRange}${year ? ` (${year})` : ''}`,
+              title: `Patients in Age Range ${ageRange}${years && years.length ? ` (${years.join(', ')})` : ''}`,
               html: htmlContent,
               width: '80%',
-              confirmButtonColor: '#1E40AF',
+              confirmButtonColor: '#005B96',
               customClass: {
                 popup: 'rounded-xl',
                 content: 'overflow-auto max-h-96'
@@ -1594,25 +1579,27 @@ function renderAgeChart(patients, year) {
       icon: 'error',
       title: 'Graph Error',
       text: `Failed to render age chart: ${error.message}`,
-      confirmButtonColor: '#1E40AF'
+      confirmButtonColor: '#005B96'
     });
   }
   if (spinner) spinner.style.display = 'none';
 }
 
-function renderGenderChart(patients, year) {
+function renderGenderChart(patients, years) {
   const spinner = document.getElementById('genderChartSpinner');
   if (spinner) spinner.style.display = 'block';
   try {
     const canvas = document.getElementById('genderChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
-    const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
+    const filteredPatients = years && years.length
+      ? patients.filter(p => years.includes(new Date(p.effective_date || new Date()).getFullYear()))
+      : patients;
     const genders = ['Female', 'Male'];
     const genderCounts = genders.map(gender => filteredPatients.filter(p => p.sex === gender).length);
     const total = genderCounts.reduce((sum, count) => sum + count, 0);
     const datasets = [{
       data: genderCounts,
-      backgroundColor: ['#EC4899', '#1E40AF'],
+      backgroundColor: ['#EC4899', '#005B96'],
       borderColor: '#FFFFFF',
       borderWidth: 2,
       hoverOffset: 20
@@ -1632,17 +1619,17 @@ function renderGenderChart(patients, year) {
           legend: { display: false },
           title: {
             display: true,
-            text: `Gender Distribution${year ? ` (${year})` : ''}`,
+            text: `Gender Distribution${years && years.length ? ` (${years.join(', ')})` : ''}`,
             font: { size: 16, weight: '600', family: 'Inter' },
-            color: '#111827',
+            color: '#1F2A44',
             padding: { top: 10, bottom: 10 }
           },
           tooltip: {
             enabled: true,
             backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            titleColor: '#111827',
+            titleColor: '#1F2A44',
             bodyColor: '#6B7280',
-            borderColor: '#E5E7EB',
+            borderColor: '#DDE1E6',
             borderWidth: 1,
             cornerRadius: 6,
             padding: 10,
@@ -1674,10 +1661,10 @@ function renderGenderChart(patients, year) {
               ? `<table class="w-full text-sm"><thead><tr><th class="text-left p-2">Name</th><th class="text-left p-2">Age</th><th class="text-left p-2">Email</th></tr></thead><tbody>${genderPatients.map(p => `<tr><td class="p-2">${p.name || 'N/A'}</td><td class="p-2">${p.age}</td><td class="p-2">${p.email || 'N/A'}</td></tr>`).join('')}</tbody></table>`
               : 'No patients found.';
             Swal.fire({
-              title: `${gender} Patients${year ? ` in ${year}` : ''}`,
+              title: `${gender} Patients${years && years.length ? ` in ${years.join(', ')}` : ''}`,
               html: htmlContent,
               width: '80%',
-              confirmButtonColor: '#1E40AF',
+              confirmButtonColor: '#005B96',
               customClass: {
                 popup: 'rounded-xl',
                 content: 'overflow-auto max-h-96'
@@ -1734,19 +1721,21 @@ function renderGenderChart(patients, year) {
       icon: 'error',
       title: 'Graph Error',
       text: `Failed to render gender chart: ${error.message}`,
-      confirmButtonColor: '#1E40AF'
+      confirmButtonColor: '#005B96'
     });
   }
   if (spinner) spinner.style.display = 'none';
 }
 
-function renderWeekdayChart(appointments, year) {
+function renderWeekdayChart(appointments, years) {
   const spinner = document.getElementById('weekdayChartSpinner');
   if (spinner) spinner.style.display = 'block';
   try {
     const canvas = document.getElementById('weekdayChart');
     if (!canvas || !canvas.getContext('2d')) throw new Error('Canvas context not available');
-    const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
+    const filteredAppointments = years && years.length
+      ? appointments.filter(app => years.includes(new Date(app.appointment_date).getFullYear()))
+      : appointments;
     const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const weekdayCounts = weekdays.map((day, index) =>
       filteredAppointments.filter(app => new Date(app.appointment_date).getDay() === (index + 1) % 7).length
@@ -1755,8 +1744,8 @@ function renderWeekdayChart(appointments, year) {
     const datasets = [{
       label: 'Appointments',
       data: weekdayCounts,
-      backgroundColor: '#10B981',
-      borderColor: '#059669',
+      backgroundColor: '#00A896',
+      borderColor: '#008A76',
       borderWidth: 1
     }];
 
@@ -1777,7 +1766,7 @@ function renderWeekdayChart(appointments, year) {
               display: true,
               text: 'Number of Appointments',
               font: { size: 14, weight: '600', family: 'Inter' },
-              color: '#111827'
+              color: '#1F2A44'
             },
             ticks: {
               stepSize: 1,
@@ -1790,7 +1779,7 @@ function renderWeekdayChart(appointments, year) {
               display: true,
               text: 'Day of Week',
               font: { size: 14, weight: '600', family: 'Inter' },
-              color: '#111827'
+              color: '#1F2A44'
             },
             ticks: {
               font: { size: 12, family: 'Inter' },
@@ -1802,17 +1791,17 @@ function renderWeekdayChart(appointments, year) {
           legend: { display: false },
           title: {
             display: true,
-            text: `Appointments by Weekday${year ? ` (${year})` : ''}`,
+            text: `Appointments by Weekday${years && years.length ? ` (${years.join(', ')})` : ''}`,
             font: { size: 16, weight: '600', family: 'Inter' },
-            color: '#111827',
+            color: '#1F2A44',
             padding: { top: 10, bottom: 10 }
           },
           tooltip: {
             enabled: true,
             backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            titleColor: '#111827',
+            titleColor: '#1F2A44',
             bodyColor: '#6B7280',
-            borderColor: '#E5E7EB',
+            borderColor: '#DDE1E6',
             borderWidth: 1,
             cornerRadius: 6,
             padding: 10,
@@ -1838,10 +1827,10 @@ function renderWeekdayChart(appointments, year) {
               ? `<table class="w-full text-sm"><thead><tr><th class="text-left p-2">Date</th><th class="text-left p-2">Patient</th><th class="text-left p-2">Service</th></tr></thead><tbody>${dayAppointments.map(app => `<tr><td class="p-2">${new Date(app.appointment_date).toLocaleDateString()}</td><td class="p-2">${app.patient?.name || 'N/A'}</td><td class="p-2">${app.services?.name || 'N/A'}</td></tr>`).join('')}</tbody></table>`
               : 'No appointments found.';
             Swal.fire({
-              title: `${day} Appointments${year ? ` in ${year}` : ''}`,
+              title: `${day} Appointments${years && years.length ? ` in ${years.join(', ')}` : ''}`,
               html: htmlContent,
               width: '80%',
-              confirmButtonColor: '#1E40AF',
+              confirmButtonColor: '#005B96',
               customClass: {
                 popup: 'rounded-xl',
                 content: 'overflow-auto max-h-96'
@@ -1880,70 +1869,75 @@ function renderWeekdayChart(appointments, year) {
       icon: 'error',
       title: 'Graph Error',
       text: `Failed to render weekday chart: ${error.message}`,
-      confirmButtonColor: '#1E40AF'
+      confirmButtonColor: '#005B96'
     });
   }
   if (spinner) spinner.style.display = 'none';
 }
 
-function exportStatusToCsv(appointments, year) {
-  const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
+function exportStatusToCsv(appointments, years) {
+  const filteredAppointments = years && years.length
+    ? appointments.filter(app => years.includes(new Date(app.appointment_date).getFullYear()))
+    : appointments;
   const statuses = ['confirmed', 'pending', 'cancelled', 'rejected', 'completed'];
-  const csvContent = [
-    ['Status', 'Count'],
-    ...statuses.map(status => [
-      status.capitalize(),
-      filteredAppointments.filter(app => app.status?.toLowerCase() === status).length
-    ])
-  ].map(row => row.join(',')).join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `status_data${year ? `_${year}` : ''}.csv`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  Swal.fire({
-    icon: 'success',
-    title: 'Export Successful',
-    text: `Status data exported as status_data${year ? `_${year}` : ''}.csv`,
-    confirmButtonColor: '#1E40AF',
-    timer: 1500,
-    toast: true,
-    position: 'top-end'
-  });
-}
-
-function exportServiceToCsv(appointments, year) {
-  const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
-  const serviceCounts = allServices.map(service => ({
-    name: service.name,
-    count: filteredAppointments.filter(app => app.services?.name === service.name).length
+  const statusCounts = statuses.map(status => ({
+    Status: status.capitalize(),
+    Count: filteredAppointments.filter(app => app.status?.toLowerCase() === status).length
   }));
-  const csvContent = [
-    ['Service', 'Count'],
-    ...serviceCounts.map(s => [s.name, s.count])
-  ].map(row => row.join(',')).join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const csvContent = 'data:text/csv;charset=utf-8,' +
+    'Status,Count\n' +
+    statusCounts.map(row => `${row.Status},${row.Count}`).join('\n');
+  const encodedUri = encodeURI(csvContent);
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `service_data${year ? `_${year}` : ''}.csv`;
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `status_chart${years && years.length ? `_${years.join('_')}` : ''}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   Swal.fire({
     icon: 'success',
     title: 'Export Successful',
-    text: `Service data exported as service_data${year ? `_${year}` : ''}.csv`,
-    confirmButtonColor: '#1E40AF',
+    text: `Status chart exported as CSV.`,
+    confirmButtonColor: '#005B96',
     timer: 1500,
     toast: true,
     position: 'top-end'
   });
 }
 
-function exportAgeToCsv(patients, year) {
-  const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
+function exportServiceToCsv(appointments, years) {
+  const filteredAppointments = years && years.length
+    ? appointments.filter(app => years.includes(new Date(app.appointment_date).getFullYear()))
+    : appointments;
+  const serviceCounts = allServices.map(service => ({
+    Service: service.name,
+    Count: filteredAppointments.filter(app => app.services?.name === service.name).length
+  }));
+  const csvContent = 'data:text/csv;charset=utf-8,' +
+    'Service,Count\n' +
+    serviceCounts.map(row => `"${row.Service}",${row.Count}`).join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `service_chart${years && years.length ? `_${years.join('_')}` : ''}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  Swal.fire({
+    icon: 'success',
+    title: 'Export Successful',
+    text: `Service chart exported as CSV.`,
+    confirmButtonColor: '#005B96',
+    timer: 1500,
+    toast: true,
+    position: 'top-end'
+  });
+}
+
+function exportAgeToCsv(patients, years) {
+  const filteredPatients = years && years.length
+    ? patients.filter(p => years.includes(new Date(p.effective_date || new Date()).getFullYear()))
+    : patients;
   const ages = filteredPatients.map(p => parseInt(p.age));
   const minAge = Math.min(...ages, 0);
   const maxAge = Math.max(...ages, 100);
@@ -1952,98 +1946,90 @@ function exportAgeToCsv(patients, year) {
   const bins = [];
   for (let i = Math.floor(minAge / binSize) * binSize; i <= maxAge; i += binSize) {
     bins.push({
-      range: `${i}-${i + binSize - 1}`,
-      count: ages.filter(age => age >= i && age < i + binSize).length
+      Range: `${i}-${i + binSize - 1}`,
+      Count: ages.filter(age => age >= i && age < i + binSize).length
     });
   }
-  const csvContent = [
-    ['Age Range', 'Count'],
-    ...bins.map(b => [b.range, b.count])
-  ].map(row => row.join(',')).join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const csvContent = 'data:text/csv;charset=utf-8,' +
+    'Age Range,Count\n' +
+    bins.map(row => `${row.Range},${row.Count}`).join('\n');
+  const encodedUri = encodeURI(csvContent);
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `age_data${year ? `_${year}` : ''}.csv`;
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `age_chart${years && years.length ? `_${years.join('_')}` : ''}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   Swal.fire({
     icon: 'success',
     title: 'Export Successful',
-    text: `Age data exported as age_data${year ? `_${year}` : ''}.csv`,
-    confirmButtonColor: '#1E40AF',
+    text: `Age chart exported as CSV.`,
+    confirmButtonColor: '#005B96',
     timer: 1500,
     toast: true,
     position: 'top-end'
   });
 }
 
-function exportGenderToCsv(patients, year) {
-  const filteredPatients = year ? patients.filter(p => new Date(p.effective_date || new Date()).getFullYear() === year) : patients;
+function exportGenderToCsv(patients, years) {
+  const filteredPatients = years && years.length
+    ? patients.filter(p => years.includes(new Date(p.effective_date || new Date()).getFullYear()))
+    : patients;
   const genders = ['Female', 'Male'];
   const genderCounts = genders.map(gender => ({
-    gender,
-    count: filteredPatients.filter(p => p.sex === gender).length
+    Gender: gender,
+    Count: filteredPatients.filter(p => p.sex === gender).length
   }));
-  const csvContent = [
-    ['Gender', 'Count'],
-    ...genderCounts.map(g => [g.gender, g.count])
-  ].map(row => row.join(',')).join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const csvContent = 'data:text/csv;charset=utf-8,' +
+    'Gender,Count\n' +
+    genderCounts.map(row => `${row.Gender},${row.Count}`).join('\n');
+  const encodedUri = encodeURI(csvContent);
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `gender_data${year ? `_${year}` : ''}.csv`;
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `gender_chart${years && years.length ? `_${years.join('_')}` : ''}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   Swal.fire({
     icon: 'success',
     title: 'Export Successful',
-    text: `Gender data exported as gender_data${year ? `_${year}` : ''}.csv`,
-    confirmButtonColor: '#1E40AF',
+    text: `Gender chart exported as CSV.`,
+    confirmButtonColor: '#005B96',
     timer: 1500,
     toast: true,
     position: 'top-end'
   });
 }
 
-function exportWeekdayToCsv(appointments, year) {
-  const filteredAppointments = year ? appointments.filter(app => new Date(app.appointment_date).getFullYear() === year) : appointments;
+function exportWeekdayToCsv(appointments, years) {
+  const filteredAppointments = years && years.length
+    ? appointments.filter(app => years.includes(new Date(app.appointment_date).getFullYear()))
+    : appointments;
   const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const weekdayCounts = weekdays.map((day, index) => ({
-    day,
-    count: filteredAppointments.filter(app => new Date(app.appointment_date).getDay() === (index + 1) % 7).length
+    Day: day,
+    Count: filteredAppointments.filter(app => new Date(app.appointment_date).getDay() === (index + 1) % 7).length
   }));
-  const csvContent = [
-    ['Weekday', 'Count'],
-    ...weekdayCounts.map(w => [w.day, w.count])
-  ].map(row => row.join(',')).join('\n');
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const csvContent = 'data:text/csv;charset=utf-8,' +
+    'Day,Count\n' +
+    weekdayCounts.map(row => `${row.Day},${row.Count}`).join('\n');
+  const encodedUri = encodeURI(csvContent);
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = `weekday_data${year ? `_${year}` : ''}.csv`;
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', `weekday_chart${years && years.length ? `_${years.join('_')}` : ''}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   Swal.fire({
     icon: 'success',
     title: 'Export Successful',
-    text: `Weekday data exported as weekday_data${year ? `_${year}` : ''}.csv`,
-    confirmButtonColor: '#1E40AF',
+    text: `Weekday chart exported as CSV.`,
+    confirmButtonColor: '#005B96',
     timer: 1500,
     toast: true,
     position: 'top-end'
   });
 }
-  </script>
-  <script>
-    $(document).ready(function() {
-      $('.hamburger').on('click keypress', function(e) {
-        if (e.type === 'click' || e.key === 'Enter' || e.key === ' ') {
-          $('.header-controls').toggleClass('active');
-        }
-      });
-    });
   </script>
 </body>
 </html>

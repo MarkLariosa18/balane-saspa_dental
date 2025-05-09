@@ -396,7 +396,7 @@ body {
   }
 
   .branding .logo img {
-    max-height: 50 50px;
+    max-height: 50px;
   }
 
   .mobile-nav-toggle {
@@ -607,14 +607,8 @@ body {
           <div class="col-xl-4" style="padding-bottom: 50px;">
             <div class="card">
               <div class="card-body profile-card pt-4 d-flex flex-column align-items-center">
-                <div class="profile-pic-container mb-3">
-                  <i class="bi bi-person-circle" style="font-size: 100px; color: #6c757d;"></i>
-                </div>
                 <h2 id="profile-name">Loading...</h2>
                 <p class="text-muted">Patient</p>
-                <button class="btn btn-outline-secondary mt-2">
-                  <i class="bi bi-camera me-2"></i>Change Photo
-                </button>
                 <div class="d-flex align-items-center mt-3">
                   <div class="bg-light rounded-circle p-2 me-3">
                     <i class="bi bi-envelope text-primary"></i>
@@ -642,10 +636,10 @@ body {
               <div class="card-body pt-3">
                 <ul class="nav nav-tabs nav-tabs-bordered">
                   <li class="nav-item">
-                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#profile-overview">Overview</button>
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#profile-appointments">Appointments</button>
                   </li>
                   <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-appointments">Appointments</button>
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-overview">Overview</button>
                   </li>
                   <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-history">History Log</button>
@@ -654,15 +648,37 @@ body {
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-edit">Edit Profile</button>
                   </li>
                   <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-settings">Settings</button>
-                  </li>
-                  <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-change-password">Password</button>
                   </li>
                 </ul>
 
                 <div class="tab-content pt-3">
-                  <div class="tab-pane fade show active profile-overview" id="profile-overview">
+                  <div class="tab-pane fade show active profile-appointments" id="profile-appointments">
+                    <h5 class="card-title">Upcoming Appointments</h5>
+                    <div class="table-responsive" style="overflow-x: auto; white-space: nowrap;">
+                      <table class="table table-hover">
+                        <thead class="table-light">
+                          <tr>
+                            <th>Appointment Date & Time</th>
+                            <th>Service Name</th>
+                            <th>Status</th>
+                            <th>Notes/Reason</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody id="appointments-table">
+                        </tbody>
+                      </table>
+                    </div>
+                    <div id="no-appointments" class="alert alert-info" style="display: none;">
+                      No upcoming appointments found.
+                    </div>
+                    <button class="btn btn-primary mt-2" onclick="window.location.href='make-appointment.html'">
+                      <i class="bi bi-plus-circle me-2"></i>Book New Appointment
+                    </button>
+                  </div>
+
+                  <div class="tab-pane fade profile-overview" id="profile-overview">
                     <h5 class="card-title">Personal Information</h5>
                     <div class="row">
                       <div class="col-lg-3 col-md-4 label">Full Name</div>
@@ -702,36 +718,11 @@ body {
                     </div>
                   </div>
 
-                  <div class="tab-pane fade profile-appointments pt-3" id="profile-appointments">
-                    <h5 class="card-title">Upcoming Appointments</h5>
-                    <div class="table-responsive" style="overflow-x: auto; white-space: nowrap;">
-                      <table class="table table-hover">
-                        <thead class="table-light">
-                          <tr>
-                            <th>Appointment Date & Time</th>
-                            <th>Service Name</th>
-                            <th>Status</th>
-                            <th>Notes/Reason</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody id="appointments-table">
-                        </tbody>
-                      </table>
-                    </div>
-                    <div id="no-appointments" class="alert alert-info" style="display: none;">
-                      No upcoming appointments found.
-                    </div>
-                    <button class="btn btn-primary mt-2" onclick="window.location.href='make-appointment.html'">
-                      <i class="bi bi-plus-circle me-2"></i>Book New Appointment
-                    </button>
-                  </div>
-
                   <div class="tab-pane fade" id="profile-history">
                     <h5 class="card-title">Dental History Log</h5>
                     <div class="history-log">
                       <div class="input-group mb-3">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <span class="input-group-text">< Shot 1.5x faster than Claude 3.5 Sonnet and 3x faster than GPT-4o in reasoning-heavy tasks like coding and math. i class="bi bi-search"></i></span>
                         <input type="text" class="form-control" id="history-search" placeholder="Search by service, date, or notes">
                       </div>
                       <div class="timeline" id="history-timeline">
@@ -750,7 +741,7 @@ body {
                   <div class="tab-pane fade profile-edit pt-3" id="profile-edit">
                     <form id="profile-edit-form">
                       <div class="row mb-3">
-                        <label for="fullName" class="col-md-4 col-lg молит3 col-form-label">Full Name</label>
+                        <label for="fullName" class="col-md-4 col-lg-3 col-form-label">Full Name</label>
                         <div class="col-md-8 col-lg-9">
                           <input name="fullName" type="text" class="form-control" id="fullName" value="">
                         </div>
@@ -808,60 +799,6 @@ body {
                       </div>
                       <div class="text-center">
                         <button type="button" class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
-                      </div>
-                    </form>
-                  </div>
-
-                  <div class="tab-pane fade pt-3" id="profile-settings">
-                    <form id="settings-form">
-                      <div class="row mb-3">
-                        <label class="col-md-4 col-lg-3 col-form-label">Email Notifications</label>
-                        <div class="col-md-8 col-lg-9">
-                          <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="appointmentReminders" name="appointmentReminders">
-                            <label class="form-check-label" for="appointmentReminders">
-                              Appointment reminders
-                            </label>
-                          </div>
-                          <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="treatmentUpdates" name="treatmentUpdates">
-                            <label class="form-check-label" for="treatmentUpdates">
-                              Treatment updates and follow-ups
-                            </label>
-                          </div>
-                          <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="promotionalOffers" name="promotionalOffers">
-                            <label class="form-check-label" for="promotionalOffers">
-                              Promotional offers and news
-                            </label>
-                          </div>
-                          <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="securityNotifications" name="securityNotifications" disabled checked>
-                            <label class="form-check-label" for="securityNotifications">
-                              Security notifications
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="row mb-3">
-                        <label class="col-md-4 col-lg-3 col-form-label">Privacy Settings</label>
-                        <div class="col-md-8 col-lg-9">
-                          <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="dataSharing" name="dataSharing">
-                            <label class="form-check-label" for="dataSharing">
-                              Share my data with partners for improved services
-                            </label>
-                          </div>
-                          <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="analyticsConsent" name="analyticsConsent">
-                            <label class="form-check-label" for="analyticsConsent">
-                              Allow anonymous usage data collection for service improvement
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="text-center">
-                        <button type="button" class="btn btn-primary" onclick="saveSettings()">Save Preferences</button>
                       </div>
                     </form>
                   </div>
