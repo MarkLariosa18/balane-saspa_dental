@@ -12,7 +12,7 @@
 
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0, recipes;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
 
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
@@ -39,12 +39,17 @@
       font-family: 'Poppins', sans-serif;
       background: linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%);
       color: var(--text-color);
+      padding-top: 80px; /* Adjusted for fixed header */
     }
 
     .header {
       background: #fff;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       border-bottom: 1px solid #eee;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 1000;
     }
 
     .topbar {
@@ -92,6 +97,7 @@
       border-radius: var(--border-radius);
       box-shadow: 0 4px 15px rgba(0,0,0,0.1);
       transition: transform 0.3s ease, box-shadow 0.3s ease;
+      margin-bottom: 20px;
     }
 
     .card:hover {
@@ -114,6 +120,7 @@
       align-items: center;
       justify-content: center;
       transition: background 0.3s ease;
+      margin: 0 auto;
     }
 
     .profile-pic-container:hover {
@@ -156,6 +163,8 @@
 
     .nav-tabs {
       border-bottom: 2px solid #eee;
+      flex-wrap: nowrap;
+      overflow-x: auto;
     }
 
     .nav-tabs .nav-link {
@@ -166,6 +175,7 @@
       padding: 10px 20px;
       font-weight: 500;
       transition: all 0.3s ease;
+      white-space: nowrap;
     }
 
     .nav-tabs .nav-link:hover,
@@ -324,14 +334,15 @@
       margin-top: 20px;
     }
 
-    @media (max-width: 768px) {
-      .card {
-        margin-bottom: 20px;
+    /* Enhanced Responsive Design */
+    @media (max-width: 992px) {
+      .container {
+        padding-left: 15px;
+        padding-right: 15px;
       }
 
-      .nav-tabs .nav-link {
-        padding: 8px 10px;
-        font-size: 14px;
+      .profile-card {
+        padding: 20px;
       }
 
       .profile-pic-container {
@@ -339,8 +350,87 @@
         height: 100px;
       }
 
+      .profile-pic-container i {
+        font-size: 80px;
+      }
+
+      .col-xl-4, .col-xl-8 {
+        padding-bottom: 20px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding-top: 120px; /* Adjusted for header height on mobile */
+      }
+
+      .topbar .row {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .topbar .col-6 {
+        margin-bottom: 10px;
+      }
+
+      .branding {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .navmenu ul {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .navmenu ul li {
+        width: 100%;
+        text-align: center;
+      }
+
+      .nav-tabs {
+        display: flex;
+        justify-content: center;
+      }
+
+      .nav-tabs .nav-link {
+        padding: 8px 10px;
+        font-size: 14px;
+      }
+
+      .card {
+        margin-bottom: 15px;
+      }
+
       #map {
         height: 200px;
+      }
+
+      .table-responsive {
+        overflow-x: auto;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .profile-card h2 {
+        font-size: 1.5rem;
+      }
+
+      .btn {
+        padding: 8px 15px;
+        font-size: 14px;
+      }
+
+      .form-control, .form-select {
+        font-size: 14px;
+      }
+
+      .modal-dialog {
+        margin: 10px;
+      }
+
+      .modal-content {
+        padding: 10px;
       }
     }
   </style>
@@ -398,7 +488,7 @@
     <section class="section profile">
       <div class="container">
         <div class="row">
-          <div class="col-xl-4" style="padding-bottom: 50px;">
+          <div class="col-xl-4">
             <div class="card">
               <div class="card-body profile-card pt-4 d-flex flex-column align-items-center">
                 <div class="profile-pic-container mb-3">
@@ -428,15 +518,15 @@
             </div>
           </div>
 
-          <div class="col-xl-8" style="padding-bottom: 50px;">
+          <div class="col-xl-8">
             <div class="card">
               <div class="card-body pt-3">
                 <ul class="nav nav-tabs nav-tabs-bordered">
                   <li class="nav-item">
-                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#profile-overview">Overview</button>
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#profile-appointments">Appointments</button>
                   </li>
                   <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-appointments">Appointments</button>
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-overview">Overview</button>
                   </li>
                   <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-history">History Log</button>
@@ -445,15 +535,37 @@
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-edit">Edit Profile</button>
                   </li>
                   <li class="nav-item">
-                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-settings">Settings</button>
-                  </li>
-                  <li class="nav-item">
                     <button class="nav-link" data-bs-toggle="tab" data-bs-target="#profile-change-password">Password</button>
                   </li>
                 </ul>
 
                 <div class="tab-content pt-3">
-                  <div class="tab-pane fade show active profile-overview" id="profile-overview">
+                  <div class="tab-pane fade show active profile-appointments" id="profile-appointments">
+                    <h5 class="card-title">Upcoming Appointments</h5>
+                    <div class="table-responsive" style="overflow-x: auto; white-space: nowrap;">
+                      <table class="table table-hover">
+                        <thead class="table-light">
+                          <tr>
+                            <th>Appointment Date & Time</th>
+                            <th>Service Name</th>
+                            <th>Status</th>
+                            <th>Notes/Reason</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody id="appointments-table">
+                        </tbody>
+                      </table>
+                    </div>
+                    <div id="no-appointments" class="alert alert-info" style="display: none;">
+                      No upcoming appointments found.
+                    </div>
+                    <button class="btn btn-primary mt-2" onclick="window.location.href='make-appointment.html'">
+                      <i class="bi bi-plus-circle me-2"></i>Book New Appointment
+                    </button>
+                  </div>
+
+                  <div class="tab-pane fade profile-overview" id="profile-overview">
                     <h5 class="card-title">Personal Information</h5>
                     <div class="row">
                       <div class="col-lg-3 col-md-4 label">Full Name</div>
@@ -491,31 +603,6 @@
                       <div class="col-lg-3 col-md-4 label">Email</div>
                       <div class="col-lg-9 col-md-8" id="overview-email">Loading...</div>
                     </div>
-                  </div>
-
-                  <div class="tab-pane fade profile-appointments pt-3" id="profile-appointments">
-                    <h5 class="card-title">Upcoming Appointments</h5>
-                    <div class="table-responsive" style="overflow-x: auto; white-space: nowrap;">
-                      <table class="table table-hover">
-                        <thead class="table-light">
-                          <tr>
-                            <th>Appointment Date & Time</th>
-                            <th>Service Name</th>
-                            <th>Status</th>
-                            <th>Notes/Reason</th>
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody id="appointments-table">
-                        </tbody>
-                      </table>
-                    </div>
-                    <div id="no-appointments" class="alert alert-info" style="display: none;">
-                      No upcoming appointments found.
-                    </div>
-                    <button class="btn btn-primary mt-2" onclick="window.location.href='make-appointment.html'">
-                      <i class="bi bi-plus-circle me-2"></i>Book New Appointment
-                    </button>
                   </div>
 
                   <div class="tab-pane fade" id="profile-history">
@@ -599,60 +686,6 @@
                       </div>
                       <div class="text-center">
                         <button type="button" class="btn btn-primary" onclick="saveProfile()">Save Changes</button>
-                      </div>
-                    </form>
-                  </div>
-
-                  <div class="tab-pane fade pt-3" id="profile-settings">
-                    <form id="settings-form">
-                      <div class="row mb-3">
-                        <label class="col-md-4 col-lg-3 col-form-label">Email Notifications</label>
-                        <div class="col-md-8 col-lg-9">
-                          <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="appointmentReminders" name="appointmentReminders">
-                            <label class="form-check-label" for="appointmentReminders">
-                              Appointment reminders
-                            </label>
-                          </div>
-                          <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="treatmentUpdates" name="treatmentUpdates">
-                            <label class="form-check-label" for="treatmentUpdates">
-                              Treatment updates and follow-ups
-                            </label>
-                          </div>
-                          <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="promotionalOffers" name="promotionalOffers">
-                            <label class="form-check-label" for="promotionalOffers">
-                              Promotional offers and news
-                            </label>
-                          </div>
-                          <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="securityNotifications" name="securityNotifications" disabled checked>
-                            <label class="form-check-label" for="securityNotifications">
-                              Security notifications
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="row mb-3">
-                        <label class="col-md-4 col-lg-3 col-form-label">Privacy Settings</label>
-                        <div class="col-md-8 col-lg-9">
-                          <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="dataSharing" name="dataSharing">
-                            <label class="form-check-label" for="dataSharing">
-                              Share my data with partners for improved services
-                            </label>
-                          </div>
-                          <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="analyticsConsent" name="analyticsConsent">
-                            <label class="form-check-label" for="analyticsConsent">
-                              Allow anonymous usage data collection for service improvement
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="text-center">
-                        <button type="button" class="btn btn-primary" onclick="saveSettings()">Save Preferences</button>
                       </div>
                     </form>
                   </div>

@@ -29,11 +29,11 @@
   <!-- Modern Enhancements to Original Design -->
   <style>
     :root {
-      --primary: #007bff; /* Matches Bootstrap primary */
-      --secondary: #f8f9fa; /* Light background */
+      --primary: #007bff;
+      --secondary: #f8f9fa;
       --text: #333333;
       --light: #ffffff;
-      --accent: #0056b3; /* Darker primary for hover */
+      --accent: #0056b3;
     }
 
     body {
@@ -81,9 +81,9 @@
       justify-content: center;
       align-items: center;
       text-align: center;
-      background-color: var(--primary); /* Ensure consistent background */
-      color: var(--light); /* White text for contrast */
-      border: none; /* Remove any border */
+      background-color: var(--primary);
+      color: var(--light);
+      border: none;
     }
 
     .cta-btn:hover {
@@ -187,13 +187,67 @@
       background: var(--accent);
     }
 
-    /* Ensure consistent service card styling */
     .service-card-hidden {
       display: none;
     }
 
     .service-card-hidden.show {
       display: block;
+    }
+
+    /* Scrollable services section */
+    .services-scrollable {
+      max-height: 600px;
+      overflow-y: auto;
+      padding-right: 15px;
+    }
+
+    .services-scrollable::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .services-scrollable::-webkit-scrollbar-track {
+      background: var(--secondary);
+      border-radius: 4px;
+    }
+
+    .services-scrollable::-webkit-scrollbar-thumb {
+      background: var(--primary);
+      border-radius: 4px;
+    }
+
+    .services-scrollable::-webkit-scrollbar-thumb:hover {
+      background: var(--accent);
+    }
+
+    /* Hamburger menu styles */
+    .mobile-nav-toggle {
+      display: none;
+      cursor: pointer;
+      font-size: 1.5rem;
+      color: var(--text);
+      line-height: 0;
+      transition: color 0.3s ease;
+    }
+
+    .mobile-nav-toggle:hover {
+      color: var(--primary);
+    }
+
+    .navmenu {
+      display: flex;
+      align-items: center;
+    }
+
+    .navmenu ul {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .navmenu-active {
+      display: block !important;
     }
 
     /* Responsive Design */
@@ -207,34 +261,131 @@
         min-height: 400px;
       }
 
-      .navmenu ul {
-        flex-direction: column;
-        background: var(--light);
-        padding: 15px;
-        position: absolute;
-        top: 100%;
-        right: 0;
-        width: 200px;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      .mobile-nav-toggle {
+        display: inline-block !important;
       }
 
-      .mobile-nav-toggle {
-        display: block !important;
+      .navmenu {
+        display: none;
+        width: 100%;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        background: var(--light);
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+      }
+
+      .navmenu ul {
+        flex-direction: column;
+        padding: 15px;
+      }
+
+      .navmenu li {
+        margin: 10px 0;
+      }
+
+      .navmenu a {
+        display: block;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .cta-btn {
+        width: 100%;
+        margin: 5px 0;
       }
 
       .section-title h2 {
         font-size: 1.5rem;
       }
 
-      .cta-btn {
-        width: 100%; /* Ensure buttons take full width in mobile menu */
-        margin: 5px 0; /* Add spacing between buttons */
+      .services-scrollable {
+        max-height: 400px;
+      }
+
+      /* Doctors section responsiveness */
+      .team-member .member-img img {
+        max-height: 200px;
+        object-fit: cover;
+      }
+
+      .team-member .member-info h4 {
+        font-size: 1.2rem;
+      }
+
+      .team-member .member-info span {
+        font-size: 0.9rem;
+      }
+
+      /* Contact section responsiveness */
+      .info-item {
+        padding: 15px;
+      }
+
+      .info-item h3 {
+        font-size: 1.2rem;
+      }
+
+      .info-item p {
+        font-size: 0.9rem;
+      }
+
+      .php-email-form .form-control {
+        font-size: 0.9rem;
+        padding: 8px 12px;
+      }
+
+      .php-email-form button {
+        padding: 8px 20px;
+        font-size: 0.9rem;
+      }
+
+      /* Map responsiveness */
+      .map-iframe {
+        height: 300px !important;
       }
     }
 
     @media (max-width: 576px) {
       .topbar .col-6 {
         font-size: 12px;
+      }
+
+      .team-member .member-img img {
+        max-height: 150px;
+      }
+
+      .team-member .member-info h4 {
+        font-size: 1rem;
+      }
+
+      .team-member .member-info span {
+        font-size: 0.8rem;
+      }
+
+      .info-item {
+        padding: 10px;
+      }
+
+      .info-item h3 {
+        font-size: 1rem;
+      }
+
+      .info-item p {
+        font-size: 0.8rem;
+      }
+
+      .php-email-form .form-control {
+        font-size: 0.8rem;
+      }
+
+      .php-email-form button {
+        font-size: 0.8rem;
+      }
+
+      .map-iframe {
+        height: 250px !important;
       }
     }
   </style>
@@ -256,7 +407,7 @@
     </div>
 
     <div class="branding d-flex align-items-center">
-      <div class="container position-relative d-flex align-items-center justify-content-end">
+      <div class="container position-relative d-flex align-items-center justify-content-between">
         <a href="index.html" class="logo d-flex align-items-center me-auto">
           <img src="assets/img/logo.jpeg" alt="">
         </a>
@@ -274,7 +425,7 @@
               <a class="cta-btn" href="make-appointment.html">Appointment</a>
             </li>
           </ul>
-          <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+          <i class="mobile-nav-toggle bi bi-list"></i>
         </nav>
       </div>
     </div>
@@ -458,290 +609,290 @@
       </div>
 
       <div class="container">
-        <div class="row gy-3 justify-content-center" id="services-container">
-          <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Consultation</h3>
-              <div class="card">
-                <img src="assets/img/services/consultation.jpg" alt="Consultation" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">examination and discussion about your oral health</p>
+        <div class="services-scrollable">
+          <div class="row gy-3 justify-content-center" id="services-container">
+            <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Consultation</h3>
+                <div class="card">
+                  <img src="assets/img/services/consultation.jpg" alt="Consultation" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">examination and discussion about your oral health</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Oral Prophylaxis</h3>
+                <div class="card">
+                  <img src="assets/img/services/oralprophylaxis.jpg" alt="Oral Prophylaxis" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Light</p>
+                    <p class="card-des">Moderate</p>
+                    <p class="card-des">Heavy</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Restorations Temporary Filling</h3>
+                <div class="card">
+                  <img src="assets/img/services/restorationtemporarydentalfillings.jpg" alt="Restorations Temporary Filling" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Small</p>
+                    <p class="card-des">Medium</p>
+                    <p class="card-des">Large</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Composite Filling</h3>
+                <div class="card">
+                  <img src="assets/img/services/compositefilling.jpg" alt="Composite Filling" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Small</p>
+                    <p class="card-des">Medium</p>
+                    <p class="card-des">Large</p>
+                    <p class="card-des">Anterior</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Surgery Extraction</h3>
+                <div class="card">
+                  <img src="assets/img/services/surgicaltoothextractions.jpg" alt="Surgery Extraction" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Deciduous ant/post</p>
+                    <p class="card-des">Anterior</p>
+                    <p class="card-des">Posterior</p>
+                    <p class="card-des">Canine</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Special Case</h3>
+                <div class="card">
+                  <img src="assets/img/services/specialcase.jpg" alt="Special Case" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Mesio/Distoangular</p>
+                    <p class="card-des">Upright position</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 text-center mt-4 mb-4">
+              <button id="see-more-btn" class="btn btn-primary">See More</button>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Prosthodontic</h3>
+                <div class="card">
+                  <img src="assets/img/services/prosthodontic.jpg" alt="Prosthodontic" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Removable Partial Ordinary</p>
+                    <p class="card-des">Acrylic/Stayplate</p>
+                    <p class="card-des">1-2, 3-4, or 5 or more units plastic</p>
+                    <p class="card-des">Wire clasp</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Casted Metal</h3>
+                <div class="card">
+                  <img src="assets/img/services/castedmetalunilateral.jpg" alt="Casted Metal" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Unilateral</p>
+                    <p class="card-des">Bilateral</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Jacket Crown</h3>
+                <div class="card">
+                  <img src="assets/img/services/jacketcrown.jpg" alt="Jacket Crown" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Plastic w/out metal backing</p>
+                    <p class="card-des">Porcelain fused to metal</p>
+                    <p class="card-des">Tilite, Ceramage</p>
+                    <p class="card-des">Emax, Zirconia</p>
+                    <p class="card-des">Anterior or Posterior</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Laminates</h3>
+                <div class="card">
+                  <img src="assets/img/services/laminates.jpg" alt="Laminates" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Anterior</p>
+                    <p class="card-des">Posterior</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Veneers</h3>
+                <div class="card">
+                  <img src="assets/img/services/veneer.jpg" alt="Veneers" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Anterior</p>
+                    <p class="card-des">Posterior</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Complete Denture</h3>
+                <div class="card">
+                  <img src="assets/img/services/completedenture.jpg" alt="Complete Denture" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Plastic new ace</p>
+                    <p class="card-des">New ace px</p>
+                    <p class="card-des">Bioform</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Flexite</h3>
+                <div class="card">
+                  <img src="assets/img/services/flexite.jpg" alt="Flexite" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Unilateral/Bilateral</p>
+                    <p class="card-des">Anteropostero</p>
+                    <p class="card-des">Up/down</p>
+                    <p class="card-des">Up/down w/ pontic</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Retainers</h3>
+                <div class="card">
+                  <img src="assets/img/services/retainer.png" alt="Retainers" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Up/down</p>
+                    <p class="card-des">Up/down w/ pontic</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Repair of Denture</h3>
+                <div class="card">
+                  <img src="assets/img/services/rapairdenture.jpg" alt="Repair of Denture" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Rebasing u/l</p>
+                    <p class="card-des">Relining u/l</p>
+                    <p class="card-des">Crack denture</p>
+                    <p class="card-des">Crown recementation</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Fiber Post</h3>
+                <div class="card">
+                  <img src="assets/img/services/fiberpost.jpg" alt="Fiber Post" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Anterior</p>
+                    <p class="card-des">Posterior</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Root Canal</h3>
+                <div class="card">
+                  <img src="assets/img/services/rootcanal.jpeg" alt="Root Canal" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Mono rooted</p>
+                    <p class="card-des">Multi rooted/canal</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Pediatrics</h3>
+                <div class="card">
+                  <img src="assets/img/services/pediatrics.jpeg" alt="Pediatrics" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">OP and Fluoride</p>
+                    <p class="card-des">Pulpotomy</p>
+                    <p class="card-des">Stainless steel crown</p>
+                    <p class="card-des">Strip off crown</p>
+                  </div>
+                </ करकेdiv>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Sealant</h3>
+                <div class="card">
+                  <img src="assets/img/services/sealant.jpg" alt="Sealant" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Premolar</p>
+                    <p class="card-des">Molar</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
+              <div class="service-item position-relative">
+                <h3>Orthodontics</h3>
+                <div class="card">
+                  <img src="assets/img/services/orthodontics.jpeg" alt="Orthodontics" style="width: 100%; height: auto;">
+                  <div class="card__content">
+                    <p class="card-des">Conventional</p>
+                    <p class="card-des">Self ligating</p>
+                    <p class="card-des">(depends on severity of the case)</p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
-          <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Oral Prophylaxis</h3>
-              <div class="card">
-                <img src="assets/img/services/oralprophylaxis.jpg" alt="Oral Prophylaxis" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Light</p>
-                  <p class="card-des">Moderate</p>
-                  <p class="card-des">Heavy</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Restorations Temporary Filling</h3>
-              <div class="card">
-                <img src="assets/img/services/restorationtemporarydentalfillings.jpg" alt="Restorations Temporary Filling" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Small</p>
-                  <p class="card-des">Medium</p>
-                  <p class="card-des">Large</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Composite Filling</h3>
-              <div class="card">
-                <img src="assets/img/services/compositefilling.jpg" alt="Composite Filling" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Small</p>
-                  <p class="card-des">Medium</p>
-                  <p class="card-des">Large</p>
-                  <p class="card-des">Anterior</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Surgery Extraction</h3>
-              <div class="card">
-                <img src="assets/img/services/surgicaltoothextractions.jpg" alt="Surgery Extraction" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Deciduous ant/post</p>
-                  <p class="card-des">Anterior</p>
-                  <p class="card-des">Posterior</p>
-                  <p class="card-des">Canine</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-visible" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Special Case</h3>
-              <div class="card">
-                <img src="assets/img/services/specialcase.jpg" alt="Special Case" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Mesio/Distoangular</p>
-                  <p class="card-des">Upright position</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-12 text-center mt-4 mb-4">
-            <button id="see-more-btn" class="btn btn-primary">See More</button>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Prosthodontic</h3>
-              <div class="card">
-                <img src="assets/img/services/prosthodontic.jpg" alt="Prosthodontic" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Removable Partial Ordinary</p>
-                  <p class="card-des">Acrylic/Stayplate</p>
-                  <p class="card-des">1-2, 3-4, or 5 or more units plastic</p>
-                  <p class="card-des">Wire clasp</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Casted Metal</h3>
-              <div class="card">
-                <img src="assets/img/services/castedmetalunilateral.jpg" alt="Casted Metal" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Unilateral</p>
-                  <p class="card-des">Bilateral</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Jacket Crown</h3>
-              <div class="card">
-                <img src="assets/img/services/jacketcrown.jpg" alt="Jacket Crown" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Plastic w/out metal backing</p>
-                  <p class="card-des">Porcelain fused to metal</p>
-                  <p class="card-des">Tilite, Ceramage</p>
-                  <p class="card-des">Emax, Zirconia</p>
-                  <p class="card-des">Anterior or Posterior</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Laminates</h3>
-              <div class="card">
-                <img src="assets/img/services/laminates.jpg" alt="Laminates" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Anterior</p>
-                  <p class="card-des">Posterior</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Veneers</h3>
-              <div class="card">
-                <img src="assets/img/services/veneer.jpg" alt="Veneers" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Anterior</p>
-                  <p class="card-des">Posterior</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Complete Denture sigue...</h3>
-              <div class="card">
-                <img src="assets/img/services/completedenture.jpg" alt="Complete Denture" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Plastic new ace</p>
-                  <p class="card-des">New ace px</p>
-                  <p class="card-des">Bioform</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Flexite</h3>
-              <div class="card">
-                <img src="assets/img/services/flexite.jpg" alt="Flexite" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Unilateral/Bilateral</p>
-                  <p class="card-des">Anteropostero</p>
-                  <p class="card-des">Up/down,</p>
-                  <p class="card-des">Up/down w/ pontic</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Retainers</h3>
-              <div class="card">
-                <img src="assets/img/services/retainer.png" alt="Retainers" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Up/down,</p>
-                  <p class="card-des">Up/down w/ pontic</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Repair of Denture</h3>
-              <div class="card">
-                <img src="assets/img/services/rapairdenture.jpg" alt="Repair of Denture" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Rebasing u/l</p>
-                  <p class="card-des">Relining u/l</p>
-                  <p class="card-des">Crack denture</p>
-                  <p class="card-des">Crown recementation</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Fiber Post</h3>
-              <div class="card">
-                <img src="assets/img/services/fiberpost.jpg" alt="Fiber Post" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Anterior</p>
-                  <p class="card-des">Posterior</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Root Canal</h3>
-              <div class="card">
-                <img src="assets/img/services/rootcanal.jpeg" alt="Root Canal" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Mono rooted</p>
-                  <p class="card-des">Multi rooted/canal</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Pediatrics</h3>
-              <div class="card">
-                <img src="assets/img/services/pediatrics.jpeg" alt="Pediatrics" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">OP and Fluoride</p>
-                  <p class="card-des">Pulpotomy</p>
-                  <p class="card-des">Stainless steel crown</p>
-                  <p class="card-des">Strip off crown</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Sealant</h3>
-              <div class="card">
-                <img src="assets/img/services/sealant.jpg" alt="Sealant" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Premolar</p>
-                  <p class="card-des">Molar</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-4 col-md-6 service-card-hidden" data-aos="fade-up" data-aos-delay="100">
-            <div class="service-item position-relative">
-              <h3>Orthodontics</h3>
-              <div class="card">
-                <img src="assets/img/services/orthodontics.jpeg" alt="Orthodontics" style="width: 100%; height: auto;">
-                <div class="card__content">
-                  <p class="card-des">Conventional</p>
-                  <p class="card-des">Self ligating</p>
-                  <p class="card-des">(depends on severity of the case)</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-
         </div>
       </div>
     </section>
@@ -754,8 +905,8 @@
         </div>
 
         <div class="row gy-4 justify-content-center">
-          <div class="col-lg-3 col-md-6 d-flex" data-aos="fade-up" data-aos-delay="100">
-            <div class="team-member">
+          <div class="col-lg-3 col-md-6 col-sm-12 d-flex" data-aos="fade-up" data-aos-delay="100">
+            <div class="team-member w-100">
               <div class="member-img">
                 <img src="assets/img/doctors/doctors-1.jpeg" class="img-fluid" alt="Dr.Analyn">
                 <div class="social">
@@ -769,8 +920,8 @@
             </div>
           </div>
 
-          <div class="col-lg-3 col-md-6 d-flex" data-aos="fade-up" data-aos-delay="200">
-            <div class="team-member">
+          <div class="col-lg-3 col-md-6 col-sm-12 d-flex" data-aos="fade-up" data-aos-delay="200">
+            <div class="team-member w-100">
               <div class="member-img">
                 <img src="assets/img/doctors/doctors-2.jpg" class="img-fluid" alt="Imelda">
                 <div class="social">
@@ -795,9 +946,9 @@
 
       <div class="container" data-aos="fade-up" data-aos-delay="100">
         <div class="row gy-4">
-          <div class="col-lg-6">
+          <div class="col-lg-6 col-md-12">
             <div class="row gy-4">
-              <div class="col-lg-12">
+              <div class="col-12">
                 <div class="info-item d-flex flex-column justify-content-center align-items-center" data-aos="fade-up" data-aos-delay="200">
                   <i class="bi bi-geo-alt"></i>
                   <h3>Address</h3>
@@ -805,7 +956,7 @@
                 </div>
               </div>
 
-              <div class="col-md-6">
+              <div class="col-md-6 col-12">
                 <div class="info-item d-flex flex-column justify-content-center align-items-center" data-aos="fade-up" data-aos-delay="300">
                   <i class="bi bi-telephone"></i>
                   <h3>Call Us</h3>
@@ -813,8 +964,8 @@
                 </div>
               </div>
 
-              <div class="col-md-6">
-                <div class="info-item d-flex flex-column justify-content-center align-items-center" data-aos="fade-up" data-aos-delay="400">
+              <div class="col-md-6 col-12">
+                <div class="main-info-item d-flex flex-column justify-content-center align-items-center" data-aos="fade-up" data-aos-delay="400">
                   <i class="bi bi-envelope"></i>
                   <h3>Email Us</h3>
                   <p>dmdannsaspa@yahoo.com</p>
@@ -823,33 +974,31 @@
             </div>
           </div>
 
-          <div class="col-lg-6">
+          <div class="col-lg-6 col-md-12">
             <form action="https://formsubmit.co/balanesaspa.clinic@gmail.com" method="POST" class="php-email-form" data-aos="fade-up" data-aos-delay="500">
-              <!-- FormSubmit configuration -->
               <input type="hidden" name="_subject" value="New message from Balane-Saspa Dental Clinic website">
               <input type="hidden" name="_captcha" value="false">
               <input type="hidden" name="_template" value="table">
-              <!-- Honeypot field to prevent spam without using reCAPTCHA -->
               <input type="text" name="_honey" style="display:none">
               
               <div class="row gy-4">
-                <div class="col-md-6">
+                <div class="col-12">
                   <input type="text" name="name" class="form-control" placeholder="Your Name" required>
                 </div>
           
-                <div class="col-md-6">
+                <div class="col-12">
                   <input type="email" class="form-control" name="email" placeholder="Your Email" required>
                 </div>
           
-                <div class="col-md-12">
+                <div class="col-12">
                   <input type="text" class="form-control" name="subject" placeholder="Subject" required>
                 </div>
           
-                <div class="col-md-12">
+                <div class="col-12">
                   <textarea class="form-control" name="message" rows="4" placeholder="Message" required></textarea>
                 </div>
           
-                <div class="col-md-12 text-center">
+                <div class="col-12 text-center">
                   <button type="submit" class="btn btn-primary">Send Message</button>
                 </div>
               </div>
@@ -861,10 +1010,10 @@
 
     <div class="container" data-aos="fade-up" data-aos-delay="100">
       <div class="row gy-4">
-        <div class="col-lg-12">
+        <div class="col-12">
           <div class="row gy-4">
             <div class="mb-5" data-aos="fade-up" data-aos-delay="200">
-              <iframe style="border:0; width: 100%; height: 600px;" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3869.275503600869!2d122.95431701129162!3d14.119888786254391!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3398af188fddc25b%3A0x6da5116eb1e81013!2sBalane-%20Saspa%20Dental%20Clinic!5e0!3m2!1sen!2sph!4v1739682223635!5m2!1sen!2sph" frameborder="0" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+              <iframe class="map-iframe" style="border:0; width: 100%; height: 600px;" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3869.275503600869!2d122.95431701129162!3d14.119888786254391!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3398af188fddc25b%3A0x6da5116eb1e81013!2sBalane-%20Saspa%20Dental%20Clinic!5e0!3m2!1sen!2sph!4v1739682223635!5m2!1sen!2sph" frameborder="0" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
             </div>
           </div>
         </div>
@@ -905,7 +1054,6 @@
   <div id="preloader"></div>
 
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-
   <script src="assets/vendor/aos/aos.js"></script>
   <script src="assets/vendor/glightbox/js/glightbox.min.js"></script>
   <script src="assets/vendor/purecounter/purecounter_vanilla.js"></script>
@@ -913,8 +1061,6 @@
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-
-  <!-- SweetAlert2 JS -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
   <script>
@@ -949,7 +1095,6 @@
         })
         .catch(err => {
           console.error('Error checking auth:', err);
-          // Default to logged-out state on error
           document.getElementById('account-link').style.display = 'block';
           document.getElementById('profile-link').style.display = 'none';
           document.getElementById('appointment-link').style.display = 'none';
@@ -961,8 +1106,20 @@
       if (mobileNavToggle && navmenu) {
         mobileNavToggle.addEventListener('click', () => {
           navmenu.classList.toggle('navmenu-active');
+          mobileNavToggle.classList.toggle('bi-list');
+          mobileNavToggle.classList.toggle('bi-x');
         });
       }
+
+      // Close mobile menu when clicking a link
+      const navLinks = document.querySelectorAll('.navmenu a');
+      navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+          navmenu.classList.remove('navmenu-active');
+          mobileNavToggle.classList.add('bi-list');
+          mobileNavToggle.classList.remove('bi-x');
+        });
+      });
 
       // Enhanced See More Functionality
       const seeMoreBtn = document.getElementById('see-more-btn');
@@ -973,79 +1130,70 @@
             card.classList.add('show');
             card.classList.remove('service-card-hidden');
             card.classList.add('service-card-visible');
-            // Re-trigger AOS for newly visible cards
             card.setAttribute('data-aos', 'fade-up');
             card.setAttribute('data-aos-delay', '100');
             AOS.refresh();
           });
-          seeMoreBtn.style.display = 'none'; // Hide button after showing all cards
+          seeMoreBtn.style.display = 'none';
         });
       }
     });
 
     document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('.php-email-form');
-    if (form) {
-      form.addEventListener('submit', function(e) {
-        // Optional: Add any client-side validation here
-        
-        // Show loading indicator if desired
-        const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) {
-          submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
-          submitBtn.disabled = true;
-        }
+      const form = document.querySelector('.php-email-form');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const submitBtn = form.querySelector('button[type="submit"]');
+          if (submitBtn) {
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
+            submitBtn.disabled = true;
+          }
 
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        
-        fetch('https://formsubmit.co/marklariosa18@gmail.com', {
-          method: 'POST',
-          body: formData
-        })
-        .then(response => {
-          if (response.ok) {
-            // Success message using SweetAlert2 if available
+          const formData = new FormData(this);
+          
+          fetch('https://formsubmit.co/balanesaspa.clinic@gmail.com', {
+            method: 'POST',
+            body: formData
+          })
+          .then(response => {
+            if (response.ok) {
+              if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                  title: 'Thank You!',
+                  text: 'Your message has been sent successfully.',
+                  icon: 'success',
+                  confirmButtonColor: '#007bff'
+                });
+              } else {
+                alert('Thank you! Your message has been sent successfully.');
+              }
+              form.reset();
+            } else {
+              throw new Error('Something went wrong');
+            }
+          })
+          .catch(error => {
             if (typeof Swal !== 'undefined') {
               Swal.fire({
-                title: 'Thank You!',
-                text: 'Your message has been sent successfully.',
-                icon: 'success',
+                title: 'Oops!',
+                text: 'There was a problem sending your message. Please try again.',
+                icon: 'error',
                 confirmButtonColor: '#007bff'
               });
             } else {
-              alert('Thank you! Your message has been sent successfully.');
+              alert('Oops! There was a problem sending your message. Please try again.');
             }
-            form.reset();
-          } else {
-            throw new Error('Something went wrong');
-          }
-        })
-        .catch(error => {
-          // Error message
-          if (typeof Swal !== 'undefined') {
-            Swal.fire({
-              title: 'Oops!',
-              text: 'There was a problem sending your message. Please try again.',
-              icon: 'error', 
-              confirmButtonColor: '#007bff'
-            });
-          } else {
-            alert('Oops! There was a problem sending your message. Please try again.');
-          }
-        })
-        .finally(() => {
-          // Reset button state
-          if (submitBtn) {
-            submitBtn.innerHTML = 'Send Message';
-            submitBtn.disabled = false;
-          }
+          })
+          .finally(() => {
+            if (submitBtn) {
+              submitBtn.innerHTML = 'Send Message';
+              submitBtn.disabled = false;
+            }
+          });
         });
-        
-      });
-    }
-  });
+      }
+    });
   </script>
 
   <script src="assets/js/main.js"></script>
