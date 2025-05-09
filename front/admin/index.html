@@ -188,28 +188,6 @@
     .appointment-item.confirmed {
       border-left: 4px solid #28a745;
     }
-    .approve-btn, .reject-btn {
-      padding: 8px 15px;
-      border-radius: 5px;
-      border: none;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: background 0.2s;
-    }
-    .approve-btn {
-      background: #28a745;
-      color: white;
-    }
-    .approve-btn:hover {
-      background: #218838;
-    }
-    .reject-btn {
-      background: #dc3545;
-      color: white;
-    }
-    .reject-btn:hover {
-      background: #c82333;
-    }
     .button-group {
       text-align: right;
       margin-top: 15px;
@@ -301,18 +279,6 @@
         }
         .appointment-item {
             padding: 10px;
-        }
-        .appointment-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            justify-content: flex-end;
-        }
-        .approve-btn, .reject-btn, .cancel-btn {
-            font-size: 0.8rem;
-            padding: 6px 12px;
-            flex: 1;
-            min-width: 100px;
         }
         .recent-sales table {
             display: block;
@@ -773,179 +739,6 @@
         }
       }
     
-      window.confirmAppointment = async function(appointmentId) {
-        const request = window.pendingRequests.find(req => 
-          req.appointment_id === appointmentId && 
-          req.action === 'confirm' && 
-          req.status === 'pending'
-        );
-        if (!request) {
-          console.error('No request found for appointment ID:', appointmentId);
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Request not found.',
-            confirmButtonColor: '#4154f1'
-          });
-          return;
-        }
-        try {
-          console.log(`Approving confirm request for request ID: ${request.id}`);
-          const csrfToken = await getCsrfToken();
-          const response = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/requests/${request.id}/approve`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-              'CSRF-Token': csrfToken
-            },
-            credentials: 'include'
-          });
-          const result = await response.json();
-          if (response.ok) {
-            console.log(`Confirm request approved successfully:`, request.id);
-            Swal.fire({
-              icon: 'success',
-              title: 'Request Approved',
-              text: `Confirm request approved successfully.`,
-              confirmButtonColor: '#4154f1',
-              timer: 3000
-            });
-            const appointment = appointments.find(app => app.id === appointmentId);
-            if (appointment) {
-              appointment.status = 'confirmed';
-              appointment.pending_action = null;
-            }
-            const requestIndex = window.pendingRequests.findIndex(req => req.id === request.id);
-            if (requestIndex !== -1) {
-              window.pendingRequests.splice(requestIndex, 1);
-            }
-            updateCalendar(appointments);
-            updateAppointmentCards(appointments);
-            updateRecentAppointments(appointments);
-            if (socket && socket.connected) {
-              socket.emit('confirm_response', {
-                requestId: request.id,
-                status: 'approved'
-              });
-            }
-          } else {
-            console.error(`Failed to approve confirm request:`, result);
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: `Failed to approve confirm request: ${result.message || 'Unknown error'}`,
-              confirmButtonColor: '#4154f1'
-            });
-          }
-        } catch (error) {
-          console.error(`Error approving confirm request:`, error);
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: `Error approving confirm request: ${error.message || 'Network error'}`,
-            confirmButtonColor: '#4154f1'
-          });
-        }
-      };
-    
-      window.rejectAppointment = async function(appointmentId) {
-        const request = window.pendingRequests.find(req => 
-          req.appointment_id === appointmentId && 
-          req.action === 'confirm' && 
-          req.status === 'pending'
-        );
-        if (!request) {
-          console.error('No request found for appointment ID:', appointmentId);
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: 'Request not found.',
-            confirmButtonColor: '#4154f1'
-          });
-          return;
-        }
-        const { value: rejectReason } = await Swal.fire({
-          title: 'Reject Appointment',
-          text: `Please provide a reason for rejecting the appointment for ${getPatientName(request.appointments.patients)}.`,
-          input: 'textarea',
-          inputPlaceholder: 'e.g., Schedule conflict',
-          showCancelButton: true,
-          confirmButtonColor: '#dc3545',
-          cancelButtonColor: '#6c757d',
-          confirmButtonText: 'Reject',
-          inputValidator: (value) => {
-            if (!value || !value.trim()) {
-              return 'Please provide a reason for rejection.';
-            }
-          }
-        });
-        if (!rejectReason) {
-          return;
-        }
-        try {
-          console.log(`Rejecting confirm request for request ID: ${request.id}`);
-          const csrfToken = await getCsrfToken();
-          const response = await fetch(`https://balane-saspa-dental-1.onrender.com/api/appointments/requests/${request.id}/reject`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-              'CSRF-Token': csrfToken
-            },
-            body: JSON.stringify({ reject_reason: rejectReason }),
-            credentials: 'include'
-          });
-          const result = await response.json();
-          if (response.ok) {
-            console.log(`Confirm request rejected successfully:`, request.id);
-            Swal.fire({
-              icon: 'success',
-              title: 'Request Rejected',
-              text: `Confirm request rejected successfully.`,
-              confirmButtonColor: '#4154f1',
-              timer: 3000
-            });
-            const appointment = appointments.find(app => app.id === appointmentId);
-            if (appointment) {
-              appointment.status = 'rejected';
-              appointment.pending_action = null;
-              appointment.reject_reason = rejectReason;
-            }
-            const requestIndex = window.pendingRequests.findIndex(req => req.id === request.id);
-            if (requestIndex !== -1) {
-              window.pendingRequests.splice(requestIndex, 1);
-            }
-            updateCalendar(appointments);
-            updateAppointmentCards(appointments);
-            updateRecentAppointments(appointments);
-            if (socket && socket.connected) {
-              socket.emit('confirm_response', {
-                requestId: request.id,
-                status: 'rejected',
-                reject_reason: rejectReason
-              });
-            }
-          } else {
-            console.error(`Failed to reject confirm request:`, result);
-            Swal.fire({
-              icon: 'error',
-              title: 'Error',
-              text: `Failed to reject confirm request: ${result.message || 'Unknown error'}`,
-              confirmButtonColor: '#4154f1'
-            });
-          }
-        } catch (error) {
-          console.error(`Error rejecting confirm request:`, error);
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: `Error rejecting confirm request: ${error.message || 'Network error'}`,
-            confirmButtonColor: '#4154f1'
-          });
-        }
-      };
-    
       function updateCalendar(appointments) {
         const calendarGrid = document.getElementById('calendarGrid');
         const monthYear = document.getElementById('monthYear');
@@ -1086,12 +879,6 @@
           });
           const patientName = getPatientName(app.patients);
           const status = app.status.toLowerCase();
-          const isPastDate = date < today;
-          const hasPendingRequest = window.pendingRequests.some(req => 
-            req.appointment_id === app.id && 
-            req.status === 'pending' && 
-            req.action === 'confirm'
-          );
     
           const div = document.createElement('div');
           div.className = `appointment-item ${status}`;
@@ -1104,12 +891,6 @@
               <p><strong>Notes:</strong> ${app.notes || 'N/A'}</p>
               <p><strong>Status:</strong> <span class="status-${status}">${status.capitalize()}</span></p>
             </div>
-            ${status === 'pending' && !isPastDate && hasPendingRequest ? `
-              <div class="appointment-buttons">
-                <button class="approve-btn" onclick="confirmAppointment('${app.id}')">Approve</button>
-                <button class="reject-btn" onclick="rejectAppointment('${app.id}')">Reject</button>
-              </div>
-            ` : ''}
           `;
     
           list.appendChild(div);
