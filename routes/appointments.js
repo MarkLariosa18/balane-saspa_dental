@@ -310,7 +310,7 @@ router.get('/booked', async (req, res) => {
 });
 
 // POST /api/appointments
-router.post('/appointments', isAuthenticated, rateLimitAppointments, async (req, res) => {
+router.post('/', isAuthenticated, rateLimitAppointments, async (req, res) => {
   const { user_id, appointment_date, service_id, notes } = req.body;
 
   try {
