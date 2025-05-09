@@ -1,3 +1,17 @@
+/**
+ * profile-ui.js
+ * Handles profile page functionality, including map setup, appointments, and history.
+ * 
+ * Notes:
+ * - Fixed "Map container not found" error by skipping setupMap for profile.html, which uses a Google Maps iframe.
+ * - To address "net::ERR_BLOCKED_BY_CLIENT" error in main.js:284, check if main.js loads the Google Maps JavaScript API
+ *   unnecessarily for profile.html. If not needed, skip the API load:
+ *     if (window.location.pathname.includes('profile.html')) return;
+ *   Ensure ad blockers are disabled or add an exception for maps.googleapis.com.
+ * - Chrome's third-party cookie deprecation may affect the Google Maps iframe or Socket.IO. Consider replacing the iframe
+ *   with a Leaflet map using OpenStreetMap (cookie-free) or adding a user notification about enabling third-party cookies.
+ */
+
 AOS.init();
 
 const ITEMS_PER_LOAD = 3;
@@ -488,6 +502,28 @@ function loadMoreHistory() {
   renderHistory(allHistory);
 }
 
+function setupMap() {
+  // Skip map initialization for profile.html, which uses a Google Maps iframe
+  if (window.location.pathname.includes('profile.html')) {
+    console.log('Skipping map initialization for profile.html (uses Google Maps iframe)');
+    return;
+  }
+
+  // Initialize Leaflet map for other pages with a #map container
+  try {
+    const map = L.map('map').setView([14.1107, 122.9568], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+    L.marker([14.1107, 122.9568]).addTo(map)
+      .bindPopup('Balane-Saspa Dental Clinic')
+      .openPopup();
+  } catch (error) {
+    console.warn('Failed to initialize Leaflet map:', error);
+    // Allow page to continue loading
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
   try {
     console.log('DOMContentLoaded started');
@@ -498,7 +534,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     await fetchCsrfToken();
     editModalControls = setupEditAppointmentModal();
     cancelModalControls = setupCancelAppointmentModal();
-    setupMap();
+
+    // Attempt to initialize map, but don't let it block profile loading
+    try {
+      setupMap();
+    } catch (mapError) {
+      console.warn('Map setup failed:', mapError);
+    }
 
     console.log('Fetching /check-auth...');
     const authResponse = await fetch(`${BASE_URL}/check-auth`, {
