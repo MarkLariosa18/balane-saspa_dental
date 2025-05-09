@@ -22,9 +22,11 @@
   <link href="assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 
   <link href="assets/css/profile.css" rel="stylesheet">
+
+  <!-- Note: Removed Leaflet CSS and JS inclusions to prevent "Map container not found" error, as profile.html uses a Google Maps iframe. -->
+  <!-- If a Leaflet map is needed, add back <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"> and <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">, and update profile-ui.js:492 to use the correct container ID (e.g., #leaflet-map). -->
 
   <style>
     :root {
@@ -995,7 +997,7 @@
               referrerpolicy="no-referrer-when-downgrade">
             </iframe>
             <div class="map-fallback">
-              Unable to load map. Please check your internet connection or try again later.
+              Unable to load map. Please check your internet connection, disable ad blockers, or try again later.
             </div>
           </div>
         </div>
@@ -1024,7 +1026,6 @@
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="assets/js/main.js"></script>
   <script src="common.js"></script>
@@ -1033,11 +1034,25 @@
   <script src="assets/js/profile-core.js"></script>
   <script src="assets/js/profile-ui.js"></script>
 
+  <!-- Note: To fix "Map container not found" error, modify profile-ui.js around line 492 (setupMap function) to skip map initialization for profile.html, as this page uses a Google Maps iframe. Example:
+       if (window.location.pathname.includes('profile.html')) return;
+     Alternatively, wrap setupMap in a try-catch block to prevent profile loading failure:
+       try { setupMap(); } catch (e) { console.warn('Map setup failed:', e); }
+  -->
+
+  <!-- Note: To address "net::ERR_BLOCKED_BY_CLIENT" error in main.js:284, check if main.js is loading the Google Maps JavaScript API unnecessarily for profile.html. If not needed, skip the API load for this page:
+       if (window.location.pathname.includes('profile.html')) return;
+     Ensure ad blockers are disabled or add an exception for maps.googleapis.com.
+  -->
+
+  <!-- Note: Chrome's third-party cookie deprecation may affect the Google Maps iframe or Socket.IO. Consider replacing the iframe with a Leaflet map using OpenStreetMap (cookie-free) or adding a user notification about enabling third-party cookies. -->
+
   <script>
-    // Prevent duplicate navigation bars
+    // Prevent duplicate navigation bars and log for debugging
     document.addEventListener('DOMContentLoaded', function() {
       const headers = document.querySelectorAll('header.header');
       if (headers.length > 1) {
+        console.warn('Duplicate headers detected:', headers.length);
         for (let i = 1; i < headers.length; i++) {
           headers[i].remove();
         }
@@ -1046,23 +1061,13 @@
       // Ensure map iframe is visible and fallback is hidden
       const mapIframe = document.querySelector('#google-map-container iframe');
       const mapFallback = document.querySelector('#google-map-container .map-fallback');
-      if (mapIframe && mapIframe.complete) {
-        mapFallback.style.display = 'none';
-      } else {
+      if (mapIframe) {
         mapIframe.addEventListener('load', function() {
           mapFallback.style.display = 'none';
         });
         mapIframe.addEventListener('error', function() {
           mapFallback.style.display = 'block';
         });
-      }
-
-      // Prevent Leaflet from initializing on google-map-container
-      if (typeof L !== 'undefined' && L.map) {
-        const mapContainer = document.getElementById('google-map-container');
-        if (mapContainer) {
-          mapContainer.classList.add('no-leaflet');
-        }
       }
     });
   </script>

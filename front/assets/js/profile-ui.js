@@ -488,16 +488,6 @@ function loadMoreHistory() {
   renderHistory(allHistory);
 }
 
-function setupMap() {
-  const map = L.map('map').setView([14.1107, 122.9568], 15);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  }).addTo(map);
-  L.marker([14.1107, 122.9568]).addTo(map)
-    .bindPopup('Balane-Saspa Dental Clinic')
-    .openPopup();
-}
-
 document.addEventListener('DOMContentLoaded', async function() {
   try {
     console.log('DOMContentLoaded started');
