@@ -190,6 +190,53 @@
       padding: 20px;
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
     }
+    .policy-links {
+      margin-top: 15px;
+    }
+    .policy-links a {
+      color: #84548c;
+      text-decoration: none;
+      font-weight: 500;
+      margin: 0 10px;
+      cursor: pointer;
+    }
+    .policy-links a:hover {
+      text-decoration: underline;
+    }
+    .modal-content {
+      border-radius: 10px;
+    }
+    .modal-header {
+      background: #84548c;
+      color: #fff;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+    }
+    .modal-body {
+      max-height: 60vh;
+      overflow-y: auto;
+      padding: 20px;
+    }
+    .modal-footer {
+      border-top: none;
+      padding: 15px;
+    }
+    .modal-body h1, .modal-body h2, .modal-body h3, .modal-body h4, .modal-body h5, .modal-body h6 {
+      color: #333;
+      margin-top: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .modal-body p {
+      margin-bottom: 1rem;
+      line-height: 1.6;
+    }
+    .modal-body ul, .modal-body ol {
+      margin-bottom: 1rem;
+      padding-left: 20px;
+    }
+    .modal-body li {
+      margin-bottom: 0.5rem;
+    }
   </style>
 </head>
 <body>
@@ -280,6 +327,10 @@
                     <div class="error-message"></div>
                     <div class="sent-message">Your appointment request has been submitted. Awaiting admin confirmation.</div>
                     <button class="book-appointment-btn" type="submit">Book Appointment</button>
+                    <div class="policy-links">
+                      <a href="#" data-bs-toggle="modal" data-bs-target="#privacyPolicyModal">Privacy Policy</a>
+                      <a href="#" data-bs-toggle="modal" data-bs-target="#termsConditionsModal">Terms and Conditions</a>
+                    </div>
                   </div>
                 </div>
               </form>
@@ -289,6 +340,198 @@
       </div>
     </section>
   </main>
+
+  <!-- Privacy Policy Modal -->
+  <div class="modal fade" id="privacyPolicyModal" tabindex="-1" aria-labelledby="privacyPolicyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="privacyPolicyModalLabel">Privacy Policy</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <h6>Last Updated: May 8, 2025</h6>
+          <h5>1. INTRODUCTION</h5>
+          <p>Welcome to Balane-Saspa Dental Appointment System. We respect your privacy and are committed to protecting your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website, mobile application, and dental appointment scheduling services (collectively, the "Service").</p>
+          <p>Please read this Privacy Policy carefully. By accessing or using our Service, you acknowledge that you have read, understood, and agree to be bound by all the terms of this Privacy Policy. If you do not agree with our policies and practices, please do not use our Service.</p>
+          <h5>2. INFORMATION WE COLLECT</h5>
+          <p>We collect information from you when you register on our website, schedule an appointment, fill out a form, or engage with our Service in any other way.</p>
+          <h6>2.1 Personal Information</h6>
+          <p>We may collect the following types of personal information:</p>
+          <ul>
+            <li><strong>Contact Information:</strong> Full name, email address, address, phone number</li>
+            <li><strong>Health Information:</strong> Dental history, current conditions, treatment plans, and other health-related information necessary for providing dental services</li>
+            <li><strong>Other Information:</strong> Date of birth, gender, nickname, religion, nationality, home no., occupation, office no., fax no., and dental insurance information</li>
+          </ul>
+          <h6>2.2 Usage Information</h6>
+          <p>When you access and use our Service, we may automatically collect:</p>
+          <ul>
+            <li><strong>Device Information:</strong> Information about your device, browser type and version, operating system, and other technology on the devices you use to access our Service</li>
+            <li><strong>Usage Data:</strong> Information about how you interact with our Service, including pages visited, time spent on pages, navigation paths, and actions taken</li>
+            <li><strong>IP Address:</strong> Your device's Internet Protocol address and approximate location</li>
+          </ul>
+          <h6>2.3 Cookies and Similar Technologies</h6>
+          <p>We use cookies, web beacons, and similar tracking technologies to collect information about your browsing activities. These technologies help us analyze website traffic, personalize content, and improve your experience. You can control cookies through your browser settings.</p>
+          <h5>3. HOW WE USE YOUR INFORMATION</h5>
+          <p>We may use the information we collect about you for various purposes, including to:</p>
+          <ul>
+            <li>Provide, maintain, and improve our Service</li>
+            <li>Process appointment bookings and send appointment reminders</li>
+            <li>Create and manage your patient account</li>
+            <li>Process payments and manage billing</li>
+            <li>Provide you with dental care and related services</li>
+            <li>Communicate with you about your appointments, treatments, and our Service</li>
+            <li>Respond to your comments, questions, and requests</li>
+            <li>Send you technical notices, updates, security alerts, and support messages</li>
+            <li>Monitor and analyze trends, usage, and activities in connection with our Service</li>
+            <li>Detect, prevent, and address technical issues, fraud, and other illegal activities</li>
+            <li>Comply with legal obligations</li>
+          </ul>
+          <h5>4. DISCLOSURE OF YOUR INFORMATION</h5>
+          <p>We may share your personal information in the following situations:</p>
+          <h6>4.1 With Your Consent</h6>
+          <p>We may disclose your personal information for any purpose with your consent.</p>
+          <h6>4.2 Service Providers</h6>
+          <p>We may share your information with third-party vendors, consultants, and other service providers who need access to your information to perform services on our behalf, such as payment processing, data analysis, email delivery, hosting services, and customer service.</p>
+          <h6>4.3 Professional Advisors</h6>
+          <p>We may share your information with other healthcare providers or specialists when necessary for your dental care, with your consent.</p>
+          <h6>4.4 Legal Requirements</h6>
+          <p>We may disclose your information if required to do so by law or in response to valid requests by public authorities (e.g., a court or government agency).</p>
+          <h6>4.5 Business Transfers</h6>
+          <p>If we are involved in a merger, acquisition, or sale of all or a portion of our assets, your information may be transferred as part of that transaction.</p>
+          <h5>5. DATA SECURITY</h5>
+          <p>We implement appropriate technical and organizational security measures designed to protect your personal information from unauthorized access, disclosure, use, alteration, or destruction. However, no method of transmission over the Internet or electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your personal information, we cannot guarantee its absolute security.</p>
+          <h5>6. DATA RETENTION</h5>
+          <p>We will retain your personal information only for CECILIA as necessary to fulfill the purposes for which we collected it, including for the purposes of satisfying any legal, regulatory, tax, accounting, or reporting requirements. In some circumstances, we may anonymize your personal information so that it can no longer be associated with you, in which case we may use such information without further notice to you.</p>
+          <h5>7. YOUR PRIVACY RIGHTS</h5>
+          <p>Depending on your location, you may have certain rights regarding your personal information, which may include:</p>
+          <ul>
+            <li><strong>Right to Access:</strong> You may request access to your personal information.</li>
+            <li><strong>Right to Rectification:</strong> You may request that we correct inaccurate or incomplete information.</li>
+            <li><strong>Right to Erasure:</strong> You may request that we delete your personal information in certain circumstances.</li>
+            <li><strong>Right to Restrict Processing:</strong> You may request that we restrict the processing of your information in certain circumstances.</li>
+            <li><strong>Right to Data Portability:</strong> You may request a copy of your personal information in a structured, machine-readable format.</li>
+            <li><strong>Right to Object:</strong> You may object to our processing of your personal information in certain circumstances.</li>
+            <li><strong>Right to Withdraw Consent:</strong> You may withdraw your consent at any time where we rely on consent to process your personal information.</li>
+          </ul>
+          <p>To exercise any of these rights, please contact us using the information provided in the "Contact Us" section below.</p>
+          <h5>8. CHILDREN'S PRIVACY</h5>
+          <p>Our Service is not directed to children under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us, and we will take steps to delete such information.</p>
+          <p>For patients under 18, we require parental or guardian consent for the collection and use of their personal information.</p>
+          <h5>9. CHANGES TO THIS PRIVACY POLICY</h5>
+          <p>We may update this Privacy Policy from time to time. The updated version will be indicated by an updated "Last Updated" date. We encourage you to review this Privacy Policy frequently to stay informed about how we protect your personal information.</p>
+          <h5>10. CONTACT US</h5>
+          <p>If you have any questions about this Privacy Policy or our privacy practices, please contact us at:</p>
+          <p>Dental Clinic<br>4X94+XQ2, Bagasbas Road, Daet<br>Camarines Norte, Philippines, 4600<br>Email: dmdannsaspa@yahoo.com<br>Phone: +63 920 797 6690</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terms and Conditions Modal -->
+  <div class="modal fade" id="termsConditionsModal" tabindex="-1" aria-labelledby="termsConditionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="termsConditionsModalLabel">Terms and Conditions</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <h6>Last Updated: May 8, 2025</h6>
+          <h5>1. ACCEPTANCE OF TERMS</h5>
+          <p>Welcome to Balane-Saspa Dental Appointment System. These Terms and Conditions ("Terms") govern your access to and use of our website, mobile application, and dental appointment scheduling services (collectively, the "Service") operated by Balane-Saspa Dental Clinic ("we," "our," or "us").</p>
+          <p>By accessing or using our Service, you agree to be bound by these Terms. If you disagree with any part of these Terms, you may not access the Service.</p>
+          <h5>2. CHANGES TO TERMS</h5>
+          <p>We reserve the right to modify or replace these Terms at any time at our sole discretion. The most current version will be posted on our website with the "Last Updated" date. Your continued use of our Service after any changes constitutes your acceptance of the new Terms.</p>
+          <h5>3. ACCOUNT REGISTRATION AND SECURITY</h5>
+          <h6>3.1 Account Creation</h6>
+          <p>To use certain features of our Service, you may be required to register for an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete.</p>
+          <h6>3.2 Account Security</h6>
+          <p>You are solely responsible for:</p>
+          <ul>
+            <li>Maintaining the confidentiality of your account credentials</li>
+            <li>All activities that occur under your account</li>
+            <li>Notifying us immediately of any unauthorized use of your account</li>
+          </ul>
+          <p>We reserve the right to disable any user account at any time if, in our opinion, you have failed to comply with any provision of these Terms.</p>
+          <h5>4. BOOKING AND APPOINTMENT POLICY</h5>
+          <h6>4.1 Appointment Scheduling</h6>
+          <p>Our Service allows you to schedule dental appointments. By scheduling an appointment, you agree to:</p>
+          <ul>
+            <li>Provide accurate patient information</li>
+            <li>Arrive punctually for scheduled appointments</li>
+            <li>Follow all pre-appointment instructions provided by our staff</li>
+          </ul>
+          <h6>4.2 Cancellation Policy</h6>
+          <p>If you need to cancel or reschedule an appointment, you must do so at least 24 hours in advance. Failure to provide adequate notice may result in a cancellation fee, as determined by the clinic.</p>
+          <h6>4.3 No-Show Policy</h6>
+          <p>Patients who fail to show up for scheduled appointments without providing notice may be charged a no-show fee and may be required to prepay for future appointments.</p>
+          <h5>5. PAYMENT TERMS</h5>
+          <h6>5.1 Payment Process</h6>
+          <p>Our payment process is simple: you will only pay for dental services after your successful appointment. We do not require online payments or advance payments through our Service. All payments will be processed at our clinic following the completion of your dental services.</p>
+          <h6>5.2 Fee Schedule</h6>
+          <p>Our fees for dental services are available upon request at our clinic. We reserve the right to modify our fees at any time. Any fee changes will not affect previously scheduled appointments.</p>
+          <h6>5.3 Insurance</h6>
+          <p>While we accept many insurance plans, you are responsible for verifying coverage with your insurance provider before receiving treatment. You remain financially responsible for any services not covered by your insurance.</p>
+          <h6>5.4 Payment Methods</h6>
+          <p>We accept various payment methods as specified at our clinic. These payment options will be communicated to you at the time of your appointment.</p>
+          <h6>5.5 Outstanding Balances</h6>
+          <p>You agree to pay any outstanding balance promptly upon completion of dental services. Accounts with overdue balances may be referred to a collection agency, and you may be responsible for any associated collection costs.</p>
+          <h5>6. USER CONDUCT</h5>
+          <p>When using our Service, you agree not to:</p>
+          <ul>
+            <li>Use the Service in any way that violates applicable law or regulation</li>
+            <li>Impersonate any person or entity or falsely state or misrepresent your affiliation with a person or entity</li>
+            <li>Engage in any conduct that restricts or inhibits anyone's use or enjoyment of the Service</li>
+            <li>Attempt to gain unauthorized access to any portion of the Service or any other systems or networks connected to the Service</li>
+            <li>Use any automated means, including bots, scrapers, or spiders, to access the Service</li>
+            <li>Introduce any malware, viruses, or other malicious code to the Service</li>
+          </ul>
+          <h5>7. INTELLECTUAL PROPERTY</h5>
+          <h6>7.1 Our Intellectual Property</h6>
+          <p>The Service and its original content, features, and functionality are and will remain the exclusive property of Balane-Saspa Dental Clinic and its licensors. The Service is protected by copyright, trademark, and other laws of the Philippines and foreign countries.</p>
+          <h6>7.2 Limited License</h6>
+          <p>Subject to these Terms, we grant you a limited, non-exclusive, non-transferable, and revocable license to access and use our Service for your personal, non-commercial use.</p>
+          <h6>7.3 Feedback</h6>
+          <p>Any feedback, comments, or suggestions you may provide regarding our Service is entirely voluntary, and we will be free to use such feedback at our discretion without any obligation to you.</p>
+          <h5>8. THIRD-PARTY LINKS AND CONTENT</h5>
+          <p>Our Service may contain links to third-party websites or services that are not owned or controlled by Balane-Saspa Dental Clinic. We have no control over and assume no responsibility for the content, privacy policies, or practices of any third-party websites or services. You acknowledge and agree that we shall not be responsible or liable for any damage or loss caused by the use of such third-party websites or services.</p>
+          <h5>9. LIMITATION OF LIABILITY</h5>
+          <p>To the maximum extent permitted by law, in no event shall Balane-Saspa Dental Clinic, its directors, employees, partners, agents, suppliers, or affiliates be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from:</p>
+          <ul>
+            <li>Your access to or use of or inability to access or use the Service</li>
+            <li>Any conduct or content of any third party on the Service</li>
+            <li>Any content obtained from the Service</li>
+            <li>Unauthorized access, use, or alteration of your transmissions or content</li>
+          </ul>
+          <h5>10. DISCLAIMER</h5>
+          <p>Your use of the Service is at your sole risk. The Service is provided on an "AS IS" and "AS AVAILABLE" basis. The Service is provided without warranties of any kind, whether express or implied, including, but not limited to, implied warranties of merchantability, fitness for a particular purpose, non-infringement, or course of performance.</p>
+          <h5>11. INDEMNIFICATION</h5>
+          <p>You agree to defend, indemnify, and hold harmless Balane-Saspa Dental Clinic, its licensors, and service providers, and its and their respective officers, directors, employees, contractors, agents, licensors, suppliers, successors, and assigns from and against any claims, liabilities, damages, judgments, awards, losses, costs, expenses, or fees (including reasonable attorneys' fees) arising out of or relating to your violation of these Terms or your use of the Service.</p>
+          <h5>12. TERMINATION</h5>
+          <p>We may terminate or suspend your account and bar access to the Service immediately, without prior notice or liability, under our sole discretion, for any reason whatsoever, including without limitation if you breach these Terms.</p>
+          <p>Upon termination, your right to use the Service will immediately cease. If you wish to terminate your account, you may simply discontinue using the Service.</p>
+          <h5>13. GOVERNING LAW</h5>
+          <p>These Terms shall be governed and construed in accordance with the laws of the Philippines, without regard to its conflict of law provisions. Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights.</p>
+          <h5>14. DISPUTE RESOLUTION</h5>
+          <p>Any dispute arising out of or relating to these Terms or the Service shall be resolved through amicable settlement between the parties. If amicable settlement is not possible, the dispute shall be submitted to the appropriate courts in Camarines Norte, Philippines.</p>
+          <h5>15. SEVERABILITY</h5>
+          <p>If any provision of these Terms is held to be invalid or unenforceable by a court, the remaining provisions of these Terms will remain in effect.</p>
+          <h5>16. ENTIRE AGREEMENT</h5>
+          <p>These Terms constitute the entire agreement between you and Balane-Saspa Dental Clinic regarding our Service, and supersede and replace any prior agreements we might have with you.</p>
+          <h5>17. CONTACT US</h5>
+          <p>If you have any questions about these Terms, please contact us at:</p>
+          <p>Balane-Saspa Dental Clinic<br>4X94+XQ2, Bagasbas Road, Daet<br>Camarines Norte, Philippines, 4600<br>Email: dmdannsaspa@yahoo.com<br>Phone: +63 920 797 6690</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <footer id="footer" class="footer light-background">
     <div class="container footer-top">
@@ -332,671 +575,671 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
-<script>
-  AOS.init();
-
-  // Base URL for API and Socket.IO
-  const BASE_URL = window.location.hostname === 'localhost' 
-    ? 'http://localhost:3000' 
-    : 'https://balane-saspa-dental-1.onrender.com';
-
-  // Utility functions
-  const showLoading = () => {
-    console.log('Showing loading overlay');
-    document.getElementById('loading-overlay').style.display = 'flex';
-    document.querySelector('.book-appointment-btn').disabled = true;
-  };
-
-  const hideLoading = () => {
-    console.log('Hiding loading overlay');
-    document.getElementById('loading-overlay').style.display = 'none';
-    document.querySelector('.book-appointment-btn').disabled = false;
-  };
-
-  const showAlert = (title, text, icon = 'info') => {
-    console.log(`Showing alert: ${title} - ${text}`);
-    hideLoading();
-    return Swal.fire({
-      title,
-      text,
-      icon,
-      confirmButtonColor: '#6f42c1',
-      confirmButtonText: 'OK',
-      customClass: {
-        popup: 'swal2-modern'
-      }
-    });
-  };
-
-  const withTimeout = (promise, timeoutMs = 10000) => {
-    return Promise.race([
-      promise,
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
-      )
-    ]);
-  };
-
-  const tryAutoLogin = async () => {
-    try {
-      console.log('Attempting auto-login');
-      const response = await withTimeout(fetch(`${BASE_URL}/auth/auto-login`, {
-        method: 'POST',
-        credentials: 'include',
-      }));
-      if (!response.ok) throw new Error(`Auto-login failed: ${response.statusText}`);
-      const data = await response.json();
-      console.log('Auto-login response:', data);
-      return data.success;
-    } catch (err) {
-      console.error('Auto-login error:', err);
-      return false;
-    }
-  };
-
-  const checkAuth = async () => {
-    try {
-      console.log('Checking authentication');
-      const response = await withTimeout(fetch(`${BASE_URL}/check-auth`, {
-        credentials: 'include'
-      }));
-      if (!response.ok) throw new Error(`Failed to check auth: ${response.statusText}`);
-      const data = await response.json();
-      console.log('Auth check response:', data);
-      return data;
-    } catch (err) {
-      console.error('Error checking auth:', err);
-      throw err;
-    }
-  };
-
-  const fetchCsrfToken = async () => {
-    try {
-      console.log('Fetching CSRF token');
-      const response = await withTimeout(fetch(`${BASE_URL}/auth/csrf-token`, {
-        credentials: 'include'
-      }));
-      if (!response.ok) throw new Error(`Failed to fetch CSRF token: ${response.statusText}`);
-      const data = await response.json();
-      console.log('CSRF token fetched:', data.csrfToken);
-      return data.csrfToken;
-    } catch (err) {
-      console.error('Error fetching CSRF token:', err);
-      throw err;
-    }
-  };
-
-  const fetchServices = async () => {
-    try {
-      console.log('Fetching services');
-      const response = await withTimeout(fetch(`${BASE_URL}/api/services/all`, {
-        credentials: 'include'
-      }));
-      if (!response.ok) {
-        if (response.status === 401) throw new Error('Unauthorized: Please log in again.');
-        throw new Error(`Failed to fetch services: ${response.statusText}`);
-      }
-      const data = await response.json();
-      console.log('Services fetched:', data);
-      return Array.isArray(data.services) ? data.services : (Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Error fetching services:', err);
-      throw err;
-    }
-  };
-
-  const fetchUserAppointments = async () => {
-    try {
-      console.log('Fetching user appointments');
-      const response = await withTimeout(fetch(`${BASE_URL}/api/appointments`, {
-        credentials: 'include'
-      }));
-      if (!response.ok) {
-        if (response.status === 401) throw new Error('Unauthorized: Please log in again.');
-        throw new Error(`Failed to fetch user appointments: ${response.statusText}`);
-      }
-      const data = await response.json();
-      console.log('User appointments fetched:', data);
-      return Array.isArray(data.appointments) ? data.appointments : [];
-    } catch (err) {
-      console.error('Error fetching user appointments:', err);
-      throw err;
-    }
-  };
-
-  const fetchBookedAppointments = async () => {
-    try {
-      console.log('Fetching booked appointments');
-      const response = await withTimeout(fetch(`${BASE_URL}/api/appointments/booked?ts=${Date.now()}`, {
-        credentials: 'include',
-        cache: 'no-store'
-      }));
-      if (!response.ok) {
-        if (response.status === 401) throw new Error('Unauthorized: Please log in again.');
-        throw new Error(`Failed to fetch booked appointments: ${response.statusText}`);
-      }
-      const data = await response.json();
-      console.log('Booked appointments fetched:', data.appointments);
-      return Array.isArray(data.appointments) ? data.appointments : [];
-    } catch (err) {
-      console.error('Error fetching booked appointments:', err);
-      throw err;
-    }
-  };
-
-  const populateServices = (services) => {
-    console.log('Populating services:', services);
-    const serviceList = document.getElementById('service-list');
-    const serviceInput = document.getElementById('service');
-    const serviceDescription = document.getElementById('service-description');
-    const serviceDescriptionText = document.getElementById('service-description-text');
-
-    if (!services || !Array.isArray(services) || services.length === 0) {
-      serviceList.innerHTML = '<div class="service-item">No services available</div>';
-      return;
-    }
-
-    const serviceDescriptions = {};
-    services.forEach(service => {
-      const serviceItem = document.createElement('div');
-      serviceItem.className = 'service-item';
-      serviceItem.textContent = service.name;
-      serviceItem.dataset.serviceId = String(service.id);
-      serviceList.appendChild(serviceItem);
-      serviceDescriptions[service.id] = service.description;
-
-      serviceItem.addEventListener('click', () => {
-        document.querySelectorAll('.service-item').forEach(item => item.classList.remove('selected'));
-        serviceItem.classList.add('selected');
-        serviceInput.value = String(service.id);
-        serviceDescriptionText.innerHTML = serviceDescriptions[service.id].replace(/\n/g, '<br>');
-        serviceDescription.style.display = 'block';
-      });
-    });
-  };
-
-  const initializeWebSocket = (onUpdate, userId) => {
-    console.log('Initializing Socket.IO connection');
-    const socket = io(BASE_URL, {
-      withCredentials: true,
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 5000,
-      auth: { userId: String(userId) }
-    });
-
-    socket.on('connect', () => {
-      console.log(`Socket.IO connected: ${socket.id}`);
-      socket.emit('join', { userId: String(userId) });
-    });
-
-    socket.on('welcome', (data) => {
-      console.log('Socket.IO welcome:', data);
-    });
-
-    socket.on('appointment_update', (data) => {
-      console.log('Received Socket.IO appointment update:', data.appointments);
-      onUpdate(data.appointments);
-    });
-
-    socket.on('connect_error', (error) => {
-      console.error('Socket.IO connection error:', error.message);
-      if (error.message === 'Unauthorized') {
-        showAlert('Session Expired', 'Please log in again.', 'error').then(() => {
-          window.location.replace('pages-login.html');
-        });
-      }
-    });
-
-    socket.on('disconnect', (reason) => {
-      console.log(`Socket.IO disconnected: ${reason}`);
-      if (reason === 'io server disconnect') {
-        socket.connect();
-      }
-    });
-
-    socket.on('error', (error) => {
-      console.error('Socket.IO error:', error);
-    });
-
-    return socket;
-  };
-
-  let flatpickrInstance = null;
-  let timeUpdateInterval = null;
-
-  const initializeDatePicker = (bookedAppointments) => {
-    console.log('Initializing date picker with booked appointments:', bookedAppointments);
-    const bookedTimes = Array.isArray(bookedAppointments) ? bookedAppointments.map(appointment => {
-      const date = new Date(appointment.appointment_date);
-      if (isNaN(date.getTime())) {
-        console.warn('Invalid date in appointment:', appointment);
-        return null;
-      }
-      const timeStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
-      console.log(`Processing appointment: ID=${appointment.id}, Time=${timeStr}, Status=${appointment.status || 'unknown'}`);
-      return timeStr;
-    }).filter(time => time !== null) : [];
-
-    console.log('All booked times:', bookedTimes);
-
-    const availableHours = [9, 10, 11, 12, 13, 14, 15, 16];
-    flatpickrInstance = flatpickr('#appointment-date', {
-      dateFormat: "Y-m-d h K",
-      minDate: "today",
-      inline: true,
-      disable: [
-        function(date) {
-          const now = new Date();
-          const day = date.getDay();
-          const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-          if (day === 0) return true;
-          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-          if (dateStr === todayStr && now.getHours() >= 15) return true;
-          const isFullyBooked = availableHours.every(hour => bookedTimes.includes(`${dateStr} ${hour.toString().padStart(2, '0')}:00`));
-          console.log(`Date ${dateStr} fully booked: ${isFullyBooked}`);
-          return isFullyBooked;
-        }
-      ],
-      onReady: (selectedDates, dateStr, instance) => {
-        const calendarContainer = instance.calendarContainer;
-        calendarContainer.classList.add('flatpickr-calendar');
-        const pickerContainer = document.createElement('div');
-        pickerContainer.className = 'picker-container';
-        calendarContainer.parentNode.insertBefore(pickerContainer, calendarContainer);
-        pickerContainer.appendChild(calendarContainer);
-
-        const timePicker = document.createElement('div');
-        timePicker.className = 'time-picker';
-        timePicker.innerHTML = '<div class="time-picker-header">Time</div><div class="time-picker-slots"></div>';
-        pickerContainer.appendChild(timePicker);
-
-        const timeSlotsContainer = timePicker.querySelector('.time-picker-slots');
-        const times = [
-          { hour: 9, label: '9 AM' }, { hour: 10, label: '10 AM' },
-          { hour: 11, label: '11 AM' }, { hour: 12, label: '12 PM' },
-          { hour: 13, label: '1 PM' }, { hour: 14, label: '2 PM' },
-          { hour: 15, label: '3 PM' }, { hour: 16, label: '4 PM' }
-        ];
-        times.forEach(time => {
-          const slot = document.createElement('div');
-          slot.className = 'time-slot';
-          slot.textContent = time.label;
-          slot.dataset.hour = time.hour;
-          timeSlotsContainer.appendChild(slot);
-        });
-      },
-      onDayCreate: (dObj, dStr, fp, dayElem) => {
-        console.log('onDayCreate called for dayElem:', dayElem, 'dateObj:', dayElem.dateObj);
-        if (!dayElem.dateObj || !(dayElem.dateObj instanceof Date)) {
-          console.warn('Invalid dateObj for dayElem:', dayElem);
-          return;
-        }
-        const now = new Date();
-        const day = dayElem.dateObj.getDay();
-        const dateStr = `${dayElem.dateObj.getFullYear()}-${String(dayElem.dateObj.getMonth() + 1).padStart(2, '0')}-${String(dayElem.dateObj.getDate()).padStart(2, '0')}`;
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const isFullyBooked = availableHours.every(hour => bookedTimes.includes(`${dateStr} ${hour.toString().padStart(2, '0')}:00`));
-        console.log(`Checking date ${dateStr}: isSunday=${day === 0}, isFullyBooked=${isFullyBooked}, isTodayPast=${dateStr === todayStr && now.getHours() >= 15}`);
-        if (day === 0 || isFullyBooked || (dateStr === todayStr && now.getHours() >= 15)) {
-          dayElem.classList.add('disabled');
-        }
-      },
-      onChange: (selectedDates, dateStr, instance) => {
-        const selectedDate = selectedDates[0];
-        if (!selectedDate) return;
-
-        const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
-        const timePicker = instance.calendarContainer.parentNode.querySelector('.time-picker');
-        const timeSlots = timePicker.querySelectorAll('.time-slot');
-        const now = new Date();
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const isToday = dateStrPart === todayStr;
-        const currentHour = now.getHours();
-
-        timeSlots.forEach(slot => {
-          const hour = parseInt(slot.dataset.hour);
-          const timeStr = `${dateStrPart} ${hour.toString().padStart(2, '0')}:00`;
-          const isBooked = bookedTimes.includes(timeStr);
-          const isPast = isToday && hour <= currentHour;
-
-          slot.classList.remove('selected', 'disabled');
-          slot.style.pointerEvents = 'auto';
-
-          if (isBooked) {
-            console.log(`Disabling slot: ${timeStr} (Booked)`);
-            slot.classList.add('disabled');
-          } else if (isPast) {
-            console.log(`Disabling slot: ${timeStr} (Current or past hour)`);
-            slot.classList.add('disabled');
-          } else {
-            console.log(`Enabling slot: ${timeStr} (Available)`);
-            slot.onclick = () => {
-              timeSlots.forEach(s => s.classList.remove('selected'));
-              slot.classList.add('selected');
-              selectedDate.setHours(hour, 0, 0, 0);
-              instance.setDate(selectedDate);
-            };
-          }
-        });
-
-        const firstAvailable = Array.from(timeSlots).find(slot => !slot.classList.contains('disabled'));
-        if (firstAvailable && !timePicker.querySelector('.selected')) {
-          firstAvailable.click();
-        } else if (!firstAvailable) {
-          instance.clear();
-          showAlert('No Availability', 'No available times for this date.', 'warning');
-        }
-
-        // Clear previous interval if it exists
-        if (timeUpdateInterval) {
-          clearInterval(timeUpdateInterval);
-        }
-
-        // Set up interval to update time slots every minute if today is selected
-        if (isToday) {
-          timeUpdateInterval = setInterval(() => {
-            console.log('Checking time slot updates for today');
-            instance.changeMonth(0); // Trigger onChange to re-evaluate slots
-          }, 60000); // Every 60 seconds
-        }
-      },
-      onClose: () => {
-        // Clear the interval when the date picker is closed
-        if (timeUpdateInterval) {
-          clearInterval(timeUpdateInterval);
-          timeUpdateInterval = null;
-        }
-      }
-    });
-
-    return bookedTimes;
-  };
-
-  const updateDatePicker = (bookedAppointments) => {
-    console.log('Updating date picker');
-    if (flatpickrInstance) {
-      const bookedTimes = initializeDatePicker(bookedAppointments);
-      flatpickrInstance.config.bookedTimes = bookedTimes;
-      flatpickrInstance.redraw();
-    }
-  };
-
-  const validateAppointmentDate = (date, bookedAppointments) => {
-    console.log('Validating appointment date:', date);
-    const [datePart, hourPart, period] = date.split(' ');
-    let hour = parseInt(hourPart);
-    if (period === 'PM' && hour !== 12) hour += 12;
-    if (period === 'AM' && hour === 12) hour = 0;
-    const selectedDate = new Date(`${datePart}T${hour.toString().padStart(2, '0')}:00`);
-    const selectedStr = `${datePart} ${hour.toString().padStart(2, '0')}:00`;
-    const now = new Date();
-    const day = selectedDate.getDay();
-    const hour24 = selectedDate.getHours();
-    const bookedTimes = Array.isArray(bookedAppointments) ? bookedAppointments.map(appointment => {
-      const d = new Date(appointment.appointment_date);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:00`;
-    }) : [];
-
-    if (selectedDate <= now) return 'Please select a future date and time.';
-    if (day === 0) return 'Appointments are not available on Sundays.';
-    if (hour24 < 9 || hour24 > 16) return 'Appointments are only available between 9 AM and 4 PM.';
-    if (bookedTimes.includes(selectedStr)) return 'This time slot is already booked.';
-    return null;
-  };
-
-  const convertToISO = (dateStr) => {
-    console.log('Converting to ISO:', dateStr);
-    const [datePart, hourPart, period] = dateStr.split(' ');
-    let hour = parseInt(hourPart);
-    if (period === 'PM' && hour !== 12) hour += 12;
-    if (period === 'AM' && hour === 12) hour = 0;
-    return `${datePart}T${hour.toString().padStart(2, '0')}:00:00Z`;
-  };
-
-  const checkAppointmentRestrictions = async (appointments) => {
-    console.log('Checking appointment restrictions:', appointments);
-    const now = new Date();
-    const restrictionMessage = document.getElementById('appointment-restriction-message');
-    const form = document.getElementById('appointment-form');
-
-    const activeAppointment = appointments.find(app => {
-      const appDate = new Date(app.appointment_date);
-      const status = typeof app.status === 'string' ? app.status.toLowerCase() : '';
-      return (status === 'pending' || (status === 'confirmed' && appDate >= now));
-    });
-
-    if (activeAppointment) {
-      restrictionMessage.textContent = 'You cannot book a new appointment while you have an active appointment. Please wait until your appointment is completed or cancelled.';
-      restrictionMessage.style.display = 'block';
-      form.style.display = 'none';
-      return false;
-    }
-
-    const latestAppointment = appointments.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
-    if (latestAppointment) {
-      const updatedAt = new Date(latestAppointment.updated_at);
-      let cooldownDays = 0;
-      let cooldownReason = '';
-      const status = typeof latestAppointment.status === 'string' ? latestAppointment.status.toLowerCase() : '';
-
-      if (status === 'cancelled') {
-        cooldownDays = 3;
-        cooldownReason = 'cancelled';
-      }
-
-      if (cooldownDays > 0) {
-        const cooldownEnd = new Date(updatedAt);
-        cooldownEnd.setDate(updatedAt.getDate() + cooldownDays);
-        const daysRemaining = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60 * 24));
-
-        if (now < cooldownEnd) {
-          restrictionMessage.textContent = `You are under a ${cooldownDays}-day cooldown period because your last appointment was ${cooldownReason}. You can book a new appointment after ${cooldownEnd.toLocaleDateString()}. (${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining)`;
-          restrictionMessage.style.display = 'block';
-          form.style.display = 'none';
-          return false;
-        }
-      }
-
-      if (status === 'confirmed' && new Date(latestAppointment.appointment_date) < now) {
-        restrictionMessage.style.display = 'none';
-        form.style.display = 'block';
-        return true;
-      }
-    }
-
-    restrictionMessage.style.display = 'none';
-    form.style.display = 'block';
-    return true;
-  };
-
-  document.addEventListener('DOMContentLoaded', async function() {
-    showLoading();
-    try {
-      console.log('Starting page initialization');
-
-      let authData;
-      try {
-        authData = await checkAuth();
-        console.log('Auth data:', authData);
-      } catch (err) {
-        console.error('Auth check failed:', err);
-        throw new Error('Authentication check failed');
-      }
-
-      if (!authData.isLoggedIn) {
-        console.log('User not logged in, attempting auto-login');
-        const autoLoginSuccess = await tryAutoLogin();
-        if (autoLoginSuccess) {
-          authData = await checkAuth();
-          console.log('Auto-login successful, new auth data:', authData);
-        }
-      }
-
-      if (!authData.isLoggedIn) {
-        console.log('Redirecting to login page');
-        await showAlert('Login Required', 'Please log in to make an appointment.', 'warning');
-        window.location.replace('pages-login.html');
-        hideLoading();
-        return;
-      }
-
-      let csrfToken;
-      try {
-        csrfToken = await fetchCsrfToken();
-        document.getElementById('csrf-token').value = csrfToken;
-      } catch (err) {
-        console.error('CSRF token fetch failed:', err);
-        throw new Error('Failed to fetch CSRF token');
-      }
-
-      let services;
-      try {
-        services = await fetchServices();
-        populateServices(services);
-      } catch (err) {
-        console.error('Services fetch failed:', err);
-        throw new Error('Failed to fetch services');
-      }
-
-      let userAppointments;
-      try {
-        userAppointments = await fetchUserAppointments();
-      } catch (err) {
-        console.error('User appointments fetch failed:', err);
-        throw new Error('Failed to fetch user appointments');
-      }
-
-      const canBook = await checkAppointmentRestrictions(userAppointments);
-      if (!canBook) {
-        console.log('Cannot book due to restrictions');
-        hideLoading();
-        return;
-      }
-
-      let bookedAppointments;
-      try {
-        bookedAppointments = await fetchBookedAppointments();
-        initializeDatePicker(bookedAppointments);
-      } catch (err) {
-        console.error('Booked appointments fetch failed:', err);
-        throw new Error('Failed to fetch booked appointments');
-      }
-
-      let socket;
-      try {
-        socket = initializeWebSocket((updatedAppointments) => {
-          console.log('Updating date picker with new appointments:', updatedAppointments);
-          updateDatePicker(updatedAppointments);
-        }, authData.userId);
-      } catch (err) {
-        console.error('Socket.IO initialization failed:', err);
-      }
-
-      document.getElementById('appointment-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        showLoading();
-
-        const serviceId = document.getElementById('service').value;
-        const appointmentDate = document.getElementById('appointment-date').value;
-        const notes = document.getElementById('notes').value.trim();
-        const csrfToken = document.getElementById('csrf-token').value;
-
-        if (!serviceId || !appointmentDate) {
-          hideLoading();
-          await showAlert('Incomplete Form', 'Please select a service and appointment date.', 'warning');
-          return;
-        }
-
-        const dateValidationError = validateAppointmentDate(appointmentDate, bookedAppointments);
-        if (dateValidationError) {
-          hideLoading();
-          await showAlert('Invalid Date', dateValidationError, 'warning');
-          return;
-        }
-
-        const isoAppointmentDate = convertToISO(appointmentDate);
-        const payload = {
-          user_id: String(authData.userId),
-          appointment_date: isoAppointmentDate,
-          service_id: String(serviceId),
-          notes: notes || null,
-        };
-
-        console.log('Sending appointment request:', payload);
-
-        try {
-          const response = await withTimeout(fetch(`${BASE_URL}/api/appointments`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              'CSRF-Token': csrfToken
-            },
-            body: JSON.stringify(payload),
-          }));
-
-          const responseData = await response.json();
-
-          if (response.status === 401) {
-            hideLoading();
-            await showAlert('Session Expired', 'Please log in again.', 'error');
-            window.location.replace('pages-login.html');
-            return;
-          }
-
-          if (response.status === 403) {
-            hideLoading();
-            await showAlert('Security Error', 'Invalid CSRF token. Please refresh the page and try again.', 'error');
-            return;
-          }
-
-          if (response.status === 429) {
-            console.log('Rate limit exceeded:', responseData);
-            hideLoading();
-            await showAlert('Booking Limit Reached', 'You have reached the maximum of 5 appointments per day. Please try booking for a different day.', 'warning');
-            return;
-          }
-
-          if (response.status === 500) {
-            console.error('Server error:', responseData);
-            hideLoading();
-            await showAlert('Server Error', responseData.message || 'An unexpected error occurred on the server. Please try again later.', 'error');
-            return;
-          }
-
-          if (!response.ok) {
-            console.error('Server response:', responseData);
-            throw new Error(responseData.message || 'Failed to book appointment');
-          }
-
-          hideLoading();
-          await showAlert('Success', responseData.message || 'Appointment booked successfully!', 'success');
-
-          const authCheck = await checkAuth();
-          if (authCheck.isLoggedIn) {
-            window.location.href = 'profile.html';
-          } else {
-            await showAlert('Session Expired', 'Please log in again.', 'error');
-            window.location.replace('pages-login.html');
-          }
-        } catch (err) {
-          console.error('Error booking appointment:', err);
-          hideLoading();
-          await showAlert('Error', `Failed to book appointment: ${err.message}`, 'error');
-        }
-      });
-
-      console.log('Page initialization completed');
-    } catch (err) {
-      console.error('Error initializing page:', err);
-      await showAlert('Error', err.message || 'An error occurred while loading the page. Please try again later.', 'error');
-    } finally {
+  <script>
+    AOS.init();
+
+    // Base URL for API and Socket.IO
+    const BASE_URL = window.location.hostname === 'localhost' 
+      ? 'http://localhost:3000' 
+      : 'https://balane-saspa-dental-1.onrender.com';
+
+    // Utility functions
+    const showLoading = () => {
+      console.log('Showing loading overlay');
+      document.getElementById('loading-overlay').style.display = 'flex';
+      document.querySelector('.book-appointment-btn').disabled = true;
+    };
+
+    const hideLoading = () => {
+      console.log('Hiding loading overlay');
+      document.getElementById('loading-overlay').style.display = 'none';
+      document.querySelector('.book-appointment-btn').disabled = false;
+    };
+
+    const showAlert = (title, text, icon = 'info') => {
+      console.log(`Showing alert: ${title} - ${text}`);
       hideLoading();
-    }
-  });
-</script>
+      return Swal.fire({
+        title,
+        text,
+        icon,
+        confirmButtonColor: '#6f42c1',
+        confirmButtonText: 'OK',
+        customClass: {
+          popup: 'swal2-modern'
+        }
+      });
+    };
+
+    const withTimeout = (promise, timeoutMs = 10000) => {
+      return Promise.race([
+        promise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timed out')), timeoutMs)
+        )
+      ]);
+    };
+
+    const tryAutoLogin = async () => {
+      try {
+        console.log('Attempting auto-login');
+        const response = await withTimeout(fetch(`${BASE_URL}/auth/auto-login`, {
+          method: 'POST',
+          credentials: 'include',
+        }));
+        if (!response.ok) throw new Error(`Auto-login failed: ${response.statusText}`);
+        const data = await response.json();
+        console.log('Auto-login response:', data);
+        return data.success;
+      } catch (err) {
+        console.error('Auto-login error:', err);
+        return false;
+      }
+    };
+
+    const checkAuth = async () => {
+      try {
+        console.log('Checking authentication');
+        const response = await withTimeout(fetch(`${BASE_URL}/check-auth`, {
+          credentials: 'include'
+        }));
+        if (!response.ok) throw new Error(`Failed to check auth: ${response.statusText}`);
+        const data = await response.json();
+        console.log('Auth check response:', data);
+        return data;
+      } catch (err) {
+        console.error('Error checking auth:', err);
+        throw err;
+      }
+    };
+
+    const fetchCsrfToken = async () => {
+      try {
+        console.log('Fetching CSRF token');
+        const response = await withTimeout(fetch(`${BASE_URL}/auth/csrf-token`, {
+          credentials: 'include'
+        }));
+        if (!response.ok) throw new Error(`Failed to fetch CSRF token: ${response.statusText}`);
+        const data = await response.json();
+        console.log('CSRF token fetched:', data.csrfToken);
+        return data.csrfToken;
+      } catch (err) {
+        console.error('Error fetching CSRF token:', err);
+        throw err;
+      }
+    };
+
+    const fetchServices = async () => {
+      try {
+        console.log('Fetching services');
+        const response = await withTimeout(fetch(`${BASE_URL}/api/services/all`, {
+          credentials: 'include'
+        }));
+        if (!response.ok) {
+          if (response.status === 401) throw new Error('Unauthorized: Please log in again.');
+          throw new Error(`Failed to fetch services: ${response.statusText}`);
+        }
+        const data = await response.json();
+        console.log('Services fetched:', data);
+        return Array.isArray(data.services) ? data.services : (Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Error fetching services:', err);
+        throw err;
+      }
+    };
+
+    const fetchUserAppointments = async () => {
+      try {
+        console.log('Fetching user appointments');
+        const response = await withTimeout(fetch(`${BASE_URL}/api/appointments`, {
+          credentials: 'include'
+        }));
+        if (!response.ok) {
+          if (response.status === 401) throw new Error('Unauthorized: Please log in again.');
+          throw new Error(`Failed to fetch user appointments: ${response.statusText}`);
+        }
+        const data = await response.json();
+        console.log('User appointments fetched:', data);
+        return Array.isArray(data.appointments) ? data.appointments : [];
+      } catch (err) {
+        console.error('Error fetching user appointments:', err);
+        throw err;
+      }
+    };
+
+    const fetchBookedAppointments = async () => {
+      try {
+        console.log('Fetching booked appointments');
+        const response = await withTimeout(fetch(`${BASE_URL}/api/appointments/booked?ts=${Date.now()}`, {
+          credentials: 'include',
+          cache: 'no-store'
+        }));
+        if (!response.ok) {
+          if (response.status === 401) throw new Error('Unauthorized: Please log in again.');
+          throw new Error(`Failed to fetch booked appointments: ${response.statusText}`);
+        }
+        const data = await response.json();
+        console.log('Booked appointments fetched:', data.appointments);
+        return Array.isArray(data.appointments) ? data.appointments : [];
+      } catch (err) {
+        console.error('Error fetching booked appointments:', err);
+        throw err;
+      }
+    };
+
+    const populateServices = (services) => {
+      console.log('Populating services:', services);
+      const serviceList = document.getElementById('service-list');
+      const serviceInput = document.getElementById('service');
+      const serviceDescription = document.getElementById('service-description');
+      const serviceDescriptionText = document.getElementById('service-description-text');
+
+      if (!services || !Array.isArray(services) || services.length === 0) {
+        serviceList.innerHTML = '<div class="service-item">No services available</div>';
+        return;
+      }
+
+      const serviceDescriptions = {};
+      services.forEach(service => {
+        const serviceItem = document.createElement('div');
+        serviceItem.className = 'service-item';
+        serviceItem.textContent = service.name;
+        serviceItem.dataset.serviceId = String(service.id);
+        serviceList.appendChild(serviceItem);
+        serviceDescriptions[service.id] = service.description;
+
+        serviceItem.addEventListener('click', () => {
+          document.querySelectorAll('.service-item').forEach(item => item.classList.remove('selected'));
+          serviceItem.classList.add('selected');
+          serviceInput.value = String(service.id);
+          serviceDescriptionText.innerHTML = serviceDescriptions[service.id].replace(/\n/g, '<br>');
+          serviceDescription.style.display = 'block';
+        });
+      });
+    };
+
+    const initializeWebSocket = (onUpdate, userId) => {
+      console.log('Initializing Socket.IO connection');
+      const socket = io(BASE_URL, {
+        withCredentials: true,
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 5000,
+        auth: { userId: String(userId) }
+      });
+
+      socket.on('connect', () => {
+        console.log(`Socket.IO connected: ${socket.id}`);
+        socket.emit('join', { userId: String(userId) });
+      });
+
+      socket.on('welcome', (data) => {
+        console.log('Socket.IO welcome:', data);
+      });
+
+      socket.on('appointment_update', (data) => {
+        console.log('Received Socket.IO appointment update:', data.appointments);
+        onUpdate(data.appointments);
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('Socket.IO connection error:', error.message);
+        if (error.message === 'Unauthorized') {
+          showAlert('Session Expired', 'Please log in again.', 'error').then(() => {
+            window.location.replace('pages-login.html');
+          });
+        }
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log(`Socket.IO disconnected: ${reason}`);
+        if (reason === 'io server disconnect') {
+          socket.connect();
+        }
+      });
+
+      socket.on('error', (error) => {
+        console.error('Socket.IO error:', error);
+      });
+
+      return socket;
+    };
+
+    let flatpickrInstance = null;
+    let timeUpdateInterval = null;
+
+    const initializeDatePicker = (bookedAppointments) => {
+      console.log('Initializing date picker with booked appointments:', bookedAppointments);
+      const bookedTimes = Array.isArray(bookedAppointments) ? bookedAppointments.map(appointment => {
+        const date = new Date(appointment.appointment_date);
+        if (isNaN(date.getTime())) {
+          console.warn('Invalid date in appointment:', appointment);
+          return null;
+        }
+        const timeStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:00`;
+        console.log(`Processing appointment: ID=${appointment.id}, Time=${timeStr}, Status=${appointment.status || 'unknown'}`);
+        return timeStr;
+      }).filter(time => time !== null) : [];
+
+      console.log('All booked times:', bookedTimes);
+
+      const availableHours = [9, 10, 11, 12, 13, 14, 15, 16];
+      flatpickrInstance = flatpickr('#appointment-date', {
+        dateFormat: "Y-m-d h K",
+        minDate: "today",
+        inline: true,
+        disable: [
+          function(date) {
+            const now = new Date();
+            const day = date.getDay();
+            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            if (day === 0) return true;
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            if (dateStr === todayStr && now.getHours() >= 15) return true;
+            const isFullyBooked = availableHours.every(hour => bookedTimes.includes(`${dateStr} ${hour.toString().padStart(2, '0')}:00`));
+            console.log(`Date ${dateStr} fully booked: ${isFullyBooked}`);
+            return isFullyBooked;
+          }
+        ],
+        onReady: (selectedDates, dateStr, instance) => {
+          const calendarContainer = instance.calendarContainer;
+          calendarContainer.classList.add('flatpickr-calendar');
+          const pickerContainer = document.createElement('div');
+          pickerContainer.className = 'picker-container';
+          calendarContainer.parentNode.insertBefore(pickerContainer, calendarContainer);
+          pickerContainer.appendChild(calendarContainer);
+
+          const timePicker = document.createElement('div');
+          timePicker.className = 'time-picker';
+          timePicker.innerHTML = '<div class="time-picker-header">Time</div><div class="time-picker-slots"></div>';
+          pickerContainer.appendChild(timePicker);
+
+          const timeSlotsContainer = timePicker.querySelector('.time-picker-slots');
+          const times = [
+            { hour: 9, label: '9 AM' }, { hour: 10, label: '10 AM' },
+            { hour: 11, label: '11 AM' }, { hour: 12, label: '12 PM' },
+            { hour: 13, label: '1 PM' }, { hour: 14, label: '2 PM' },
+            { hour: 15, label: '3 PM' }, { hour: 16, label: '4 PM' }
+          ];
+          times.forEach(time => {
+            const slot = document.createElement('div');
+            slot.className = 'time-slot';
+            slot.textContent = time.label;
+            slot.dataset.hour = time.hour;
+            timeSlotsContainer.appendChild(slot);
+          });
+        },
+        onDayCreate: (dObj, dStr, fp, dayElem) => {
+          console.log('onDayCreate called for dayElem:', dayElem, 'dateObj:', dayElem.dateObj);
+          if (!dayElem.dateObj || !(dayElem.dateObj instanceof Date)) {
+            console.warn('Invalid dateObj for dayElem:', dayElem);
+            return;
+          }
+          const now = new Date();
+          const day = dayElem.dateObj.getDay();
+          const dateStr = `${dayElem.dateObj.getFullYear()}-${String(dayElem.dateObj.getMonth() + 1).padStart(2, '0')}-${String(dayElem.dateObj.getDate()).padStart(2, '0')}`;
+          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const isFullyBooked = availableHours.every(hour => bookedTimes.includes(`${dateStr} ${hour.toString().padStart(2, '0')}:00`));
+          console.log(`Checking date ${dateStr}: isSunday=${day === 0}, isFullyBooked=${isFullyBooked}, isTodayPast=${dateStr === todayStr && now.getHours() >= 15}`);
+          if (day === 0 || isFullyBooked || (dateStr === todayStr && now.getHours() >= 15)) {
+            dayElem.classList.add('disabled');
+          }
+        },
+        onChange: (selectedDates, dateStr, instance) => {
+          const selectedDate = selectedDates[0];
+          if (!selectedDate) return;
+
+          const dateStrPart = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+          const timePicker = instance.calendarContainer.parentNode.querySelector('.time-picker');
+          const timeSlots = timePicker.querySelectorAll('.time-slot');
+          const now = new Date();
+          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          const isToday = dateStrPart === todayStr;
+          const currentHour = now.getHours();
+
+          timeSlots.forEach(slot => {
+            const hour = parseInt(slot.dataset.hour);
+            const timeStr = `${dateStrPart} ${hour.toString().padStart(2, '0')}:00`;
+            const isBooked = bookedTimes.includes(timeStr);
+            const isPast = isToday && hour <= currentHour;
+
+            slot.classList.remove('selected', 'disabled');
+            slot.style.pointerEvents = 'auto';
+
+            if (isBooked) {
+              console.log(`Disabling slot: ${timeStr} (Booked)`);
+              slot.classList.add('disabled');
+            } else if (isPast) {
+              console.log(`Disabling slot: ${timeStr} (Current or past hour)`);
+              slot.classList.add('disabled');
+            } else {
+              console.log(`Enabling slot: ${timeStr} (Available)`);
+              slot.onclick = () => {
+                timeSlots.forEach(s => s.classList.remove('selected'));
+                slot.classList.add('selected');
+                selectedDate.setHours(hour, 0, 0, 0);
+                instance.setDate(selectedDate);
+              };
+            }
+          });
+
+          const firstAvailable = Array.from(timeSlots).find(slot => !slot.classList.contains('disabled'));
+          if (firstAvailable && !timePicker.querySelector('.selected')) {
+            firstAvailable.click();
+          } else if (!firstAvailable) {
+            instance.clear();
+            showAlert('No Availability', 'No available times for this date.', 'warning');
+          }
+
+          // Clear previous interval if it exists
+          if (timeUpdateInterval) {
+            clearInterval(timeUpdateInterval);
+          }
+
+          // Set up interval to update time slots every minute if today is selected
+          if (isToday) {
+            timeUpdateInterval = setInterval(() => {
+              console.log('Checking time slot updates for today');
+              instance.changeMonth(0); // Trigger onChange to re-evaluate slots
+            }, 60000); // Every 60 seconds
+          }
+        },
+        onClose: () => {
+          // Clear the interval when the date picker is closed
+          if (timeUpdateInterval) {
+            clearInterval(timeUpdateInterval);
+            timeUpdateInterval = null;
+          }
+        }
+      });
+
+      return bookedTimes;
+    };
+
+    const updateDatePicker = (bookedAppointments) => {
+      console.log('Updating date picker');
+      if (flatpickrInstance) {
+        const bookedTimes = initializeDatePicker(bookedAppointments);
+        flatpickrInstance.config.bookedTimes = bookedTimes;
+        flatpickrInstance.redraw();
+      }
+    };
+
+    const validateAppointmentDate = (date, bookedAppointments) => {
+      console.log('Validating appointment date:', date);
+      const [datePart, hourPart, period] = date.split(' ');
+      let hour = parseInt(hourPart);
+      if (period === 'PM' && hour !== 12) hour += 12;
+      if (period === 'AM' && hour === 12) hour = 0;
+      const selectedDate = new Date(`${datePart}T${hour.toString().padStart(2, '0')}:00`);
+      const selectedStr = `${datePart} ${hour.toString().padStart(2, '0')}:00`;
+      const now = new Date();
+      const day = selectedDate.getDay();
+      const hour24 = selectedDate.getHours();
+      const bookedTimes = Array.isArray(bookedAppointments) ? bookedAppointments.map(appointment => {
+        const d = new Date(appointment.appointment_date);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:00`;
+      }) : [];
+
+      if (selectedDate <= now) return 'Please select a future date and time.';
+      if (day === 0) return 'Appointments are not available on Sundays.';
+      if (hour24 < 9 || hour24 > 16) return 'Appointments are only available between 9 AM and 4 PM.';
+      if (bookedTimes.includes(selectedStr)) return 'This time slot is already booked.';
+      return null;
+    };
+
+    const convertToISO = (dateStr) => {
+      console.log('Converting to ISO:', dateStr);
+      const [datePart, hourPart, period] = dateStr.split(' ');
+      let hour = parseInt(hourPart);
+      if (period === 'PM' && hour !== 12) hour += 12;
+      if (period === 'AM' && hour === 12) hour = 0;
+      return `${datePart}T${hour.toString().padStart(2, '0')}:00:00Z`;
+    };
+
+    const checkAppointmentRestrictions = async (appointments) => {
+      console.log('Checking appointment restrictions:', appointments);
+      const now = new Date();
+      const restrictionMessage = document.getElementById('appointment-restriction-message');
+      const form = document.getElementById('appointment-form');
+
+      const activeAppointment = appointments.find(app => {
+        const appDate = new Date(app.appointment_date);
+        const status = typeof app.status === 'string' ? app.status.toLowerCase() : '';
+        return (status === 'pending' || (status === 'confirmed' && appDate >= now));
+      });
+
+      if (activeAppointment) {
+        restrictionMessage.textContent = 'You cannot book a new appointment while you have an active appointment. Please wait until your appointment is completed or cancelled.';
+        restrictionMessage.style.display = 'block';
+        form.style.display = 'none';
+        return false;
+      }
+
+      const latestAppointment = appointments.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))[0];
+      if (latestAppointment) {
+        const updatedAt = new Date(latestAppointment.updated_at);
+        let cooldownDays = 0;
+        let cooldownReason = '';
+        const status = typeof latestAppointment.status === 'string' ? latestAppointment.status.toLowerCase() : '';
+
+        if (status === 'cancelled') {
+          cooldownDays = 3;
+          cooldownReason = 'cancelled';
+        }
+
+        if (cooldownDays > 0) {
+          const cooldownEnd = new Date(updatedAt);
+          cooldownEnd.setDate(updatedAt.getDate() + cooldownDays);
+          const daysRemaining = Math.ceil((cooldownEnd - now) / (1000 * 60 * 60 * 24));
+
+          if (now < cooldownEnd) {
+            restrictionMessage.textContent = `You are under a ${cooldownDays}-day cooldown period because your last appointment was ${cooldownReason}. You can book a new appointment after ${cooldownEnd.toLocaleDateString()}. (${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining)`;
+            restrictionMessage.style.display = 'block';
+            form.style.display = 'none';
+            return false;
+          }
+        }
+
+        if (status === 'confirmed' && new Date(latestAppointment.appointment_date) < now) {
+          restrictionMessage.style.display = 'none';
+          form.style.display = 'block';
+          return true;
+        }
+      }
+
+      restrictionMessage.style.display = 'none';
+      form.style.display = 'block';
+      return true;
+    };
+
+    document.addEventListener('DOMContentLoaded', async function() {
+      showLoading();
+      try {
+        console.log('Starting page initialization');
+
+        let authData;
+        try {
+          authData = await checkAuth();
+          console.log('Auth data:', authData);
+        } catch (err) {
+          console.error('Auth check failed:', err);
+          throw new Error('Authentication check failed');
+        }
+
+        if (!authData.isLoggedIn) {
+          console.log('User not logged in, attempting auto-login');
+          const autoLoginSuccess = await tryAutoLogin();
+          if (autoLoginSuccess) {
+            authData = await checkAuth();
+            console.log('Auto-login successful, new auth data:', authData);
+          }
+        }
+
+        if (!authData.isLoggedIn) {
+          console.log('Redirecting to login page');
+          await showAlert('Login Required', 'Please log in to make an appointment.', 'warning');
+          window.location.replace('pages-login.html');
+          hideLoading();
+          return;
+        }
+
+        let csrfToken;
+        try {
+          csrfToken = await fetchCsrfToken();
+          document.getElementById('csrf-token').value = csrfToken;
+        } catch (err) {
+          console.error('CSRF token fetch failed:', err);
+          throw new Error('Failed to fetch CSRF token');
+        }
+
+        let services;
+        try {
+          services = await fetchServices();
+          populateServices(services);
+        } catch (err) {
+          console.error('Services fetch failed:', err);
+          throw new Error('Failed to fetch services');
+        }
+
+        let userAppointments;
+        try {
+          userAppointments = await fetchUserAppointments();
+        } catch (err) {
+          console.error('User appointments fetch failed:', err);
+          throw new Error('Failed to fetch user appointments');
+        }
+
+        const canBook = await checkAppointmentRestrictions(userAppointments);
+        if (!canBook) {
+          console.log('Cannot book due to restrictions');
+          hideLoading();
+          return;
+        }
+
+        let bookedAppointments;
+        try {
+          bookedAppointments = await fetchBookedAppointments();
+          initializeDatePicker(bookedAppointments);
+        } catch (err) {
+          console.error('Booked appointments fetch failed:', err);
+          throw new Error('Failed to fetch booked appointments');
+        }
+
+        let socket;
+        try {
+          socket = initializeWebSocket((updatedAppointments) => {
+            console.log('Updating date picker with new appointments:', updatedAppointments);
+            updateDatePicker(updatedAppointments);
+          }, authData.userId);
+        } catch (err) {
+          console.error('Socket.IO initialization failed:', err);
+        }
+
+        document.getElementById('appointment-form').addEventListener('submit', async function(e) {
+          e.preventDefault();
+          showLoading();
+
+          const serviceId = document.getElementById('service').value;
+          const appointmentDate = document.getElementById('appointment-date').value;
+          const notes = document.getElementById('notes').value.trim();
+          const csrfToken = document.getElementById('csrf-token').value;
+
+          if (!serviceId || !appointmentDate) {
+            hideLoading();
+            await showAlert('Incomplete Form', 'Please select a service and appointment date.', 'warning');
+            return;
+          }
+
+          const dateValidationError = validateAppointmentDate(appointmentDate, bookedAppointments);
+          if (dateValidationError) {
+            hideLoading();
+            await showAlert('Invalid Date', dateValidationError, 'warning');
+            return;
+          }
+
+          const isoAppointmentDate = convertToISO(appointmentDate);
+          const payload = {
+            user_id: String(authData.userId),
+            appointment_date: isoAppointmentDate,
+            service_id: String(serviceId),
+            notes: notes || null,
+          };
+
+          console.log('Sending appointment request:', payload);
+
+          try {
+            const response = await withTimeout(fetch(`${BASE_URL}/api/appointments`, {
+              method: 'POST',
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json',
+                'CSRF-Token': csrfToken
+              },
+              body: JSON.stringify(payload),
+            }));
+
+            const responseData = await response.json();
+
+            if (response.status === 401) {
+              hideLoading();
+              await showAlert('Session Expired', 'Please log in again.', 'error');
+              window.location.replace('pages-login.html');
+              return;
+            }
+
+            if (response.status === 403) {
+              hideLoading();
+              await showAlert('Security Error', 'Invalid CSRF token. Please refresh the page and try again.', 'error');
+              return;
+            }
+
+            if (response.status === 429) {
+              console.log('Rate limit exceeded:', responseData);
+              hideLoading();
+              await showAlert('Booking Limit Reached', 'You have reached the maximum of 5 appointments per day. Please try booking for a different day.', 'warning');
+              return;
+            }
+
+            if (response.status === 500) {
+              console.error('Server error:', responseData);
+              hideLoading();
+              await showAlert('Server Error', responseData.message || 'An unexpected error occurred on the server. Please try again later.', 'error');
+              return;
+            }
+
+            if (!response.ok) {
+              console.error('Server response:', responseData);
+              throw new Error(responseData.message || 'Failed to book appointment');
+            }
+
+            hideLoading();
+            await showAlert('Success', responseData.message || 'Appointment booked successfully!', 'success');
+
+            const authCheck = await checkAuth();
+            if (authCheck.isLoggedIn) {
+              window.location.href = 'profile.html';
+            } else {
+              await showAlert('Session Expired', 'Please log in again.', 'error');
+              window.location.replace('pages-login.html');
+            }
+          } catch (err) {
+            console.error('Error booking appointment:', err);
+            hideLoading();
+            await showAlert('Error', `Failed to book appointment: ${err.message}`, 'error');
+          }
+        });
+
+        console.log('Page initialization completed');
+      } catch (err) {
+        console.error('Error initializing page:', err);
+        await showAlert('Error', err.message || 'An error occurred while loading the page. Please try again later.', 'error');
+      } finally {
+        hideLoading();
+      }
+    });
+  </script>
 
   <script src="assets/js/main.js"></script>
 </body>

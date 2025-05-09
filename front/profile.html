@@ -12,7 +12,7 @@
 
   <link href="https://fonts.googleapis.com" rel="preconnect">
   <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0, recipes;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
 
   <link href="assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
@@ -324,6 +324,48 @@
       margin-top: 20px;
     }
 
+    .policy-links {
+      margin-top: 15px;
+      text-align: center;
+    }
+
+    .policy-links a {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .policy-links a:hover {
+      text-decoration: underline;
+    }
+
+    .modal-body {
+      max-height: 60vh;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .modal-body h1, .modal-body h2, .modal-body h3, .modal-body h4, .modal-body h5, .modal-body h6 {
+      color: #333;
+      margin-top: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .modal-body p {
+      margin-bottom: 1rem;
+      line-height: 1.6;
+    }
+
+    .modal-body ul, .modal-body ol {
+      margin-bottom: 1rem;
+      padding-left: 20px;
+    }
+
+    .modal-body li {
+      margin-bottom: 0.5rem;
+    }
+
     @media (max-width: 768px) {
       .card {
         margin-bottom: 20px;
@@ -424,6 +466,9 @@
                 <button class="btn btn-danger mt-4" id="logoutButton">
                   <i class="bi bi-box-arrow-right me-2"></i>Logout
                 </button>
+                <div class="policy-links">
+                  <a href="#" data-bs-toggle="modal" data-bs-target="#termsConditionsModal">Terms and Conditions</a>
+                </div>
               </div>
             </div>
           </div>
@@ -541,7 +586,7 @@
                   <div class="tab-pane fade profile-edit pt-3" id="profile-edit">
                     <form id="profile-edit-form">
                       <div class="row mb-3">
-                        <label for="fullName" class="col-md-4 col-lg-3 col-form-label">Full Name</label>
+                        <label for="fullName" class="col-md-4 col-lg молит3 col-form-label">Full Name</label>
                         <div class="col-md-8 col-lg-9">
                           <input name="fullName" type="text" class="form-control" id="fullName" value="">
                         </div>
@@ -772,6 +817,108 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
           <button type="button" class="btn btn-danger" id="confirmCancelAppointment">Confirm Cancellation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terms and Conditions Modal -->
+  <div class="modal fade" id="termsConditionsModal" tabindex="-1" aria-labelledby="termsConditionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="termsConditionsModalLabel">Terms and Conditions</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <h6>Last Updated: May 8, 2025</h6>
+          <h5>1. ACCEPTANCE OF TERMS</h5>
+          <p>Welcome to Balane-Saspa Dental Appointment System. These Terms and Conditions ("Terms") govern your access to and use of our website, mobile application, and dental appointment scheduling services (collectively, the "Service") operated by Balane-Saspa Dental Clinic ("we," "our," or "us").</p>
+          <p>By accessing or using our Service, you agree to be bound by these Terms. If you disagree with any part of these Terms, you may not access the Service.</p>
+          <h5>2. CHANGES TO TERMS</h5>
+          <p>We reserve the right to modify or replace these Terms at any time at our sole discretion. The most current version will be posted on our website with the "Last Updated" date. Your continued use of our Service after any changes constitutes your acceptance of the new Terms.</p>
+          <h5>3. ACCOUNT REGISTRATION AND SECURITY</h5>
+          <h6>3.1 Account Creation</h6>
+          <p>To use certain features of our Service, you may be required to register for an account. You agree to provide accurate, current, and complete information during the registration process and to update such information to keep it accurate, current, and complete.</p>
+          <h6>3.2 Account Security</h6>
+          <p>You are solely responsible for:</p>
+          <ul>
+            <li>Maintaining the confidentiality of your account credentials</li>
+            <li>All activities that occur under your account</li>
+            <li>Notifying us immediately of any unauthorized use of your account</li>
+          </ul>
+          <p>We reserve the right to disable any user account at any time if, in our opinion, you have failed to comply with any provision of these Terms.</p>
+          <h5>4. BOOKING AND APPOINTMENT POLICY</h5>
+          <h6>4.1 Appointment Scheduling</h6>
+          <p>Our Service allows you to schedule dental appointments. By scheduling an appointment, you agree to:</p>
+          <ul>
+            <li>Provide accurate patient information</li>
+            <li>Arrive punctually for scheduled appointments</li>
+            <li>Follow all pre-appointment instructions provided by our staff</li>
+          </ul>
+          <h6>4.2 Cancellation Policy</h6>
+          <p>If you need to cancel or reschedule an appointment, you must do so at least 24 hours in advance. Failure to provide adequate notice may result in a cancellation fee, as determined by the clinic.</p>
+          <h6>4.3 No-Show Policy</h6>
+          <p>Patients who fail to show up for scheduled appointments without providing notice may be charged a no-show fee and may be required to prepay for future appointments.</p>
+          <h5>5. PAYMENT TERMS</h5>
+          <h6>5.1 Payment Process</h6>
+          <p>Our payment process is simple: you will only pay for dental services after your successful appointment. We do not require online payments or advance payments through our Service. All payments will be processed at our clinic following the completion of your dental services.</p>
+          <h6>5.2 Fee Schedule</h6>
+          <p>Our fees for dental services are available upon request at our clinic. We reserve the right to modify our fees at any time. Any fee changes will not affect previously scheduled appointments.</p>
+          <h6>5.3 Insurance</h6>
+          <p>While we accept many insurance plans, you are responsible for verifying coverage with your insurance provider before receiving treatment. You remain financially responsible for any services not covered by your insurance.</p>
+          <h6>5.4 Payment Methods</h6>
+          <p>We accept various payment methods as specified at our clinic. These payment options will be communicated to you at the time of your appointment.</p>
+          <h6>5.5 Outstanding Balances</h6>
+          <p>You agree to pay any outstanding balance promptly upon completion of dental services. Accounts with overdue balances may be referred to a collection agency, and you may be responsible for any associated collection costs.</p>
+          <h5>6. USER CONDUCT</h5>
+          <p>When using our Service, you agree not to:</p>
+          <ul>
+            <li>Use the Service in any way that violates applicable law or regulation</li>
+            <li>Impersonate any person or entity or falsely state or misrepresent your affiliation with a person or entity</li>
+            <li>Engage in any conduct that restricts or inhibits anyone's use or enjoyment of the Service</li>
+            <li>Attempt to gain unauthorized access to any portion of the Service or any other systems or networks connected to the Service</li>
+            <li>Use any automated means, including bots, scrapers, or spiders, to access the Service</li>
+            <li>Introduce any malware, viruses, or other malicious code to the Service</li>
+          </ul>
+          <h5>7. INTELLECTUAL PROPERTY</h5>
+          <h6>7.1 Our Intellectual Property</h6>
+          <p>The Service and its original content, features, and functionality are and will remain the exclusive property of Balane-Saspa Dental Clinic and its licensors. The Service is protected by copyright, trademark, and other laws of the Philippines and foreign countries.</p>
+          <h6>7.2 Limited License</h6>
+          <p>Subject to these Terms, we grant you a limited, non-exclusive, non-transferable, and revocable license to access and use our Service for your personal, non-commercial use.</p>
+          <h6>7.3 Feedback</h6>
+          <p>Any feedback, comments, or suggestions you may provide regarding our Service is entirely voluntary, and we will be free to use such feedback at our discretion without any obligation to you.</p>
+          <h5>8. THIRD-PARTY LINKS AND CONTENT</h5>
+          <p>Our Service may contain links to third-party websites or services that are not owned or controlled by Balane-Saspa Dental Clinic. We have no control over and assume no responsibility for the content, privacy policies, or practices of any third-party websites or services. You acknowledge and agree that we shall not be responsible or liable for any damage or loss caused by the use of such third-party websites or services.</p>
+          <h5>9. LIMITATION OF LIABILITY</h5>
+          <p>To the maximum extent permitted by law, in no event shall Balane-Saspa Dental Clinic, its directors, employees, partners, agents, suppliers, or affiliates be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from:</p>
+          <ul>
+            <li>Your access to or use of or inability to access or use the Service</li>
+            <li>Any conduct or content of any third party on the Service</li>
+            <li>Any content obtained from the Service</li>
+            <li>Unauthorized access, use, or alteration of your transmissions or content</li>
+          </ul>
+          <h5>10. DISCLAIMER</h5>
+          <p>Your use of the Service is at your sole risk. The Service is provided on an "AS IS" and "AS AVAILABLE" basis. The Service is provided without warranties of any kind, whether express or implied, including, but not limited to, implied warranties of merchantability, fitness for a particular purpose, non-infringement, or course of performance.</p>
+          <h5>11. INDEMNIFICATION</h5>
+          <p>You agree to defend, indemnify, and hold harmless Balane-Saspa Dental Clinic, its licensors, and service providers, and its and their respective officers, directors, employees, contractors, agents, licensors, suppliers, successors, and assigns from and against any claims, liabilities, damages, judgments, awards, losses, costs, expenses, or fees (including reasonable attorneys' fees) arising out of or relating to your violation of these Terms or your use of the Service.</p>
+          <h5>12. TERMINATION</h5>
+          <p>We may terminate or suspend your account and bar access to the Service immediately, without prior notice or liability, under our sole discretion, for any reason whatsoever, including without limitation if you breach these Terms.</p>
+          <p>Upon termination, your right to use the Service will immediately cease. If you wish to terminate your account, you may simply discontinue using the Service.</p>
+          <h5>13. GOVERNING LAW</h5>
+          <p>These Terms shall be governed and construed in accordance with the laws of the Philippines, without regard to its conflict of law provisions. Our failure to enforce any right or provision of these Terms will not be considered a waiver of those rights.</p>
+          <h5>14. DISPUTE RESOLUTION</h5>
+          <p>Any dispute arising out of or relating to these Terms or the Service shall be resolved through amicable settlement between the parties. If amicable settlement is not possible, the dispute shall be submitted to the appropriate courts in Camarines Norte, Philippines.</p>
+          <h5>15. SEVERABILITY</h5>
+          <p>If any provision of these Terms is held to be invalid or unenforceable by a court, the remaining provisions of these Terms will remain in effect.</p>
+          <h5>16. ENTIRE AGREEMENT</h5>
+          <p>These Terms constitute the entire agreement between you and Balane-Saspa Dental Clinic regarding our Service, and supersede and replace any prior agreements we might have with you.</p>
+          <h5>17. CONTACT US</h5>
+          <p>If you have any questions about these Terms, please contact us at:</p>
+          <p>Balane-Saspa Dental Clinic<br>4X94+XQ2, Bagasbas Road, Daet<br>Camarines Norte, Philippines, 4600<br>Email: dmdannsaspa@yahoo.com<br>Phone: +63 920 797 6690</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
     </div>
