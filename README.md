@@ -11,7 +11,6 @@ A **responsive web application** for booking and managing dental appointments. P
   - [Patient Side](#patient-side)
   - [Admin Side](#admin-side)
 - [Tech Stack](#tech-stack)
-- [License](#license)
 - [Contact](#contact)
 
 ---
