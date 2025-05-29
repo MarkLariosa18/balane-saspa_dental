@@ -54,12 +54,6 @@ This system helps streamline the dental appointment process with email notificat
 
 ---
 
-## 📄 License
-
-This project is open-source and available under the [MIT License](LICENSE).
-
----
-
 ## 📬 Contact
 
 **Created by:** Code Clipse  
