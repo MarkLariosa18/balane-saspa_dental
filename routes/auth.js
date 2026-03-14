@@ -1,972 +1,370 @@
-const express = require('express');
-const router = express.Router();
-const { createClient } = require('@supabase/supabase-js');
-const bcrypt = require('bcrypt');
-const crypto = require('crypto');
-const Redis = require('ioredis');
-const { RateLimiterRedis } = require('rate-limiter-flexible');
+const express   = require('express');
+const router    = express.Router();
+const bcrypt    = require('bcrypt');
+const crypto    = require('crypto');
 const validator = require('validator');
-const helmet = require('helmet');
-const winston = require('winston');
-const nodemailer = require('nodemailer');
-const cors = require('cors');
+const winston   = require('winston');
+const pool      = require('../db');
+const memStore  = require('../store');
 
 require('dotenv').config();
 
-// Initialize Winston logger
+// ---------------------------------------------------------------------------
+// Logger
+// ---------------------------------------------------------------------------
 const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
+  level: 'debug',
+  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+  transports: [new winston.transports.Console()],
 });
 
-// Encryption/Decryption utilities
-const ALGORITHM = 'aes-256-gcm'; // Upgraded to GCM for authenticated encryption
-const IV_LENGTH = 12; // GCM recommends 12 bytes for IV
-const AUTH_TAG_LENGTH = 16; // GCM auth tag length
+// ---------------------------------------------------------------------------
+// Encryption
+// ---------------------------------------------------------------------------
+const ALGORITHM       = 'aes-256-gcm';
+const IV_LENGTH       = 12;
+const AUTH_TAG_LENGTH = 16;
+const ENCRYPTION_KEY  = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 
-// Validate critical environment variables
-const requiredEnvVars = [
-  'SUPABASE_URL',
-  'SUPABASE_KEY',
-  'SESSION_SECRET',
-  'REDIS_URL',
-  'NODE_ENV',
-  'EMAIL_USER',
-  'EMAIL_PASSWORD',
-  'ENCRYPTION_KEY',
-];
-requiredEnvVars.forEach((varName) => {
-  if (!process.env[varName]) {
-    logger.error(`Missing required environment variable: ${varName}`);
-    process.exit(1);
-  }
-});
-
-// Validate encryption key
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
 if (ENCRYPTION_KEY.length !== 32) {
-  logger.error(`Invalid ENCRYPTION_KEY length: expected 32 bytes, got ${ENCRYPTION_KEY.length}`);
-  process.exit(1);
+  logger.error('Invalid ENCRYPTION_KEY length'); process.exit(1);
 }
-logger.info('Encryption key initialized successfully');
 
-// Encrypt function
 function encrypt(text) {
   if (!text) return null;
-  try {
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv, { authTagLength: AUTH_TAG_LENGTH });
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    const authTag = cipher.getAuthTag().toString('hex');
-    return `${iv.toString('hex')}:${encrypted}:${authTag}`;
-  } catch (error) {
-    logger.error('Encryption error:', error);
-    throw new Error('Encryption failed');
-  }
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const c  = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv, { authTagLength: AUTH_TAG_LENGTH });
+  let enc  = c.update(text, 'utf8', 'hex');
+  enc     += c.final('hex');
+  return `${iv.toString('hex')}:${enc}:${c.getAuthTag().toString('hex')}`;
 }
 
-// Decrypt function
 function decrypt(text) {
-  if (!text || typeof text !== 'string') {
-    logger.warn(`Decrypt called with invalid input: ${text}`);
-    return null;
-  }
+  if (!text || typeof text !== 'string') return null;
   const parts = text.split(':');
-  if (parts.length !== 3) {
-    logger.warn(`Invalid encrypted format: "${text}" (expected iv:encrypted:authTag)`);
-    return null;
-  }
-  const [ivText, encryptedText, authTagText] = parts;
+  if (parts.length !== 3) return null;
   try {
-    const iv = Buffer.from(ivText, 'hex');
-    const authTag = Buffer.from(authTagText, 'hex');
-    if (iv.length !== IV_LENGTH || authTag.length !== AUTH_TAG_LENGTH) {
-      logger.warn(`Invalid IV or auth tag length: iv=${iv.length}, authTag=${authTag.length}`);
-      return null;
-    }
-    const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv, { authTagLength: AUTH_TAG_LENGTH });
-    decipher.setAuthTag(authTag);
-    let decrypted = decipher.update(Buffer.from(encryptedText, 'hex'));
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    const decryptedString = decrypted.toString('utf8');
-    if (!decryptedString || /[^ -~]/.test(decryptedString)) {
-      logger.warn(`Invalid decryption result: "${decryptedString}"`);
-      return null;
-    }
-    return decryptedString;
-  } catch (error) {
-    logger.error('Decryption failed:', { error: error.message, input: text });
-    return null;
-  }
+    const iv  = Buffer.from(parts[0], 'hex');
+    const tag = Buffer.from(parts[2], 'hex');
+    if (iv.length !== IV_LENGTH || tag.length !== AUTH_TAG_LENGTH) return null;
+    const d = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv, { authTagLength: AUTH_TAG_LENGTH });
+    d.setAuthTag(tag);
+    let dec = d.update(Buffer.from(parts[1], 'hex'));
+    dec = Buffer.concat([dec, d.final()]);
+    const result = dec.toString('utf8');
+    return /[^ -~]/.test(result) ? null : result;
+  } catch { return null; }
 }
 
-// Initialize Redis
-const redis = new Redis(process.env.REDIS_URL, {
-  retryStrategy: (times) => Math.min(times * 50, 2000),
-  maxRetriesPerRequest: 10,
-});
-
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// Configure nodemailer
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-  pool: true,
-  maxConnections: 5,
-  rateLimit: 14,
-  rateDelta: 1000,
-  secure: true,
-});
-
-// Verify email transporter
-transporter.verify((error, success) => {
-  if (error) {
-    logger.error('Email transporter verification failed:', error);
-    process.exit(1);
-  }
-  logger.info('Email transporter verified successfully');
-});
-
-// Rate limiters
-const loginRateLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'login:attempt',
-  points: 999,
-  duration: 15 * 60,
-  blockDuration: 15 * 60,
-});
-
-const forgotPasswordRateLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'forgot-password:attempt',
-  points: 5,
-  duration: 15 * 60,
-  blockDuration: 15 * 60,
-});
-
-// CORS configuration
-router.use(cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = [
-      'https://balane-saspa-dental-1.onrender.com',
-      'https://your-frontend-domain.com',
-      'http://localhost:3000',
-      'http://localhost:8080',
-    ];
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST'],
-  credentials: true,
-}));
-
-// Apply helmet
-router.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+// ---------------------------------------------------------------------------
+// Simple in-process rate limiter
+// ---------------------------------------------------------------------------
+function makeSimpleRL(maxPoints, windowSec) {
+  const hits = new Map();
+  return {
+    consume(key) {
+      const now  = Date.now();
+      const win  = windowSec * 1000;
+      const rec  = hits.get(key) || { count: 0, start: now };
+      if (now - rec.start > win) { rec.count = 0; rec.start = now; }
+      rec.count++;
+      hits.set(key, rec);
+      if (rec.count > maxPoints) {
+        const msLeft = win - (now - rec.start);
+        const err    = new Error('Rate limit exceeded');
+        err.msBeforeNext = msLeft;
+        throw err;
+      }
     },
-  },
-}));
+  };
+}
 
-// Rate limiter middleware
-const applyLoginRateLimiter = async (req, res, next) => {
-  const ipAddress = req.ip;
-  try {
-    await loginRateLimiter.consume(ipAddress);
-    next();
-  } catch (error) {
-    logger.warn(`Login rate limit exceeded for IP: ${ipAddress}`);
-    res.status(429).json({
-      error: 'too_many_requests',
-      message: 'Too many login attempts. Please try again later.',
-    });
-  }
+const loginRL   = makeSimpleRL(999, 15 * 60); // effectively unlimited locally
+const forgotRL  = makeSimpleRL(20,  15 * 60);
+
+const applyLoginRL = (req, res, next) => {
+  try { loginRL.consume(req.ip); next(); }
+  catch { res.status(429).json({ error: 'too_many_requests', message: 'Too many login attempts.' }); }
+};
+const applyForgotRL = (req, res, next) => {
+  try { forgotRL.consume(req.ip); next(); }
+  catch { res.status(429).json({ error: 'too_many_requests', message: 'Too many forgot-password requests.' }); }
 };
 
-const applyForgotPasswordRateLimiter = async (req, res, next) => {
-  const ipAddress = req.ip;
-  try {
-    await forgotPasswordRateLimiter.consume(ipAddress);
-    next();
-  } catch (error) {
-    logger.warn(`Forgot password rate limit exceeded for IP: ${ipAddress}`);
-    res.status(429).json({
-      error: 'too_many_requests',
-      message: 'Too many forgot password requests. Please try again later.',
-    });
-  }
-};
-
-// CSRF token endpoint
-router.get('/csrf-token', (req, res) => {
-  try {
-    const csrfToken = req.csrfToken();
-    logger.info('CSRF token generated successfully');
-    res.json({ csrfToken });
-  } catch (error) {
-    logger.error('CSRF token error:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to generate CSRF token' });
-  }
-});
-
-// Login endpoint
-// Login endpoint
-router.post('/login', applyLoginRateLimiter, async (req, res) => {
+// ---------------------------------------------------------------------------
+// POST /auth/login
+// ---------------------------------------------------------------------------
+router.post('/login', applyLoginRL, async (req, res) => {
   const { identifier, password, remember } = req.body;
+  if (!identifier || !password)
+    return res.status(400).json({ error: 'bad_request', message: 'Username/email and password are required' });
 
   try {
-    if (!identifier || !password) {
-      logger.warn(`Login attempt with missing credentials: ${identifier || 'unknown'}`);
-      return res.status(400).json({ error: 'bad_request', message: 'Username/email and password are required' });
+    let user = null, role = null, table = null;
+
+    // 1. Check admin by username
+    const adminRow = await pool.query(
+      'SELECT id, username, password FROM admin WHERE username = $1', [identifier]
+    );
+    if (adminRow.rows.length) {
+      const adm = adminRow.rows[0];
+      if (!await bcrypt.compare(password, adm.password))
+        return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
+      user = adm; role = 'admin'; table = 'admin';
     }
 
-    let user = null;
-    let role = null;
-    let table = null;
-
-    // Check admin table
-    const { data: adminByUsername, error: adminError } = await supabase
-      .from('admin')
-      .select('id, username, password')
-      .eq('username', identifier)
-      .single();
-
-    if (adminByUsername && !adminError) {
-      const passwordMatch = await bcrypt.compare(password, adminByUsername.password);
-      if (!passwordMatch) {
-        logger.warn(`Failed login attempt for admin: ${identifier}`);
-        return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
-      }
-      user = adminByUsername;
-      role = 'admin';
-      table = 'admin';
-    } else {
-      // Check users table by username
-      const { data: userByUsername, error: userUsernameError } = await supabase
-        .from('users')
-        .select('id, username, password')
-        .eq('username', identifier)
-        .single();
-
-      if (userByUsername && !userUsernameError) {
-        const passwordMatch = await bcrypt.compare(password, userByUsername.password);
-        if (!passwordMatch) {
-          logger.warn(`Failed login attempt for user: ${identifier}`);
+    // 2. Check users by username
+    if (!user) {
+      const userRow = await pool.query(
+        'SELECT id, username, password FROM users WHERE username = $1', [identifier]
+      );
+      if (userRow.rows.length) {
+        const u = userRow.rows[0];
+        if (!await bcrypt.compare(password, u.password))
           return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
-        }
-        const { data: patientData, error: patientError } = await supabase
-          .from('patients')
-          .select('id, email')
-          .eq('id', userByUsername.id)
-          .single();
-
-        if (!patientData || patientError) {
-          logger.warn(`Login attempt for non-patient user: ${identifier}`);
+        const pRow = await pool.query('SELECT email FROM patients WHERE id = $1', [u.id]);
+        if (!pRow.rows.length)
           return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
-        }
-        // Decrypt the email
-        try {
-          const decryptedEmail = decrypt(patientData.email);
-          user = { ...userByUsername, email: decryptedEmail };
-        } catch (decryptError) {
-          logger.error(`Email decryption failed for userId ${userByUsername.id}:`, decryptError);
-          return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-        }
-      } else if (validator.isEmail(identifier)) {
-        // Check patients table by email (lowercase the input email)
-        const lowerCaseIdentifier = identifier.toLowerCase();
-        const { data: patients, error: patientEmailError } = await supabase
-          .from('patients')
-          .select('id, email');
-
-        if (patientEmailError) {
-          logger.error('Error fetching patients:', patientEmailError);
-          return res.status(500).json({ error: 'server_error', message: 'Server error' });
-        }
-
-        let patientByEmail = null;
-        for (const patient of patients) {
-          try {
-            const decryptedEmail = decrypt(patient.email);
-            if (decryptedEmail && decryptedEmail.toLowerCase() === lowerCaseIdentifier) {
-              patientByEmail = patient;
-              break;
-            }
-          } catch (decryptError) {
-            logger.warn(`Skipping decryption error for patientId ${patient.id}:`, decryptError);
-            continue;
-          }
-        }
-
-        if (patientByEmail) {
-          const { data: userById, error: userIdError } = await supabase
-            .from('users')
-            .select('id, username, password')
-            .eq('id', patientByEmail.id)
-            .single();
-
-          if (userById && !userIdError) {
-            const passwordMatch = await bcrypt.compare(password, userById.password);
-            if (!passwordMatch) {
-              logger.warn(`Failed login attempt for user: ${identifier}`);
-              return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
-            }
-            try {
-              const decryptedEmail = decrypt(patientByEmail.email);
-              user = { ...userById, email: decryptedEmail };
-            } catch (decryptError) {
-              logger.error(`Email decryption failed for userId ${userById.id}:`, decryptError);
-              return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-            }
-          }
-        }
+        user = { ...u, email: decrypt(pRow.rows[0].email) };
+        role = 'patient'; table = 'users';
       }
-
-      if (!user) {
-        logger.warn(`Failed login attempt for user: ${identifier}`);
-        return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
-      }
-      role = 'patient';
-      table = 'users';
     }
+
+    // 3. Check by email
+    if (!user && validator.isEmail(identifier)) {
+      const lower = identifier.toLowerCase();
+      const allP  = await pool.query('SELECT id, email FROM patients');
+      let matched = null;
+      for (const p of allP.rows) {
+        if (decrypt(p.email)?.toLowerCase() === lower) { matched = p; break; }
+      }
+      if (matched) {
+        const uRow = await pool.query('SELECT id, username, password FROM users WHERE id = $1', [matched.id]);
+        if (uRow.rows.length) {
+          const u = uRow.rows[0];
+          if (!await bcrypt.compare(password, u.password))
+            return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
+          user = { ...u, email: lower };
+          role = 'patient'; table = 'users';
+        }
+      }
+    }
+
+    if (!user)
+      return res.status(401).json({ error: 'unauthorized', message: 'Invalid username/email or password' });
 
     req.session.isLoggedIn = true;
-    req.session.userId = user.id;
+    req.session.userId     = user.id;
+    req.session.role       = role;
 
     if (remember) {
-      const rememberToken = crypto.randomBytes(32).toString('hex');
-      const { error: tokenError } = await supabase
-        .from(table)
-        .update({ remember_token: rememberToken })
-        .eq('id', user.id);
-
-      if (tokenError) throw tokenError;
-
+      const token = crypto.randomBytes(32).toString('hex');
+      await pool.query(`UPDATE ${table} SET remember_token = $1 WHERE id = $2`, [token, user.id]);
       req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
-      res.cookie('remember_token', rememberToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-        path: '/',
-      });
+      res.cookie('remember_token', token, { httpOnly: true, secure: false, sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000 });
     } else {
-      req.session.cookie.maxAge = 60 * 60 * 1000;
-      const { error: clearTokenError } = await supabase
-        .from(table)
-        .update({ remember_token: null })
-        .eq('id', user.id);
-
-      if (clearTokenError) throw clearTokenError;
-      res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
+      await pool.query(`UPDATE ${table} SET remember_token = NULL WHERE id = $1`, [user.id]);
+      res.clearCookie('remember_token');
     }
 
-    logger.info(`Successful login for ${role}: ${identifier} (userId: ${user.id})`);
+    logger.info(`Login OK: ${role} userId=${user.id}`);
     res.json({ success: true, message: 'Login successful', role, remember: !!remember });
-  } catch (error) {
-    logger.error('Login error:', error);
+  } catch (err) {
+    logger.error('Login error:', err);
     res.status(500).json({ error: 'server_error', message: 'Server error' });
   }
 });
 
-// Check authentication status
+// ---------------------------------------------------------------------------
+// GET /auth/check-auth
+// ---------------------------------------------------------------------------
 router.get('/check-auth', async (req, res) => {
+  if (!req.session?.isLoggedIn || !req.session?.userId)
+    return res.status(401).json({ isLoggedIn: false, error: 'unauthorized' });
+  const { userId } = req.session;
   try {
-    if (!req.session.isLoggedIn || !req.session.userId) {
-      logger.info('Unauthenticated session check');
-      return res.status(401).json({ isLoggedIn: false, error: 'unauthorized' });
-    }
-
-    const userId = req.session.userId;
-
-    const { data: adminData, error: adminError } = await supabase
-      .from('admin')
-      .select('id')
-      .eq('id', userId)
-      .single();
-
-    if (adminData && !adminError) {
-      logger.info(`Auth check: Admin userId ${userId}`);
-      return res.status(200).json({ isLoggedIn: true, userId, role: 'admin' });
-    }
-
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id, username')
-      .eq('id', userId)
-      .single();
-
-    if (userData && !userError) {
-      const { data: patientData, error: patientError } = await supabase
-        .from('patients')
-        .select('id')
-        .eq('id', userId)
-        .single();
-
-      if (patientData && !patientError) {
-        logger.info(`Auth check: Patient userId ${userId}`);
-        return res.status(200).json({ isLoggedIn: true, userId, role: 'patient' });
-      }
-
-      logger.info(`Auth check: Non-patient userId ${userId}`);
-      return res.status(200).json({ isLoggedIn: true, userId, role: 'user' });
-    }
-
-    logger.warn(`Auth check failed: UserId ${userId} not found`);
-    return res.status(401).json({ isLoggedIn: false, error: 'unauthorized', message: 'User not found' });
-  } catch (error) {
-    logger.error('Error checking auth:', error);
+    const adminRow = await pool.query('SELECT id FROM admin WHERE id = $1', [userId]);
+    if (adminRow.rows.length) return res.json({ isLoggedIn: true, userId, role: 'admin' });
+    const userRow  = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+    if (userRow.rows.length) return res.json({ isLoggedIn: true, userId, role: 'patient' });
+    return res.status(401).json({ isLoggedIn: false, error: 'unauthorized' });
+  } catch (err) {
+    logger.error('check-auth error:', err);
     res.status(500).json({ error: 'server_error', message: 'Server error' });
   }
 });
 
-// Auto-login with remember token
+// ---------------------------------------------------------------------------
+// POST /auth/auto-login
+// ---------------------------------------------------------------------------
 router.post('/auto-login', async (req, res) => {
-  const rememberToken = req.cookies?.remember_token;
-
-  if (!rememberToken || !validator.isHexadecimal(rememberToken) || rememberToken.length !== 64) {
-    logger.warn('Auto-login attempt with invalid or missing remember token');
-    res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
-    return res.status(401).json({ error: 'unauthorized', message: 'No valid remember token found' });
-  }
-
+  const token = req.cookies?.remember_token;
+  if (!token || token.length !== 64)
+    return res.status(401).json({ error: 'unauthorized', message: 'No valid remember token' });
   try {
-    let user = null;
-    let role = null;
-    let table = null;
-
-    const { data: admin, error: adminError } = await supabase
-      .from('admin')
-      .select('id')
-      .eq('remember_token', rememberToken)
-      .single();
-
-    if (admin && !adminError) {
-      user = admin;
-      role = 'admin';
-      table = 'admin';
-    } else {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('remember_token', rememberToken)
-        .single();
-
-      if (userError || !userData) {
-        logger.warn('Auto-login failed: Invalid remember token');
-        res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
-        return res.status(401).json({ error: 'unauthorized', message: 'Invalid remember token' });
-      }
-
-      const { data: patientData, error: patientError } = await supabase
-        .from('patients')
-        .select('id')
-        .eq('id', userData.id)
-        .single();
-
-      if (patientError || !patientData) {
-        logger.warn('Auto-login failed: User is not a patient');
-        res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
-        return res.status(401).json({ error: 'unauthorized', message: 'Invalid remember token' });
-      }
-
-      user = userData;
-      role = 'patient';
-      table = 'users';
+    const adminRow = await pool.query('SELECT id FROM admin WHERE remember_token = $1', [token]);
+    if (adminRow.rows.length) {
+      req.session.isLoggedIn = true;
+      req.session.userId     = adminRow.rows[0].id;
+      req.session.role       = 'admin';
+      return res.json({ success: true, message: 'Auto-login successful', role: 'admin' });
     }
-
-    req.session.isLoggedIn = true;
-    req.session.userId = user.id;
-    req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
-
-    logger.info(`Successful auto-login for ${role}: userId ${user.id}`);
-    res.json({ success: true, message: 'Auto-login successful', role });
-  } catch (error) {
-    logger.error('Auto-login error:', error);
-    res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
+    const userRow = await pool.query('SELECT id FROM users WHERE remember_token = $1', [token]);
+    if (userRow.rows.length) {
+      req.session.isLoggedIn = true;
+      req.session.userId     = userRow.rows[0].id;
+      req.session.role       = 'patient';
+      return res.json({ success: true, message: 'Auto-login successful', role: 'patient' });
+    }
+    res.clearCookie('remember_token');
+    res.status(401).json({ error: 'unauthorized', message: 'Invalid remember token' });
+  } catch (err) {
+    logger.error('auto-login error:', err);
+    res.clearCookie('remember_token');
     res.status(500).json({ error: 'server_error', message: 'Server error' });
   }
 });
 
-// Forgot password endpoint
-router.post('/forgot-password', applyForgotPasswordRateLimiter, async (req, res) => {
+// ---------------------------------------------------------------------------
+// POST /auth/forgot-password  (OTP stored in-memory, printed to console)
+// ---------------------------------------------------------------------------
+router.post('/forgot-password', applyForgotRL, async (req, res) => {
   const { identifier } = req.body;
-
+  if (!identifier)
+    return res.status(400).json({ error: 'bad_request', message: 'Email or username is required' });
   try {
-    if (!identifier) {
-      logger.warn('Forgot password attempt with missing identifier');
-      return res.status(400).json({ error: 'bad_request', message: 'Email or username is required' });
-    }
-
-    let user = null;
-    let table = 'users';
-
+    let userId = null;
     if (validator.isEmail(identifier)) {
-      // Check patients table by email
-      const { data: patients, error: patientEmailError } = await supabase
-        .from('patients')
-        .select('id, email');
-
-      if (patientEmailError) {
-        logger.error('Error fetching patients:', patientEmailError);
-        return res.status(500).json({ error: 'server_error', message: 'Server error' });
-      }
-
-      let patientByEmail = null;
-      for (const patient of patients) {
-        try {
-          const decryptedEmail = decrypt(patient.email);
-          if (decryptedEmail === identifier) {
-            patientByEmail = patient;
-            break;
-          }
-        } catch (decryptError) {
-          logger.warn(`Skipping decryption error for patientId ${patient.id}:`, decryptError);
-          continue;
-        }
-      }
-
-      if (patientByEmail) {
-        const { data: userById, error: userIdError } = await supabase
-          .from('users')
-          .select('id, username')
-          .eq('id', patientByEmail.id)
-          .single();
-
-        if (userById && !userIdError) {
-          try {
-            const decryptedEmail = decrypt(patientByEmail.email);
-            user = { ...userById, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userById.id}:`, decryptError);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
-        }
+      const rows = await pool.query('SELECT id, email FROM patients');
+      for (const p of rows.rows) {
+        if (decrypt(p.email)?.toLowerCase() === identifier.toLowerCase()) { userId = p.id; break; }
       }
     } else {
-      // Check users table by username
-      const { data: userByUsername, error: userUsernameError } = await supabase
-        .from('users')
-        .select('id, username')
-        .eq('username', identifier)
-        .single();
-
-      if (userByUsername && !userUsernameError) {
-        const { data: patientById, error: patientIdError } = await supabase
-          .from('patients')
-          .select('id, email')
-          .eq('id', userByUsername.id)
-          .single();
-
-        if (patientById && !patientIdError) {
-          try {
-            const decryptedEmail = decrypt(patientById.email);
-            user = { ...userByUsername, email: decryptedEmail };
-          } catch (decryptError) {
-            logger.error(`Email decryption failed for userId ${userByUsername.id}:`, decryptError);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
-        }
-      }
+      const row = await pool.query(
+        'SELECT u.id FROM users u JOIN patients p ON p.id = u.id WHERE u.username = $1', [identifier]
+      );
+      if (row.rows.length) userId = row.rows[0].id;
     }
-
-    if (!user) {
-      logger.warn(`Forgot password attempt for non-existent user: ${identifier}`);
+    if (!userId)
       return res.status(404).json({ error: 'not_found', message: 'User not found' });
-    }
-
-    if (!user.email) {
-      logger.warn(`Forgot password attempt for user without email: ${user.username}`);
-      return res.status(400).json({ error: 'bad_request', message: 'No email associated with this account' });
-    }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpKey = `otp:${user.id}:password_reset`;
-    await redis.set(otpKey, otp, 'EX', 10 * 60);
+    memStore.set(`otp:${userId}:password_reset`, otp, 10 * 60);
 
-    const mailOptions = {
-      from: `"Balane-Saspa Dental Clinic" <${process.env.EMAIL_USER}>`,
-      to: user.email,
-      subject: 'Balane-Saspa Dental Clinic - Password Reset OTP',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-          <h2 style="color: #4154f1; text-align: center;">Balane-Saspa Dental Clinic</h2>
-          <p>Dear User,</p>
-          <p>We received a request to reset your password. Please use the following OTP to proceed:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <div style="font-size: 24px; font-weight: bold; letter-spacing: 5px; background-color: #f5f5f5; padding: 15px; border-radius: 5px;">${otp}</div>
-          </div>
-          <p>This code expires in 10 minutes. If you did not request this, please ignore this email.</p>
-          <p>Best regards,<br>Balane-Saspa Dental Clinic Team</p>
-        </div>
-      `,
-    };
-
-    await transporter.sendMail(mailOptions);
-    logger.info(`OTP sent for password reset: userId ${user.id}, email ${user.email}`);
-    res.json({ success: true, message: 'OTP sent to your email' });
-  } catch (error) {
-    logger.error('Forgot password error:', error);
+    console.log(`[OTP] Password-reset OTP for userId=${userId}: ${otp}`);
+    res.json({ success: true, message: 'OTP generated (check server console)', dev_otp: otp });
+  } catch (err) {
+    logger.error('forgot-password error:', err);
     res.status(500).json({ error: 'server_error', message: 'Failed to send OTP' });
   }
 });
 
-// Verify OTP endpoint
+// ---------------------------------------------------------------------------
+// POST /auth/verify-otp
+// ---------------------------------------------------------------------------
 router.post('/verify-otp', async (req, res) => {
   const { identifier, otp, purpose } = req.body;
-
+  if (!identifier || !otp || purpose !== 'password_reset')
+    return res.status(400).json({ error: 'bad_request', message: 'identifier, otp, and purpose=password_reset are required' });
   try {
-    if (!identifier || !otp || !purpose) {
-      logger.warn('OTP verification attempt with missing fields');
-      return res.status(400).json({ error: 'bad_request', message: 'Identifier, OTP, and purpose are required' });
-    }
-    if (!/^\d{6}$/.test(otp)) {
-      logger.warn('Invalid OTP format');
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid OTP format' });
-    }
-    if (purpose !== 'password_reset') {
-      logger.warn(`Invalid OTP purpose: ${purpose}`);
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid OTP purpose' });
-    }
-
-    let user = null;
-
+    let userId = null;
     if (validator.isEmail(identifier)) {
-      // Check patients table by email
-      const { data: patients, error: patientEmailError } = await supabase
-        .from('patients')
-        .select('id, email');
-
-      if (patientEmailError) {
-        logger.error('Error fetching patients:', patientEmailError);
-        return res.status(500).json({ error: 'server_error', message: 'Server error' });
-      }
-
-      let patientByEmail = null;
-      for (const patient of patients) {
-        const decryptedEmail = decrypt(patient.email);
-        if (decryptedEmail && decryptedEmail.toLowerCase() === identifier.toLowerCase()) {
-          patientByEmail = patient;
-          break;
-        }
-      }
-
-      if (patientByEmail) {
-        const { data: userById, error: userIdError } = await supabase
-          .from('users')
-          .select('id, username')
-          .eq('id', patientByEmail.id)
-          .single();
-
-        if (userById && !userIdError) {
-          const decryptedEmail = decrypt(patientByEmail.email);
-          if (!decryptedEmail) {
-            logger.error(`Email decryption failed for userId ${userById.id}`);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
-          user = { ...userById, email: decryptedEmail };
-        }
+      const rows = await pool.query('SELECT id, email FROM patients');
+      for (const p of rows.rows) {
+        if (decrypt(p.email)?.toLowerCase() === identifier.toLowerCase()) { userId = p.id; break; }
       }
     } else {
-      // Check users table by username
-      const { data: userByUsername, error: userUsernameError } = await supabase
-        .from('users')
-        .select('id, username')
-        .eq('username', identifier)
-        .single();
-
-      if (userByUsername && !userUsernameError) {
-        const { data: patientById, error: patientIdError } = await supabase
-          .from('patients')
-          .select('id, email')
-          .eq('id', userByUsername.id)
-          .single();
-
-        if (patientById && !patientIdError) {
-          const decryptedEmail = decrypt(patientById.email);
-          if (!decryptedEmail) {
-            logger.error(`Email decryption failed for userId ${userByUsername.id}`);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
-          user = { ...userByUsername, email: decryptedEmail };
-        }
-      }
+      const row = await pool.query(
+        'SELECT u.id FROM users u JOIN patients p ON p.id = u.id WHERE u.username = $1', [identifier]
+      );
+      if (row.rows.length) userId = row.rows[0].id;
     }
+    if (!userId) return res.status(404).json({ error: 'not_found', message: 'User not found' });
 
-    if (!user) {
-      logger.warn(`OTP verification attempt for non-existent user: ${identifier}`);
-      return res.status(404).json({ error: 'not_found', message: 'User not found' });
-    }
+    const stored = memStore.get(`otp:${userId}:password_reset`);
+    if (!stored)        return res.status(400).json({ error: 'invalid_otp', message: 'Invalid or expired OTP' });
+    if (stored !== otp) return res.status(400).json({ error: 'invalid_otp', message: 'Invalid OTP' });
 
-    const otpKey = `otp:${user.id}:password_reset`;
-    const storedOtp = await redis.get(otpKey);
-
-    if (!storedOtp) {
-      logger.warn(`OTP not found or expired for userId ${user.id}, key: ${otpKey}`);
-      return res.status(400).json({ error: 'invalid_otp', message: 'Invalid or expired OTP' });
-    }
-
-    if (storedOtp !== otp) {
-      logger.warn(`Invalid OTP provided for userId ${user.id}: provided ${otp}, expected ${storedOtp}`);
-      return res.status(400).json({ error: 'invalid_otp', message: 'Invalid or expired OTP' });
-    }
-
-    logger.info(`OTP verified for userId ${user.id}`);
     res.json({ success: true, message: 'OTP verified' });
-  } catch (error) {
-    logger.error('OTP verification error:', error);
+  } catch (err) {
+    logger.error('verify-otp error:', err);
     res.status(500).json({ error: 'server_error', message: 'Server error' });
   }
 });
 
-// Reset password endpoint
+// ---------------------------------------------------------------------------
+// POST /auth/reset-password
+// ---------------------------------------------------------------------------
 router.post('/reset-password', async (req, res) => {
   const { identifier, otp, newPassword } = req.body;
-
+  if (!identifier || !otp || !newPassword)
+    return res.status(400).json({ error: 'bad_request', message: 'identifier, otp, and newPassword are required' });
+  if (!validator.isLength(newPassword, { min: 8, max: 100 }))
+    return res.status(400).json({ error: 'bad_request', message: 'Password must be 8-100 characters' });
   try {
-    if (!identifier || !otp || !newPassword) {
-      logger.warn('Password reset attempt with missing fields');
-      return res.status(400).json({ error: 'bad_request', message: 'Identifier, OTP, and new password are required' });
-    }
-    if (!/^\d{6}$/.test(otp)) {
-      logger.warn('Invalid OTP format');
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid OTP format' });
-    }
-    if (!validator.isLength(newPassword, { min: 8, max: 100 })) {
-      return res.status(400).json({ error: 'bad_request', message: 'Password must be between 8 and 100 characters' });
-    }
-
-    let user = null;
-    let table = 'users';
-
+    let userId = null;
     if (validator.isEmail(identifier)) {
-      // Check patients table by email
-      const { data: patients, error: patientEmailError } = await supabase
-        .from('patients')
-        .select('id, email');
-
-      if (patientEmailError) {
-        logger.error('Error fetching patients:', patientEmailError);
-        return res.status(500).json({ error: 'server_error', message: 'Server error' });
-      }
-
-      let patientByEmail = null;
-      for (const patient of patients) {
-        const decryptedEmail = decrypt(patient.email);
-        if (decryptedEmail && decryptedEmail.toLowerCase() === identifier.toLowerCase()) {
-          patientByEmail = patient;
-          break;
-        }
-      }
-
-      if (patientByEmail) {
-        const { data: userById, error: userIdError } = await supabase
-          .from('users')
-          .select('id, username')
-          .eq('id', patientByEmail.id)
-          .single();
-
-        if (userById && !userIdError) {
-          const decryptedEmail = decrypt(patientByEmail.email);
-          if (!decryptedEmail) {
-            logger.error(`Email decryption failed for userId ${userById.id}`);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
-          user = { ...userById, email: decryptedEmail };
-        }
+      const rows = await pool.query('SELECT id, email FROM patients');
+      for (const p of rows.rows) {
+        if (decrypt(p.email)?.toLowerCase() === identifier.toLowerCase()) { userId = p.id; break; }
       }
     } else {
-      // Check users table by username
-      const { data: userByUsername, error: userUsernameError } = await supabase
-        .from('users')
-        .select('id, username')
-        .eq('username', identifier)
-        .single();
-
-      if (userByUsername && !userUsernameError) {
-        const { data: patientById, error: patientIdError } = await supabase
-          .from('patients')
-          .select('id, email')
-          .eq('id', userByUsername.id)
-          .single();
-
-        if (patientById && !patientIdError) {
-          const decryptedEmail = decrypt(patientById.email);
-          if (!decryptedEmail) {
-            logger.error(`Email decryption failed for userId ${userByUsername.id}`);
-            return res.status(500).json({ error: 'server_error', message: 'Failed to process user data' });
-          }
-          user = { ...userByUsername, email: decryptedEmail };
-        }
-      }
+      const row = await pool.query(
+        'SELECT u.id FROM users u JOIN patients p ON p.id = u.id WHERE u.username = $1', [identifier]
+      );
+      if (row.rows.length) userId = row.rows[0].id;
     }
+    if (!userId) return res.status(404).json({ error: 'not_found', message: 'User not found' });
 
-    if (!user) {
-      logger.warn(`Password reset attempt for non-existent user: ${identifier}`);
-      return res.status(404).json({ error: 'not_found', message: 'User not found' });
-    }
-
-    const otpKey = `otp:${user.id}:password_reset`;
-    const storedOtp = await redis.get(otpKey);
-
-    if (!storedOtp) {
-      logger.warn(`OTP not found or expired for userId ${user.id}, key: ${otpKey}`);
+    const stored = memStore.get(`otp:${userId}:password_reset`);
+    if (!stored || stored !== otp)
       return res.status(400).json({ error: 'invalid_otp', message: 'Invalid or expired OTP' });
-    }
 
-    if (storedOtp !== otp) {
-      logger.warn(`Invalid OTP provided for userId ${user.id}: provided ${otp}, expected ${storedOtp}`);
-      return res.status(400).json({ error: 'invalid_otp', message: 'Invalid or expired OTP' });
-    }
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password = $1, remember_token = NULL WHERE id = $2', [hash, userId]);
+    memStore.del(`otp:${userId}:password_reset`);
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    const { error: updateError } = await supabase
-      .from(table)
-      .update({ password: hashedPassword, remember_token: null })
-      .eq('id', user.id);
-
-    if (updateError) {
-      logger.error(`Failed to update password for userId ${user.id}:`, updateError);
-      throw updateError;
-    }
-
-    await redis.del(otpKey);
-
-    if (req.session) {
-      await new Promise((resolve, reject) => {
-        req.session.destroy((err) => {
-          if (err) {
-            logger.error('Session destroy error during password reset:', err);
-            reject(err);
-            return;
-          }
-          res.clearCookie('connect.sid', { path: '/', sameSite: 'strict' });
-          resolve();
-        });
-      });
-    }
-    res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
-
-    logger.info(`Password reset successful for userId ${user.id}`);
+    await new Promise((ok, fail) =>
+      req.session.destroy((err) => err ? fail(err) : ok())
+    );
+    res.clearCookie('connect.sid');
+    res.clearCookie('remember_token');
     res.json({ success: true, message: 'Password reset successful' });
-  } catch (error) {
-    logger.error('Password reset error:', error);
+  } catch (err) {
+    logger.error('reset-password error:', err);
     res.status(500).json({ error: 'server_error', message: 'Server error' });
   }
 });
 
-// Logout endpoint
+// ---------------------------------------------------------------------------
+// POST /auth/logout
+// ---------------------------------------------------------------------------
 router.post('/logout', async (req, res) => {
+  const userId = req.session?.userId;
   try {
-    const userId = req.session.userId;
-
-    let table = null;
-    const { data: adminData, error: adminError } = await supabase
-      .from('admin')
-      .select('id')
-      .eq('id', userId)
-      .single();
-
-    if (adminData && !adminError) {
-      table = 'admin';
-    } else {
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('id', userId)
-        .single();
-
-      if (userData && !userError) {
-        const { data: patientData, error: patientError } = await supabase
-          .from('patients')
-          .select('id')
-          .eq('id', userId)
-          .single();
-
-        if (patientData && !patientError) {
-          table = 'users';
-        }
-      }
+    if (userId) {
+      const adminRow = await pool.query('SELECT id FROM admin WHERE id = $1', [userId]);
+      const table    = adminRow.rows.length ? 'admin' : 'users';
+      await pool.query(`UPDATE ${table} SET remember_token = NULL WHERE id = $1`, [userId]);
     }
-
-    if (userId && table) {
-      const { error } = await supabase
-        .from(table)
-        .update({ remember_token: null })
-        .eq('id', userId);
-
-      if (error) {
-        logger.error('Supabase update error during logout:', error);
-        throw new Error('Failed to clear remember token');
-      }
-    }
-
-    await new Promise((resolve, reject) => {
-      if (!req.session) {
-        resolve();
-        return;
-      }
-      req.session.destroy((err) => {
-        if (err) {
-          logger.error('Session destroy error during logout:', err);
-          reject(err);
-          return;
-        }
-        res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
-        res.clearCookie('connect.sid', { path: '/', sameSite: 'strict' });
-        resolve();
-      });
-    });
-
-    logger.info(`Successful logout for userId: ${userId || 'unknown'}`);
-    res.status(200).json({ success: true, message: 'Logged out successfully' });
-  } catch (error) {
-    logger.error('Logout error:', error);
-    res.clearCookie('remember_token', { path: '/', sameSite: 'strict' });
-    res.clearCookie('connect.sid', { path: '/', sameSite: 'strict' });
+    await new Promise((ok, fail) =>
+      req.session?.destroy((err) => err ? fail(err) : ok()) ?? ok()
+    );
+    res.clearCookie('remember_token');
+    res.clearCookie('connect.sid');
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (err) {
+    logger.error('logout error:', err);
+    res.clearCookie('remember_token');
+    res.clearCookie('connect.sid');
     res.status(500).json({ error: 'server_error', message: 'Logout failed' });
   }
 });
 
-// Error handling middleware
-router.use((err, req, res, next) => {
-  logger.error('Route error:', { error: err.message, stack: err.stack, path: req.path });
-  if (err.code === 'EBADCSRFTOKEN') {
-    return res.status(403).json({ error: 'invalid_csrf_token', message: 'Invalid CSRF token' });
-  }
-  res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('Shutting down Redis connection');
-  redis.quit(() => {
-    logger.info('Redis connection closed');
-    process.exit(0);
-  });
+// Error handler
+router.use((err, _req, res, _next) => {
+  logger.error('auth route error:', err.message);
+  res.status(500).json({ error: 'server_error', message: 'Something went wrong' });
 });
 
 module.exports = router;

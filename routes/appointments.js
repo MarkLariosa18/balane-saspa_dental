@@ -1,1628 +1,618 @@
-const express = require('express');
-const supabase = require('./supabase');
-const router = express.Router();
-const crypto = require('crypto');
-const nodemailer = require('nodemailer');
-const cron = require('node-cron');
-const Redis = require('ioredis');
-const { RateLimiterRedis } = require('rate-limiter-flexible');
+const express   = require('express');
+const router    = express.Router();
+const crypto    = require('crypto');
 const validator = require('validator');
-const helmet = require('helmet');
-const winston = require('winston');
+const winston   = require('winston');
+const pool      = require('../db');
 
-// Load environment variables
 require('dotenv').config();
 
-// Validate critical environment variables
-const requiredEnvVars = ['ENCRYPTION_KEY', 'EMAIL_USER', 'EMAIL_PASSWORD', 'REDIS_URL', 'NODE_ENV'];
-requiredEnvVars.forEach((varName) => {
-  if (!process.env[varName]) {
-    console.error(`Missing required environment variable: ${varName}`);
-    process.exit(1);
-  }
-});
-
-// Initialize Winston logger
+// ---------------------------------------------------------------------------
+// Logger
+// ---------------------------------------------------------------------------
 const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
+  level: 'debug',
+  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+  transports: [new winston.transports.Console()],
 });
 
-// Initialize Redis with enhanced configuration
-const redis = new Redis(process.env.REDIS_URL, {
-  retryStrategy: (times) => Math.min(times * 50, 2000),
-  maxRetriesPerRequest: 10,
-});
-
-// Encryption settings
-const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 12;
+// ---------------------------------------------------------------------------
+// Encryption
+// ---------------------------------------------------------------------------
+const ALGORITHM       = 'aes-256-gcm';
+const IV_LENGTH       = 12;
 const AUTH_TAG_LENGTH = 16;
+const ENCRYPTION_KEY  = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+if (ENCRYPTION_KEY.length !== 32) { logger.error('Invalid ENCRYPTION_KEY'); process.exit(1); }
 
-// Validate encryption key
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
-const encryptionKey = Buffer.from(ENCRYPTION_KEY, 'hex');
-if (encryptionKey.length !== 32) {
-  logger.error(`Invalid ENCRYPTION_KEY length: expected 32 bytes, got ${encryptionKey.length}`);
-  process.exit(1);
+function encrypt(text) {
+  if (!text) return null;
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const c  = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv, { authTagLength: AUTH_TAG_LENGTH });
+  let enc  = c.update(text, 'utf8', 'hex');
+  enc     += c.final('hex');
+  return `${iv.toString('hex')}:${enc}:${c.getAuthTag().toString('hex')}`;
 }
-logger.info('Encryption key initialized successfully');
 
-// Configure nodemailer with secure options
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-  pool: true,
-  maxConnections: 5,
-  rateLimit: 14,
-  rateDelta: 1000,
-  secure: true,
-});
+function decrypt(text) {
+  if (!text || typeof text !== 'string') return null;
+  const parts = text.split(':');
+  if (parts.length !== 3) return null;
+  try {
+    const iv  = Buffer.from(parts[0], 'hex');
+    const tag = Buffer.from(parts[2], 'hex');
+    if (iv.length !== IV_LENGTH || tag.length !== AUTH_TAG_LENGTH) return null;
+    const d = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv, { authTagLength: AUTH_TAG_LENGTH });
+    d.setAuthTag(tag);
+    let dec = d.update(Buffer.from(parts[1], 'hex'));
+    dec = Buffer.concat([dec, d.final()]);
+    const result = dec.toString('utf8');
+    return /[^ -~]/.test(result) ? null : result;
+  } catch { return null; }
+}
 
-// Verify email transporter on startup
-transporter.verify((error, success) => {
-  if (error) {
-    logger.error('Email transporter verification failed:', error);
-    process.exit(1);
-  }
-  logger.info('Email transporter verified successfully');
-});
+// ---------------------------------------------------------------------------
+// Simple in-memory rate limiters (replace Redis-backed ones)
+// ---------------------------------------------------------------------------
+function makeSimpleRL(maxPoints, windowSec) {
+  const hits = new Map();
+  return {
+    consume(key) {
+      const now = Date.now(), win = windowSec * 1000;
+      const rec = hits.get(key) || { count: 0, start: now };
+      if (now - rec.start > win) { rec.count = 0; rec.start = now; }
+      rec.count++;
+      hits.set(key, rec);
+      if (rec.count > maxPoints) throw new Error('Rate limit exceeded');
+    },
+  };
+}
 
-// Advanced rate limiter for appointments
-const appointmentRateLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'appointment:limit',
-  points: 999,
-  duration: 24 * 60 * 60,
-  blockDuration: 24 * 60 * 60,
-});
+// Per-user per-day appointment booking limit
+const apptDailyRL    = makeSimpleRL(5, 24 * 60 * 60);
+// Per-user per-day cancel/reschedule cooldown
+const cooldownDayRL  = makeSimpleRL(1, 24 * 60 * 60);
 
-// Cooldown rate limiter for cancel/reschedule
-const cooldownRateLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'appointment:cooldown',
-  points: 1,
-  duration: 24 * 60 * 60,
-  blockDuration: 24 * 60 * 60,
-});
-
-// Middleware for authentication
+// ---------------------------------------------------------------------------
+// Middleware
+// ---------------------------------------------------------------------------
 const isAuthenticated = (req, res, next) => {
-  if (!req.session || !req.session.isLoggedIn || !req.session.userId) {
-    logger.warn(`Unauthorized access attempt: ${req.method} ${req.path}`);
+  if (!req.session?.isLoggedIn || !req.session?.userId)
     return res.status(401).json({ error: 'unauthorized', message: 'Unauthorized' });
-  }
   next();
 };
 
-// Middleware for admin role
 const isAdmin = async (req, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('admin')
-      .select('id')
-      .eq('id', req.session.userId)
-      .single();
-    if (error) throw error;
-    if (!data) {
-      logger.warn(`Admin access denied for userId: ${req.session.userId}`);
-      return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
-    }
+    const r = await pool.query('SELECT id FROM admin WHERE id = $1', [req.session.userId]);
+    if (!r.rows.length) return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
     next();
-  } catch (error) {
-    logger.error('Error checking admin role:', error);
+  } catch (err) {
+    logger.error('isAdmin error:', err);
     res.status(500).json({ error: 'server_error', message: 'Server error' });
   }
 };
 
-// Rate limiter middleware for appointments
-const rateLimitAppointments = async (req, res, next) => {
-  const userId = req.session.userId;
-  const key = `${userId}`;
-  try {
-    await appointmentRateLimiter.consume(key);
-    next();
-  } catch (error) {
-    logger.warn(`Appointment rate limit exceeded for userId: ${userId}`);
-    res.status(429).json({ error: 'too_many_requests', message: 'Maximum 5 appointments per day reached' });
-  }
+const rateLimitAppointments = (req, res, next) => {
+  try { apptDailyRL.consume(`${req.session.userId}`); next(); }
+  catch { res.status(429).json({ error: 'too_many_requests', message: 'Max 5 appointment bookings per day' }); }
 };
 
-// Cooldown middleware for cancel/reschedule
-const cooldownCheck = async (req, res, next) => {
-  const userId = req.session.userId;
+const cooldownCheck = (req, res, next) => {
   const action = req.path.includes('reschedule') ? 'reschedule' : 'cancel';
-  const key = `${action}:${userId}`;
-  try {
-    await cooldownRateLimiter.consume(key);
-    next();
-  } catch (error) {
-    logger.warn(`Cooldown limit exceeded for ${action} by userId: ${userId}`);
-    const remaining = error.msBeforeNext / 3600000;
-    res.status(429).json({
-      error: 'too_many_requests',
-      message: `Please wait ${Math.ceil(remaining)} hours before submitting another ${action} request`,
-    });
-  }
+  try { cooldownDayRL.consume(`${action}:${req.session.userId}`); next(); }
+  catch { res.status(429).json({ error: 'too_many_requests', message: `Only 1 ${action} request per day` }); }
 };
 
-// Encryption functions with GCM
-function encrypt(text) {
-  if (!text) return null;
-  try {
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, encryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    const authTag = cipher.getAuthTag().toString('hex');
-    return `${iv.toString('hex')}:${encrypted}:${authTag}`;
-  } catch (error) {
-    logger.error('Encryption error:', error);
-    throw new Error('Encryption failed');
-  }
-}
-
-function decrypt(text) {
-  if (!text || typeof text !== 'string') {
-    logger.warn(`Decrypt called with invalid input: ${text}`);
-    return null;
-  }
-  const parts = text.split(':');
-  if (parts.length !== 3) {
-    logger.warn(`Invalid encrypted format: "${text}" (expected iv:encrypted:authTag)`);
-    return null;
-  }
-  const [ivText, encryptedText, authTagText] = parts;
-  try {
-    const iv = Buffer.from(ivText, 'hex');
-    const authTag = Buffer.from(authTagText, 'hex');
-    const encrypted = Buffer.from(encryptedText, 'hex');
-    if (iv.length !== IV_LENGTH || authTag.length !== AUTH_TAG_LENGTH) {
-      logger.warn(`Invalid IV or auth tag length: iv=${iv.length}, authTag=${authTag.length}`);
-      return null;
-    }
-    const decipher = crypto.createDecipheriv(ALGORITHM, encryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
-    decipher.setAuthTag(authTag);
-    let decrypted = decipher.update(encrypted);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    const decryptedString = decrypted.toString('utf8');
-    if (!decryptedString || /[^ -~]/.test(decryptedString)) {
-      logger.warn(`Invalid decryption result: "${decryptedString}"`);
-      return null;
-    }
-    return decryptedString;
-  } catch (error) {
-    logger.error('Decryption failed:', { error: error.message, input: text });
-    return null;
-  }
-}
-
-// Socket.IO handlers with authentication
-const handleSocketIOEvents = (io) => {
-  io.on('connection', (socket) => {
-    if (!socket.request.session || !socket.request.session.isLoggedIn || !socket.request.session.userId) {
-      logger.warn(`Unauthorized Socket.IO connection attempt: ${socket.id}`);
-      socket.disconnect(true);
-      return;
-    }
-    const userId = socket.request.session.userId;
-    logger.info(`New Socket.IO client connected: ${socket.id}, userId: ${userId}`);
-    socket.join(`user:${userId}`);
-
-    socket.on('reschedule_request', (data) => {
-      if (!data || !data.request || typeof data.request !== 'object') {
-        logger.warn(`Invalid reschedule_request data from ${socket.id}`);
-        return;
-      }
-      logger.info(`Broadcasting reschedule request from userId: ${userId}`);
-      io.to('admin').emit('reschedule_request', {
-        type: 'reschedule_request',
-        request: data.request,
-        userId,
-        timestamp: new Date().toISOString(),
-      });
-    });
-
-    socket.on('cancel_request', (data) => {
-      if (!data || !data.request || typeof data.request !== 'object') {
-        logger.warn(`Invalid cancel_request data from ${socket.id}`);
-        return;
-      }
-      logger.info(`Broadcasting cancel request from userId: ${userId}`);
-      io.to('admin').emit('cancel_request', {
-        type: 'cancel_request',
-        request: data.request,
-        userId,
-        timestamp: new Date().toISOString(),
-      });
-    });
-
-    socket.on('request_response', (data) => {
-      if (!data || !data.type || !data.requestId || !data.status) {
-        logger.warn(`Invalid request_response data from ${socket.id}`);
-        return;
-      }
-      logger.info(`Broadcasting ${data.type} from userId: ${userId}`);
-      io.to(`user:${data.userId}`).emit(data.type, {
-        type: data.type,
-        requestId: data.requestId,
-        status: data.status,
-        reject_reason: data.reject_reason || null,
-        timestamp: new Date().toISOString(),
-      });
-    });
-
-    socket.on('disconnect', () => {
-      logger.info(`Socket.IO client disconnected: ${socket.id}, userId: ${userId}`);
-    });
-
-    socket.on('error', (error) => {
-      logger.error(`Socket.IO error for ${socket.id}:`, error);
-    });
+// ---------------------------------------------------------------------------
+// Email stub — logs to console in dev, skips sending
+// ---------------------------------------------------------------------------
+function sendMail(options) {
+  logger.info('[DEV] Email suppressed — would have sent:', {
+    to: options.to, subject: options.subject,
   });
-};
+}
 
-// Apply helmet for security headers
-router.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-    },
-  },
-}));
+// ---------------------------------------------------------------------------
+// Helper
+// ---------------------------------------------------------------------------
+async function getPatient(userId) {
+  const r = await pool.query('SELECT first_name, last_name, email FROM patients WHERE id = $1', [userId]);
+  if (!r.rows[0]) return null;
+  const p = r.rows[0];
+  return {
+    first_name: decrypt(p.first_name),
+    last_name:  decrypt(p.last_name),
+    email:      decrypt(p.email),
+    fullName:   `${decrypt(p.first_name)} ${decrypt(p.last_name)}`,
+  };
+}
 
-// GET /api/appointments/booked
-router.get('/booked', async (req, res) => {
+// ---------------------------------------------------------------------------
+// GET /api/appointments/booked  — public calendar slots
+// ---------------------------------------------------------------------------
+router.get('/booked', async (_req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('appointments')
-      .select('id, appointment_date, notes, status, cancel_reason')
-      .neq('status', 'cancelled')
-      .neq('status', 'rejected')
-      .order('appointment_date', { ascending: true });
-
-    if (error) throw new Error(`Supabase error: ${error.message}`);
-
-    const decryptedAry = data.map((appointment) => ({
-      ...appointment,
-      notes: appointment.notes ? decrypt(appointment.notes) : null,
-      cancel_reason: appointment.cancel_reason ? decrypt(appointment.cancel_reason) : null,
-    }));
-
-    res.status(200).json({ success: true, appointments: decryptedAry });
-  } catch (error) {
-    logger.error('Error fetching booked appointments:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to fetch booked appointments' });
+    const r = await pool.query(
+      "SELECT id, appointment_date, notes, status, cancel_reason FROM appointments WHERE status NOT IN ('cancelled','rejected') ORDER BY appointment_date ASC"
+    );
+    res.json({ success: true, appointments: r.rows.map((a) => ({
+      ...a,
+      notes:         a.notes         ? decrypt(a.notes)         : null,
+      cancel_reason: a.cancel_reason ? decrypt(a.cancel_reason) : null,
+    }))});
+  } catch (err) {
+    logger.error('Booked error:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to fetch booked slots' });
   }
 });
 
-// POST /api/appointments
+// ---------------------------------------------------------------------------
+// POST /api/appointments  — book
+// ---------------------------------------------------------------------------
 router.post('/', isAuthenticated, rateLimitAppointments, async (req, res) => {
   const { user_id, appointment_date, service_id, notes } = req.body;
 
+  if (!user_id || !appointment_date || !service_id)
+    return res.status(400).json({ error: 'bad_request', message: 'user_id, appointment_date, and service_id are required' });
+  if (!validator.isInt(String(user_id)))
+    return res.status(400).json({ error: 'bad_request', message: 'Invalid user_id' });
+  if (!validator.isISO8601(appointment_date))
+    return res.status(400).json({ error: 'bad_request', message: 'Invalid appointment_date' });
+
+  const client = await pool.connect();
   try {
-    if (!user_id || !appointment_date || !service_id) {
-      return res.status(400).json({ error: 'bad_request', message: 'User ID, appointment date, and service ID are required' });
-    }
-    if (!validator.isInt(user_id) || !validator.isISO8601(appointment_date)) {
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid user ID or appointment date format' });
-    }
-    if (notes && !validator.isLength(notes, { max: 500 })) {
-      return res.status(400).json({ error: 'bad_request', message: 'Notes must be less than 500 characters' });
-    }
+    await client.query('BEGIN');
+    const svc = await client.query('SELECT id, name FROM services WHERE id = $1', [service_id]);
+    if (!svc.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'not_found', message: 'Service not found' }); }
 
-    const { data: serviceCheck, error: serviceError } = await supabase
-      .from('services')
-      .select('id, name')
-      .eq('id', service_id)
-      .single();
-    if (serviceError) throw new Error(`Service fetch error: ${serviceError.message}`);
-    if (!serviceCheck) {
-      return res.status(404).json({ error: 'not_found', message: 'Selected service does not exist' });
-    }
+    const conflict = await client.query(
+      "SELECT id FROM appointments WHERE appointment_date = $1 AND status NOT IN ('cancelled','rejected')",
+      [appointment_date]
+    );
+    if (conflict.rows.length) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'conflict', message: 'Time slot already booked' }); }
 
-    const { data: existing, error: existingError } = await supabase
-      .from('appointments')
-      .select('id, status')
-      .eq('appointment_date', appointment_date)
-      .neq('status', 'cancelled')
-      .neq('status', 'rejected');
-    if (existingError) throw new Error(`Conflict check error: ${existingError.message}`);
-    if (existing.length > 0) {
-      return res.status(409).json({ error: 'conflict', message: 'This time slot is already booked' });
-    }
+    const appt = (await client.query(
+      "INSERT INTO appointments (user_id, service_id, appointment_date, notes, status, pending_action, created_at, updated_at) VALUES ($1,$2,$3,$4,'pending','confirm',NOW(),NOW()) RETURNING *",
+      [user_id, service_id, appointment_date, notes ? encrypt(notes) : null]
+    )).rows[0];
 
-    const encryptedNotes = notes ? encrypt(notes) : null;
-    const { data: appointment, error: appointmentError } = await supabase
-      .from('appointments')
-      .insert([
-        {
-          user_id,
-          appointment_date,
-          service_id,
-          notes: encryptedNotes,
-          status: 'pending',
-        },
-      ])
-      .select()
-      .single();
-    if (appointmentError) throw new Error(`Appointment insert error: ${appointmentError.message}`);
+    await client.query(
+      "INSERT INTO appointment_requests (appointment_id, user_id, action, status, created_at, updated_at) VALUES ($1,$2,'confirm','pending',NOW(),NOW())",
+      [appt.id, user_id]
+    );
+    await client.query('COMMIT');
 
-    const appointmentId = appointment.id;
+    const patient = await getPatient(user_id);
+    sendMail({ to: 'admin', subject: 'New Appointment Request', html: `Patient: ${patient?.fullName}, Date: ${appointment_date}` });
 
-    const { error: requestError } = await supabase
-      .from('appointment_requests')
-      .insert([{ appointment_id: appointmentId, user_id, action: 'confirm', status: 'pending' }]);
-    if (requestError) throw new Error(`Request insert error: ${requestError.message}`);
-
-    const { error: updateError } = await supabase
-      .from('appointments')
-      .update({ pending_action: 'confirm' })
-      .eq('id', appointmentId);
-    if (updateError) throw new Error(`Update error: ${updateError.message}`);
-
-    const { data: patientRaw, error: patientError } = await supabase
-      .from('patients')
-      .select('first_name, last_name')
-      .eq('id', user_id)
-      .single();
-    if (patientError) throw new Error(`Patient fetch error: ${patientError.message}`);
-
-    const patient = {
-      first_name: decrypt(patientRaw.first_name),
-      last_name: decrypt(patientRaw.last_name),
-    };
-    const patientName = `${patient.first_name} ${patient.last_name}`;
-
-    const adminMailOptions = {
-      from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER,
-      subject: 'New Appointment Request - Balane-Saspa Dental Clinic',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-          <h2 style="color: #4154f1; text-align: center;">Balane-Saspa Dental Clinic</h2>
-          <p>Dear Admin,</p>
-          <p>A new appointment request has been submitted:</p>
-          <ul>
-            <li><strong>Patient:</strong> ${patientName}</li>
-            <li><strong>Appointment Date:</strong> ${new Date(appointment.appointment_date).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</li>
-            <li><strong>Service:</strong> ${serviceCheck.name}</li>
-            <li><strong>Notes:</strong> ${notes || 'None'}</li>
-          </ul>
-          <p>Please review and confirm this request in the admin panel.</p>
-          <p>Best regards,<br>Balane-Saspa Dental Clinic System</p>
-        </div>
-      `,
-    };
-
-    await transporter.sendMail(adminMailOptions);
-    logger.info(`New appointment request email sent for appointmentId: ${appointmentId}`);
-    res.status(201).json({
-      success: true,
-      message: 'Appointment booked successfully, awaiting admin confirmation',
-      appointment: {
-        ...appointment,
-        notes: appointment.notes ? decrypt(appointment.notes) : null,
-      },
-    });
-  } catch (error) {
-    logger.error('Error booking appointment:', error);
+    logger.info(`Appointment booked: id=${appt.id} userId=${user_id}`);
+    res.status(201).json({ success: true, message: 'Appointment booked, awaiting admin confirmation', appointment: { ...appt, notes: notes || null } });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    logger.error('Book error:', err);
     res.status(500).json({ error: 'server_error', message: 'Failed to book appointment' });
-  }
+  } finally { client.release(); }
 });
 
-// GET /api/appointments
+// ---------------------------------------------------------------------------
+// GET /api/appointments  — user's own
+// ---------------------------------------------------------------------------
 router.get('/', isAuthenticated, async (req, res) => {
   try {
-    const isPast = req.query.past === 'true';
-    const fetchAll = req.query.all === 'true';
-    const dateFilter = req.query.date ? validator.isISO8601(req.query.date) ? req.query.date : new Date().toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    const isPast   = req.query.past === 'true';
+    const fetchAll = req.query.all  === 'true';
+    const now      = new Date().toISOString();
+    const uid      = req.session.userId;
 
-    let query = supabase
-      .from('appointments')
-      .select(`
-        id,
-        appointment_date,
-        status,
-        notes,
-        cancel_reason,
-        reject_reason,
-        pending_action,
-        services (name)
-      `)
-      .eq('user_id', req.session.userId);
-
+    let q, p;
     if (fetchAll) {
-      query = query.order('appointment_date', { ascending: false });
+      q = 'SELECT a.*, s.name AS service_name FROM appointments a LEFT JOIN services s ON s.id = a.service_id WHERE a.user_id = $1 ORDER BY a.appointment_date DESC';
+      p = [uid];
     } else if (isPast) {
-      query = query.lte('appointment_date', dateFilter).order('appointment_date', { ascending: false });
+      q = 'SELECT a.*, s.name AS service_name FROM appointments a LEFT JOIN services s ON s.id = a.service_id WHERE a.user_id = $1 AND a.appointment_date <= $2 ORDER BY a.appointment_date DESC';
+      p = [uid, now];
     } else {
-      query = query
-        .gte('appointment_date', dateFilter)
-        .in('status', ['pending', 'confirmed'])
-        .order('appointment_date', { ascending: true });
+      q = "SELECT a.*, s.name AS service_name FROM appointments a LEFT JOIN services s ON s.id = a.service_id WHERE a.user_id = $1 AND a.appointment_date >= $2 AND a.status IN ('pending','confirmed') ORDER BY a.appointment_date ASC";
+      p = [uid, now];
     }
 
-    const { data, error } = await query;
-    if (error) throw new Error(`Supabase error: ${error.message}`);
-
-    const decryptedAry = data.map((appointment) => ({
-      ...appointment,
-      notes: appointment.notes ? decrypt(appointment.notes) : null,
-      cancel_reason: appointment.cancel_reason ? decrypt(appointment.cancel_reason) : null,
-      reject_reason: appointment.reject_reason ? decrypt(appointment.reject_reason) : null,
-    }));
-
-    res.status(200).json({ success: true, appointments: decryptedAry });
-  } catch (error) {
-    logger.error('Error fetching appointments:', error);
+    const r = await pool.query(q, p);
+    res.json({ success: true, appointments: r.rows.map((a) => ({
+      ...a,
+      notes:         a.notes         ? decrypt(a.notes)         : null,
+      cancel_reason: a.cancel_reason ? decrypt(a.cancel_reason) : null,
+      reject_reason: a.reject_reason ? decrypt(a.reject_reason) : null,
+      services: { name: a.service_name },
+    }))});
+  } catch (err) {
+    logger.error('Fetch appointments error:', err);
     res.status(500).json({ error: 'server_error', message: 'Failed to fetch appointments' });
   }
 });
 
-// GET /api/appointments/history/:userId
+// ---------------------------------------------------------------------------
+// GET /api/appointments/history/:userId?
+// ---------------------------------------------------------------------------
 router.get('/history/:userId?', isAuthenticated, async (req, res) => {
-  const { userId } = req.params;
+  const reqId     = req.params.userId;
+  const sessionId = req.session.userId;
   try {
-    const { data: isAdminUser, error: adminError } = await supabase
-      .from('admin')
-      .select('id')
-      .eq('id', req.session.userId)
-      .single();
-    if (adminError) throw new Error(`Admin check error: ${adminError.message}`);
+    const adminCheck  = await pool.query('SELECT id FROM admin WHERE id = $1', [sessionId]);
+    const isAdminUser = adminCheck.rows.length > 0;
+    if (!isAdminUser && reqId && parseInt(reqId) !== sessionId)
+      return res.status(403).json({ error: 'forbidden', message: "Cannot view other users' history" });
 
-    let query = supabase
-      .from('appointments')
-      .select(`
-        id,
-        user_id,
-        appointment_date,
-        status,
-        notes,
-        cancel_reason,
-        reject_reason,
-        pending_action,
-        services (name, description)
-      `)
-      .order('appointment_date', { ascending: false });
+    const q = reqId
+      ? 'SELECT a.*, s.name AS service_name FROM appointments a LEFT JOIN services s ON s.id = a.service_id WHERE a.user_id = $1 ORDER BY a.appointment_date DESC'
+      : 'SELECT a.*, s.name AS service_name FROM appointments a LEFT JOIN services s ON s.id = a.service_id ORDER BY a.appointment_date DESC';
+    const r = await pool.query(q, reqId ? [parseInt(reqId)] : []);
 
-    if (!isAdminUser && userId && userId !== req.session.userId) {
-      logger.warn(`Forbidden history access attempt by userId: ${req.session.userId} for userId: ${userId}`);
-      return res.status(403).json({ error: 'forbidden', message: 'Cannot view other users\' history' });
-    }
-    if (userId) {
-      if (!validator.isInt(userId)) {
-        return res.status(400).json({ error: 'bad_request', message: 'Invalid user ID' });
-      }
-      query = query.eq('user_id', userId);
+    const patientIds = [...new Set(r.rows.map((row) => row.user_id))];
+    const patientMap = new Map();
+    if (patientIds.length) {
+      const pRows = await pool.query('SELECT id, first_name, last_name FROM patients WHERE id = ANY($1)', [patientIds]);
+      pRows.rows.forEach((p) => patientMap.set(p.id, { first_name: decrypt(p.first_name), last_name: decrypt(p.last_name) }));
     }
 
-    const { data: appointments, error } = await query;
-    if (error) throw new Error(`Supabase error: ${error.message}`);
-
-    const patientIds = [...new Set(appointments.map((app) => app.user_id))];
-    const { data: patients, error: patientError } = await supabase
-      .from('patients')
-      .select('id, first_name, last_name')
-      .in('id', patientIds);
-    if (patientError) throw new Error(`Patient fetch error: ${patientError.message}`);
-
-    const patientMap = new Map(
-      patients.map((p) => [
-        p.id,
-        {
-          first_name: decrypt(p.first_name),
-          last_name: decrypt(p.last_name),
-        },
-      ])
-    );
-
-    const history = appointments.map((app) => ({
-      ...app,
-      notes: app.notes ? decrypt(app.notes) : null,
-      cancel_reason: app.cancel_reason ? decrypt(app.cancel_reason) : null,
-      reject_reason: app.reject_reason ? decrypt(app.reject_reason) : null,
-      patients: patientMap.get(app.user_id) || { first_name: null, last_name: null },
-    }));
-
-    res.status(200).json({ success: true, history });
-  } catch (error) {
-    logger.error('Error fetching appointment history:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to fetch appointment history' });
+    res.json({ success: true, history: r.rows.map((a) => ({
+      ...a,
+      notes:         a.notes         ? decrypt(a.notes)         : null,
+      cancel_reason: a.cancel_reason ? decrypt(a.cancel_reason) : null,
+      reject_reason: a.reject_reason ? decrypt(a.reject_reason) : null,
+      services:  { name: a.service_name },
+      patients:  patientMap.get(a.user_id) || { first_name: null, last_name: null },
+    }))});
+  } catch (err) {
+    logger.error('History error:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to fetch history' });
   }
 });
 
+// ---------------------------------------------------------------------------
 // POST /api/appointments/:id/reschedule
+// ---------------------------------------------------------------------------
 router.post('/:id/reschedule', isAuthenticated, cooldownCheck, async (req, res) => {
   const { id } = req.params;
   const { appointment_date, cancel_reason, notes } = req.body;
+  if (!validator.isInt(id))                return res.status(400).json({ error: 'bad_request', message: 'Invalid ID' });
+  if (!appointment_date || !cancel_reason) return res.status(400).json({ error: 'bad_request', message: 'appointment_date and cancel_reason are required' });
+  if (!validator.isISO8601(appointment_date)) return res.status(400).json({ error: 'bad_request', message: 'Invalid date' });
 
   try {
-    if (!validator.isInt(id)) {
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid appointment ID' });
-    }
-    if (!appointment_date || !cancel_reason) {
-      return res.status(400).json({ error: 'bad_request', message: 'Appointment date and reason for rescheduling are required' });
-    }
-    if (!validator.isISO8601(appointment_date)) {
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid appointment date format' });
-    }
-    if (!validator.isLength(cancel_reason, { min: 1, max: 500 })) {
-      return res.status(400).json({ error: 'bad_request', message: 'Cancel reason must be between 1 and 500 characters' });
-    }
-    if (notes && !validator.isLength(notes, { max: 500 })) {
-      return res.status(400).json({ error: 'bad_request', message: 'Notes must be less than 500 characters' });
-    }
+    const apptR = await pool.query(
+      'SELECT a.*, s.name AS service_name FROM appointments a LEFT JOIN services s ON s.id = a.service_id WHERE a.id = $1 AND a.user_id = $2',
+      [id, req.session.userId]
+    );
+    if (!apptR.rows.length) return res.status(404).json({ error: 'not_found', message: 'Appointment not found' });
+    const appt = apptR.rows[0];
+    if (!['pending','confirmed'].includes(appt.status))
+      return res.status(400).json({ error: 'bad_request', message: 'Cannot reschedule this appointment' });
+    if (appt.pending_action)
+      return res.status(400).json({ error: 'bad_request', message: `A ${appt.pending_action} request is already pending` });
 
-    const { data: appointmentCheck, error: checkError } = await supabase
-      .from('appointments')
-      .select('id, user_id, appointment_date, cancel_reason, notes, status, pending_action, services (name)')
-      .eq('id', id)
-      .eq('user_id', req.session.userId)
-      .single();
-    if (checkError) throw new Error(`Supabase error: ${checkError.message}`);
-    if (!appointmentCheck) {
-      return res.status(404).json({ error: 'not_found', message: 'Appointment not found or not authorized' });
-    }
+    const conflict = await pool.query(
+      "SELECT id FROM appointments WHERE appointment_date = $1 AND status NOT IN ('cancelled','rejected') AND id != $2",
+      [appointment_date, id]
+    );
+    if (conflict.rows.length) return res.status(409).json({ error: 'conflict', message: 'Time slot already booked' });
 
-    if (!['pending', 'confirmed'].includes(appointmentCheck.status)) {
-      return res.status(400).json({ error: 'bad_request', message: 'Cannot reschedule completed or cancelled appointment' });
-    }
+    const encReason = encrypt(cancel_reason);
+    const encNotes  = notes ? encrypt(notes) : appt.notes;
+    await pool.query(
+      "UPDATE appointments SET pending_action='reschedule', cancel_reason=$1, notes=$2, updated_at=NOW() WHERE id=$3",
+      [encReason, encNotes, id]
+    );
+    await pool.query(
+      "INSERT INTO appointment_requests (appointment_id, user_id, action, status, details, created_at, updated_at) VALUES ($1,$2,'reschedule','pending',$3,NOW(),NOW())",
+      [id, req.session.userId, JSON.stringify({ new_appointment_date: appointment_date, new_cancel_reason: encReason, new_notes: encNotes, original_appointment_date: appt.appointment_date, original_cancel_reason: appt.cancel_reason, original_notes: appt.notes })]
+    );
 
-    if (appointmentCheck.pending_action) {
-      return res.status(400).json({ error: 'bad_request', message: `A ${appointmentCheck.pending_action} request is already pending` });
-    }
-
-    const { data: conflictCheck, error: conflictError } = await supabase
-      .from('appointments')
-      .select('id')
-      .eq('appointment_date', appointment_date)
-      .neq('status', 'cancelled')
-      .neq('status', 'rejected');
-    if (conflictError) throw new Error(`Conflict check error: ${conflictError.message}`);
-    if (conflictCheck.length > 0) {
-      return res.status(409).json({ error: 'conflict', message: 'Requested time slot is already booked' });
-    }
-
-    const encryptedReason = encrypt(cancel_reason);
-    const encryptedNotes = notes ? encrypt(notes) : appointmentCheck.notes;
-
-    const { error: updateError } = await supabase
-      .from('appointments')
-      .update({
-        pending_action: 'reschedule',
-        cancel_reason: encryptedReason,
-        notes: encryptedNotes,
-      })
-      .eq('id', id);
-    if (updateError) throw new Error(`Update error: ${updateError.message}`);
-
-    const { error: requestError } = await supabase
-      .from('appointment_requests')
-      .insert([
-        {
-          appointment_id: id,
-          user_id: req.session.userId,
-          action: 'reschedule',
-          status: 'pending',
-          details: JSON.stringify({
-            new_appointment_date: appointment_date,
-            new_cancel_reason: encryptedReason,
-            new_notes: encryptedNotes,
-            original_appointment_date: appointmentCheck.appointment_date,
-            original_cancel_reason: appointmentCheck.cancel_reason,
-            original_notes: appointmentCheck.notes,
-          }),
-        },
-      ]);
-    if (requestError) throw new Error(`Request insert error: ${requestError.message}`);
-
-    const { data: patientRaw, error: patientError } = await supabase
-      .from('patients')
-      .select('first_name, last_name')
-      .eq('id', req.session.userId)
-      .single();
-    if (patientError) throw new Error(`Patient fetch error: ${patientError.message}`);
-
-    const patient = {
-      first_name: decrypt(patientRaw.first_name),
-      last_name: decrypt(patientRaw.last_name),
-    };
-    const patientName = `${patient.first_name} ${patient.last_name}`;
-
-    const adminMailOptions = {
-      from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER,
-      subject: 'Reschedule Request - Balane-Saspa Dental Clinic',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-          <h2 style="color: #4154f1; text-align: center;">Balane-Saspa Dental Clinic</h2>
-          <p>Dear Admin,</p>
-          <p>A reschedule request has been submitted:</p>
-          <ul>
-            <li><strong>Patient:</strong> ${patientName}</li>
-            <li><strong>Original Appointment Date:</strong> ${new Date(appointmentCheck.appointment_date).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</li>
-            <li><strong>New Appointment Date:</strong> ${new Date(appointment_date).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</li>
-            <li><strong>Service:</strong> ${appointmentCheck.services.name}</li>
-            <li><strong>Reason for Rescheduling:</strong> ${cancel_reason}</li>
-            <li><strong>Notes:</strong> ${notes || (appointmentCheck.notes ? decrypt(appointmentCheck.notes) : 'None')}</li>
-          </ul>
-          <p>Please review and approve/reject this request in the admin panel.</p>
-          <p>Best regards,<br>Balane-Saspa Dental Clinic System</p>
-        </div>
-      `,
-    };
-
-    await transporter.sendMail(adminMailOptions);
-    logger.info(`Reschedule request email sent for appointmentId: ${id}`);
-    res.status(200).json({ success: true, message: 'Reschedule request submitted, awaiting admin approval' });
-  } catch (error) {
-    logger.error('Error requesting reschedule:', error);
+    const patient = await getPatient(req.session.userId);
+    sendMail({ to: 'admin', subject: 'Reschedule Request', html: `Patient: ${patient?.fullName}, New Date: ${appointment_date}` });
+    res.json({ success: true, message: 'Reschedule request submitted, awaiting admin approval' });
+  } catch (err) {
+    logger.error('Reschedule error:', err);
     res.status(500).json({ error: 'server_error', message: 'Failed to request reschedule' });
   }
 });
 
-// PUT /api/appointments/:id
+// ---------------------------------------------------------------------------
+// PUT /api/appointments/:id  (admin)
+// ---------------------------------------------------------------------------
 router.put('/:id', isAuthenticated, isAdmin, async (req, res) => {
   const { id } = req.params;
   const { appointment_date, notes, status, cancel_reason } = req.body;
+  if (!validator.isInt(id))                   return res.status(400).json({ error: 'bad_request', message: 'Invalid ID' });
+  if (!appointment_date)                      return res.status(400).json({ error: 'bad_request', message: 'appointment_date is required' });
+  if (!validator.isISO8601(appointment_date)) return res.status(400).json({ error: 'bad_request', message: 'Invalid date' });
+  const validStatuses = ['pending','confirmed','cancelled','rejected','expired','completed'];
+  if (status && !validStatuses.includes(status)) return res.status(400).json({ error: 'bad_request', message: 'Invalid status' });
 
   try {
-    if (!validator.isInt(id)) {
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid appointment ID' });
-    }
-    if (!appointment_date) {
-      return res.status(400).json({ error: 'bad_request', message: 'Appointment date is required' });
-    }
-    if (!validator.isISO8601(appointment_date)) {
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid appointment date format' });
-    }
-    if (notes && !validator.isLength(notes, { max: 500 })) {
-      return res.status(400).json({ error: 'bad_request', message: 'Notes must be less than 500 characters' });
-    }
-    if (cancel_reason && !validator.isLength(cancel_reason, { max: 500 })) {
-      return res.status(400).json({ error: 'bad_request', message: 'Cancel reason must be less than 500 characters' });
-    }
-    if (status && !['pending', 'confirmed', 'cancelled', 'rejected', 'expired', 'completed'].includes(status)) {
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid status' });
-    }
+    const existing = await pool.query('SELECT * FROM appointments WHERE id = $1', [id]);
+    if (!existing.rows.length) return res.status(404).json({ error: 'not_found', message: 'Appointment not found' });
+    const appt = existing.rows[0];
 
-    const { data: appointmentCheck, error: checkError } = await supabase
-      .from('appointments')
-      .select('id, user_id, appointment_date, notes, cancel_reason, status, pending_action')
-      .eq('id', id)
-      .single();
-    if (checkError) throw new Error(`Supabase error: ${checkError.message}`);
-    if (!appointmentCheck) {
-      return res.status(404).json({ error: 'not_found', message: 'Appointment not found' });
-    }
+    const conflict = await pool.query(
+      "SELECT id FROM appointments WHERE appointment_date = $1 AND status NOT IN ('cancelled','rejected') AND id != $2",
+      [appointment_date, id]
+    );
+    if (conflict.rows.length) return res.status(409).json({ error: 'conflict', message: 'Time slot already booked' });
 
-    const { data: conflictCheck, error: conflictError } = await supabase
-      .from('appointments')
-      .select('id')
-      .eq('appointment_date', appointment_date)
-      .neq('status', 'cancelled')
-      .neq('status', 'rejected')
-      .neq('id', id);
-    if (conflictError) throw new Error(`Conflict check error: ${conflictError.message}`);
-    if (conflictCheck.length > 0) {
-      return res.status(409).json({ error: 'conflict', message: 'Time slot already booked' });
-    }
+    const updated = (await pool.query(
+      `UPDATE appointments SET appointment_date=$1, notes=$2, cancel_reason=$3, status=$4, pending_action=NULL, updated_at=NOW()
+       WHERE id=$5 RETURNING *, (SELECT name FROM services WHERE id=appointments.service_id) AS service_name`,
+      [appointment_date, notes ? encrypt(notes) : appt.notes, cancel_reason ? encrypt(cancel_reason) : appt.cancel_reason, status || appt.status, id]
+    )).rows[0];
 
-    const encryptedNotes = notes ? encrypt(notes) : appointmentCheck.notes;
-    const encryptedCancelReason = cancel_reason ? encrypt(cancel_reason) : appointmentCheck.cancel_reason;
-
-    const updatedData = {
-      appointment_date,
-      notes: encryptedNotes,
-      cancel_reason: encryptedCancelReason,
-      status: status || appointmentCheck.status,
-      pending_action: null,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data: updatedAppointment, error: updateError } = await supabase
-      .from('appointments')
-      .update(updatedData)
-      .eq('id', id)
-      .select('id, user_id, appointment_date, notes, cancel_reason, status, services (name)')
-      .single();
-    if (updateError) throw new Error(`Update error: ${updateError.message}`);
-
-    const decryptedAppointment = {
-      ...updatedAppointment,
-      notes: updatedAppointment.notes ? decrypt(updatedAppointment.notes) : null,
-      cancel_reason: updatedAppointment.cancel_reason ? decrypt(updatedAppointment.cancel_reason) : null,
-    };
-
-    logger.info(`Appointment updated by admin: ${id}`);
-    res.status(200).json({
-      success: true,
-      message: 'Appointment updated successfully by admin',
-      appointment: decryptedAppointment,
-    });
-  } catch (error) {
-    logger.error('Error updating appointment:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to update appointment' });
+    res.json({ success: true, message: 'Appointment updated', appointment: {
+      ...updated,
+      notes:         updated.notes         ? decrypt(updated.notes)         : null,
+      cancel_reason: updated.cancel_reason ? decrypt(updated.cancel_reason) : null,
+    }});
+  } catch (err) {
+    logger.error('Admin update error:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to update' });
   }
 });
 
-// DELETE /api/appointments/:id
+// ---------------------------------------------------------------------------
+// DELETE /api/appointments/:id  (patient cancel request)
+// ---------------------------------------------------------------------------
 router.delete('/:id', isAuthenticated, cooldownCheck, async (req, res) => {
   const { id } = req.params;
   const { cancel_reason } = req.body;
+  if (!validator.isInt(id)) return res.status(400).json({ error: 'bad_request', message: 'Invalid ID' });
+  if (!cancel_reason)       return res.status(400).json({ error: 'bad_request', message: 'cancel_reason is required' });
 
   try {
-    if (!validator.isInt(id)) {
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid appointment ID' });
-    }
-    if (!cancel_reason) {
-      return res.status(400).json({ error: 'bad_request', message: 'Cancellation reason is required' });
-    }
-    if (!validator.isLength(cancel_reason, { min: 1, max: 500 })) {
-      return res.status(400).json({ error: 'bad_request', message: 'Cancel reason must be between 1 and 500 characters' });
-    }
+    const apptR = await pool.query(
+      'SELECT a.*, s.name AS service_name FROM appointments a LEFT JOIN services s ON s.id = a.service_id WHERE a.id = $1 AND a.user_id = $2',
+      [id, req.session.userId]
+    );
+    if (!apptR.rows.length) return res.status(404).json({ error: 'not_found', message: 'Appointment not found' });
+    const appt = apptR.rows[0];
+    if (appt.pending_action) return res.status(400).json({ error: 'bad_request', message: `A ${appt.pending_action} request is already pending` });
+    if (!['pending','confirmed'].includes(appt.status)) return res.status(400).json({ error: 'bad_request', message: 'Cannot cancel this appointment' });
 
-    const { data: appointmentCheck, error: checkError } = await supabase
-      .from('appointments')
-      .select('id, user_id, appointment_date, notes, cancel_reason, status, pending_action, services (name)')
-      .eq('id', id)
-      .eq('user_id', req.session.userId)
-      .single();
-    if (checkError) throw new Error(`Supabase error: ${checkError.message}`);
-    if (!appointmentCheck) {
-      return res.status(404).json({ error: 'not_found', message: 'Appointment not found or not authorized' });
-    }
+    const encReason = encrypt(cancel_reason);
+    await pool.query("UPDATE appointments SET pending_action='cancel', cancel_reason=$1, updated_at=NOW() WHERE id=$2", [encReason, id]);
+    await pool.query(
+      "INSERT INTO appointment_requests (appointment_id, user_id, action, status, details, created_at, updated_at) VALUES ($1,$2,'cancel','pending',$3,NOW(),NOW())",
+      [id, req.session.userId, JSON.stringify({ cancel_reason: encReason })]
+    );
 
-    if (appointmentCheck.pending_action) {
-      return res.status(400).json({ error: 'bad_request', message: `A ${appointmentCheck.pending_action} request is already pending` });
-    }
-    if (!['pending', 'confirmed'].includes(appointmentCheck.status)) {
-      return res.status(400).json({ error: 'bad_request', message: 'This appointment cannot be cancelled' });
-    }
-
-    const encryptedCancelReason = encrypt(cancel_reason);
-
-    const { error: updateError } = await supabase
-      .from('appointments')
-      .update({
-        pending_action: 'cancel',
-        cancel_reason: encryptedCancelReason,
-      })
-      .eq('id', id);
-    if (updateError) throw new Error(`Update error: ${updateError.message}`);
-
-    const { error: requestError } = await supabase
-      .from('appointment_requests')
-      .insert([
-        {
-          appointment_id: id,
-          user_id: req.session.userId,
-          action: 'cancel',
-          status: 'pending',
-          details: JSON.stringify({ cancel_reason: encryptedCancelReason }),
-        },
-      ]);
-    if (requestError) throw new Error(`Request insert error: ${requestError.message}`);
-
-    const { data: patientRaw, error: patientError } = await supabase
-      .from('patients')
-      .select('first_name, last_name')
-      .eq('id', req.session.userId)
-      .single();
-    if (patientError) throw new Error(`Patient fetch error: ${patientError.message}`);
-
-    const patient = {
-      first_name: decrypt(patientRaw.first_name),
-      last_name: decrypt(patientRaw.last_name),
-    };
-    const patientName = `${patient.first_name} ${patient.last_name}`;
-
-    const adminMailOptions = {
-      from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER,
-      subject: 'Cancellation Request - Balane-Saspa Dental Clinic',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-          <h2 style="color: #4154f1; text-align: center;">Balane-Saspa Dental Clinic</h2>
-          <p>Dear Admin,</p>
-          <p>A cancellation request has been submitted:</p>
-          <ul>
-            <li><strong>Patient:</strong> ${patientName}</li>
-            <li><strong>Appointment Date:</strong> ${new Date(appointmentCheck.appointment_date).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</li>
-            <li><strong>Service:</strong> ${appointmentCheck.services.name}</li>
-            <li><strong>Reason:</strong> ${cancel_reason}</li>
-            <li><strong>Notes:</strong> ${appointmentCheck.notes ? decrypt(appointmentCheck.notes) : 'None'}</li>
-          </ul>
-          <p>Please review and approve/reject this request in the admin panel.</p>
-          <p>Best regards,<br>Balane-Saspa Dental Clinic System</p>
-        </div>
-      `,
-    };
-
-    await transporter.sendMail(adminMailOptions);
-    logger.info(`Cancellation request email sent for appointmentId: ${id}`);
-    res.status(200).json({ success: true, message: 'Cancellation request submitted, awaiting admin approval' });
-  } catch (error) {
-    logger.error('Error requesting cancellation:', error);
+    const patient = await getPatient(req.session.userId);
+    sendMail({ to: 'admin', subject: 'Cancellation Request', html: `Patient: ${patient?.fullName}` });
+    res.json({ success: true, message: 'Cancellation request submitted, awaiting admin approval' });
+  } catch (err) {
+    logger.error('Cancel error:', err);
     res.status(500).json({ error: 'server_error', message: 'Failed to request cancellation' });
   }
 });
 
-// GET /api/appointments/requests
+// ---------------------------------------------------------------------------
+// GET /api/appointments/requests  (admin)
+// ---------------------------------------------------------------------------
 router.get('/requests', isAuthenticated, isAdmin, async (req, res) => {
   try {
-    const { data: requests, error } = await supabase
-      .from('appointment_requests')
-      .select(`
-        id,
-        appointment_id,
-        user_id,
-        action,
-        status,
-        details,
-        created_at,
-        appointments (appointment_date, notes, cancel_reason, status, pending_action, services (name))
-      `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: true });
-    if (error) throw new Error(`Supabase error: ${error.message}`);
+    const r = await pool.query(`
+      SELECT r.*, a.appointment_date, a.notes AS appt_notes, a.cancel_reason AS appt_cancel_reason,
+             a.status AS appt_status, a.pending_action, s.name AS service_name
+      FROM appointment_requests r
+      JOIN appointments a ON a.id = r.appointment_id
+      LEFT JOIN services s ON s.id = a.service_id
+      WHERE r.status = 'pending' ORDER BY r.created_at ASC`);
 
-    const patientIds = [...new Set(requests.map((req) => req.user_id))];
-    const { data: patients, error: patientError } = await supabase
-      .from('patients')
-      .select('id, first_name, last_name')
-      .in('id', patientIds);
-    if (patientError) throw new Error(`Patient fetch error: ${patientError.message}`);
+    const patientIds = [...new Set(r.rows.map((row) => row.user_id))];
+    const patientMap = new Map();
+    if (patientIds.length) {
+      const pRows = await pool.query('SELECT id, first_name, last_name FROM patients WHERE id = ANY($1)', [patientIds]);
+      pRows.rows.forEach((p) => patientMap.set(p.id, { first_name: decrypt(p.first_name), last_name: decrypt(p.last_name) }));
+    }
 
-    const patientMap = new Map(
-      patients.map((p) => [
-        p.id,
-        {
-          first_name: decrypt(p.first_name),
-          last_name: decrypt(p.last_name),
-        },
-      ])
-    );
-
-    const enrichedRequests = requests.map((req) => {
-      const details = req.details ? JSON.parse(req.details) : {};
+    const enriched = r.rows.map((row) => {
+      const details = row.details ? JSON.parse(row.details) : {};
       return {
-        ...req,
+        ...row,
         appointments: {
-          ...req.appointments,
-          notes: req.appointments.notes ? decrypt(req.appointments.notes) : null,
-          cancel_reason: req.appointments.cancel_reason ? decrypt(req.appointments.cancel_reason) : null,
+          appointment_date: row.appointment_date,
+          notes:            row.appt_notes        ? decrypt(row.appt_notes)        : null,
+          cancel_reason:    row.appt_cancel_reason ? decrypt(row.appt_cancel_reason): null,
+          status:           row.appt_status,
+          pending_action:   row.pending_action,
+          services:         { name: row.service_name },
         },
         new_appointment_date: details.new_appointment_date || null,
-        new_notes: details.new_notes ? decrypt(details.new_notes) : null,
-        new_cancel_reason: details.new_cancel_reason ? decrypt(details.new_cancel_reason) : null,
-        patients: patientMap.get(req.user_id) || { first_name: null, last_name: null },
+        new_notes:            details.new_notes         ? decrypt(details.new_notes)         : null,
+        new_cancel_reason:    details.new_cancel_reason  ? decrypt(details.new_cancel_reason) : null,
+        patients: patientMap.get(row.user_id) || { first_name: null, last_name: null },
       };
     });
-
-    res.status(200).json({ success: true, requests: enrichedRequests });
-  } catch (error) {
-    logger.error('Error fetching appointment requests:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to fetch appointment requests' });
+    res.json({ success: true, requests: enriched });
+  } catch (err) {
+    logger.error('Fetch requests error:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to fetch requests' });
   }
 });
 
-// POST /api/appointments/requests/:requestId/approve
+// ---------------------------------------------------------------------------
+// POST /api/appointments/requests/:requestId/approve  (admin)
+// ---------------------------------------------------------------------------
 router.post('/requests/:requestId/approve', isAuthenticated, isAdmin, async (req, res) => {
   const { requestId } = req.params;
+  if (!validator.isInt(requestId)) return res.status(400).json({ error: 'bad_request', message: 'Invalid request ID' });
+
+  const client = await pool.connect();
   try {
-    if (!validator.isInt(requestId)) {
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid request ID' });
-    }
+    await client.query('BEGIN');
+    const reqR = await client.query(`
+      SELECT r.*, a.user_id AS patient_id, a.appointment_date, a.notes AS appt_notes,
+             a.cancel_reason AS appt_cr, s.name AS service_name
+      FROM appointment_requests r
+      JOIN appointments a ON a.id = r.appointment_id
+      LEFT JOIN services s ON s.id = a.service_id
+      WHERE r.id = $1 AND r.status = 'pending'`, [requestId]);
 
-    const { data: requestCheck, error: checkError } = await supabase
-      .from('appointment_requests')
-      .select('*, appointments (id, user_id, appointment_date, notes, cancel_reason, status, services (name))')
-      .eq('id', requestId)
-      .eq('status', 'pending')
-      .single();
-    if (checkError) throw new Error(`Supabase error: ${checkError.message}`);
-    if (!requestCheck) {
-      return res.status(404).json({ error: 'not_found', message: 'Request not found or already processed' });
-    }
+    if (!reqR.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'not_found', message: 'Request not found' }); }
+    const req_ = reqR.rows[0];
+    const details = req_.details ? JSON.parse(req_.details) : {};
+    let updatedDate = req_.appointment_date;
 
-    const request = requestCheck;
-    const details = request.details ? JSON.parse(request.details) : {};
-    const cancellationDate = new Date();
-
-    const { data: patientRaw, error: patientError } = await supabase
-      .from('patients')
-      .select('first_name, last_name, email')
-      .eq('id', request.appointments.user_id)
-      .single();
-    if (patientError) throw new Error(`Patient fetch error: ${patientError.message}`);
-
-    const patient = {
-      first_name: decrypt(patientRaw.first_name),
-      last_name: decrypt(patientRaw.last_name),
-      email: patientRaw.email ? decrypt(patientRaw.email) : null,
-    };
-    const patientName = `${patient.first_name} ${patient.last_name}`;
-    const patientEmail = patient.email;
-
-    let updatedAppointmentDate = request.appointments.appointment_date;
-
-    if (request.action === 'cancel') {
-      const { error: updateError } = await supabase
-        .from('appointments')
-        .update({
-          status: 'cancelled',
-          pending_action: null,
-          cancel_reason: details.new_cancel_reason || request.appointments.cancel_reason,
-        })
-        .eq('id', request.appointment_id);
-      if (updateError) throw new Error(`Update error: ${updateError.message}`);
-    } else if (request.action === 'confirm') {
-      const { error: updateError } = await supabase
-        .from('appointments')
-        .update({ status: 'confirmed', pending_action: null })
-        .eq('id', request.appointment_id);
-      if (updateError) throw new Error(`Update error: ${updateError.message}`);
-    } else if (request.action === 'reschedule') {
+    if (req_.action === 'cancel') {
+      await client.query("UPDATE appointments SET status='cancelled', pending_action=NULL, updated_at=NOW() WHERE id=$1", [req_.appointment_id]);
+    } else if (req_.action === 'confirm') {
+      await client.query("UPDATE appointments SET status='confirmed', pending_action=NULL, updated_at=NOW() WHERE id=$1", [req_.appointment_id]);
+    } else if (req_.action === 'reschedule') {
       const { new_appointment_date, new_notes, new_cancel_reason } = details;
-
-      const { data: conflictCheck, error: conflictError } = await supabase
-        .from('appointments')
-        .select('id, status')
-        .eq('appointment_date', new_appointment_date)
-        .neq('status', 'cancelled')
-        .neq('status', 'rejected')
-        .neq('id', request.appointment_id);
-      if (conflictError) throw new Error(`Conflict check error: ${conflictError.message}`);
-      if (conflictCheck.length > 0) {
-        return res.status(409).json({
-          error: 'conflict',
-          message: 'The requested new time slot is already booked.',
-        });
-      }
-
-      const { data: updatedAppointment, error: updateError } = await supabase
-        .from('appointments')
-        .update({
-          appointment_date: new_appointment_date,
-          notes: new_notes || request.appointments.notes,
-          cancel_reason: new_cancel_reason || request.appointments.cancel_reason,
-          status: 'confirmed',
-          pending_action: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', request.appointment_id)
-        .select()
-        .single();
-      if (updateError) throw new Error(`Update error: ${updateError.message}`);
-
-      updatedAppointmentDate = new_appointment_date;
+      const conflict = await client.query(
+        "SELECT id FROM appointments WHERE appointment_date=$1 AND status NOT IN ('cancelled','rejected') AND id!=$2",
+        [new_appointment_date, req_.appointment_id]
+      );
+      if (conflict.rows.length) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'conflict', message: 'New slot already booked' }); }
+      await client.query(
+        "UPDATE appointments SET appointment_date=$1, notes=$2, cancel_reason=$3, status='confirmed', pending_action=NULL, updated_at=NOW() WHERE id=$4",
+        [new_appointment_date, new_notes || req_.appt_notes, new_cancel_reason || req_.appt_cr, req_.appointment_id]
+      );
+      updatedDate = new_appointment_date;
     }
 
-    const { error: requestUpdateError } = await supabase
-      .from('appointment_requests')
-      .update({ status: 'approved', updated_at: new Date().toISOString() })
-      .eq('id', requestId);
-    if (requestUpdateError) throw new Error(`Request update error: ${requestUpdateError.message}`);
+    await client.query("UPDATE appointment_requests SET status='approved', updated_at=NOW() WHERE id=$1", [requestId]);
+    await client.query('COMMIT');
 
-    if (patientEmail) {
-      const actionText = request.action === 'confirm' ? 'confirmed' : request.action === 'reschedule' ? 'rescheduled' : 'cancelled';
-      const subject = request.action === 'cancel' ? 'Appointment Cancellation Confirmed' : 'Appointment Request Approved';
-      const userMailOptions = {
-        from: process.env.EMAIL_USER,
-        to: patientEmail,
-        subject: `${subject} - Balane-Saspa Dental Clinic`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-            <h2 style="color: #4154f1; text-align: center;">Balane-Saspa Dental Clinic</h2>
-            <p>Dear ${patientName},</p>
-            <p>Your ${request.action} request has been approved:</p>
-            <ul>
-              <li><strong>Status:</strong> Appointment ${actionText}</li>
-              ${request.action === 'cancel' ?
-                `<li><strong>Original Date:</strong> ${new Date(request.appointments.appointment_date).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</li>
-                <li><strong>Cancelled On:</strong> ${cancellationDate.toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</li>` :
-                `<li><strong>Date:</strong> ${new Date(updatedAppointmentDate).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</li>`
-              }
-              <li><strong>Service:</strong> ${request.appointments.services.name}</li>
-            </ul>
-            <p>${request.action === 'cancel' ? 'We hope to assist you again in the future.' : 'We look forward to seeing you!'}</p>
-            <p>Best regards,<br>Balane-Saspa Dental Clinic Team</p>
-          </div>
-        `,
-      };
+    const patient = await getPatient(req_.patient_id);
+    if (patient?.email) sendMail({ to: patient.email, subject: `Appointment ${req_.action} approved`, html: `Date: ${updatedDate}` });
 
-      await transporter.sendMail(userMailOptions);
-      logger.info(`Approval notification sent to ${patientEmail} for requestId: ${requestId}`);
-    }
-
-    res.status(200).json({ success: true, message: `${request.action} request approved successfully` });
-  } catch (error) {
-    logger.error('Error approving request:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to approve request' });
-  }
+    res.json({ success: true, message: `${req_.action} request approved` });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    logger.error('Approve error:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to approve' });
+  } finally { client.release(); }
 });
 
-// POST /api/appointments/requests/:requestId/reject
+// ---------------------------------------------------------------------------
+// POST /api/appointments/requests/:requestId/reject  (admin)
+// ---------------------------------------------------------------------------
 router.post('/requests/:requestId/reject', isAuthenticated, isAdmin, async (req, res) => {
   const { requestId } = req.params;
   const { reject_reason } = req.body;
+  if (!validator.isInt(requestId)) return res.status(400).json({ error: 'bad_request', message: 'Invalid request ID' });
+  if (!reject_reason)              return res.status(400).json({ error: 'bad_request', message: 'reject_reason is required' });
+
   try {
-    if (!validator.isInt(requestId)) {
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid request ID' });
-    }
-    if (!reject_reason) {
-      return res.status(400).json({ error: 'bad_request', message: 'Rejection reason is required' });
-    }
-    if (!validator.isLength(reject_reason, { min: 1, max: 500 })) {
-      return res.status(400).json({ error: 'bad_request', message: 'Rejection reason must be between 1 and 500 characters' });
-    }
+    const reqR = await pool.query(`
+      SELECT r.*, a.user_id AS patient_id, a.appointment_date, s.name AS service_name
+      FROM appointment_requests r
+      JOIN appointments a ON a.id = r.appointment_id
+      LEFT JOIN services s ON s.id = a.service_id
+      WHERE r.id = $1 AND r.status = 'pending'`, [requestId]);
 
-    const { data: requestCheck, error: checkError } = await supabase
-      .from('appointment_requests')
-      .select('*, appointments (id, user_id, appointment_date, notes, cancel_reason, reject_reason, status, services (name))')
-      .eq('id', requestId)
-      .eq('status', 'pending')
-      .single();
-    if (checkError) throw new Error(`Supabase error: ${checkError.message}`);
-    if (!requestCheck) {
-      return res.status(404).json({ error: 'not_found', message: 'Request not found or already processed' });
-    }
+    if (!reqR.rows.length) return res.status(404).json({ error: 'not_found', message: 'Request not found' });
+    const req_ = reqR.rows[0];
+    const encReason  = encrypt(reject_reason);
+    const newStatus  = req_.action === 'confirm' ? 'rejected' : 'confirmed';
 
-    const request = requestCheck;
-    const encryptedRejectReason = encrypt(reject_reason);
+    await pool.query('UPDATE appointments SET status=$1, pending_action=NULL, reject_reason=$2, updated_at=NOW() WHERE id=$3', [newStatus, encReason, req_.appointment_id]);
+    await pool.query("UPDATE appointment_requests SET status='rejected', updated_at=NOW() WHERE id=$1", [requestId]);
 
-    const newStatus = request.action === 'confirm' ? 'rejected' : 'confirmed';
+    const patient = await getPatient(req_.patient_id);
+    if (patient?.email) sendMail({ to: patient.email, subject: 'Request rejected', html: `Reason: ${reject_reason}` });
 
-    const { error: updateError } = await supabase
-      .from('appointments')
-      .update({
-        status: newStatus,
-        pending_action: null,
-        reject_reason: encryptedRejectReason,
-      })
-      .eq('id', request.appointment_id);
-    if (updateError) throw new Error(`Update error: ${updateError.message}`);
-
-    const { error: requestUpdateError } = await supabase
-      .from('appointment_requests')
-      .update({
-        status: 'rejected',
-        updated_at: new Date().toISOString(),
-        details: JSON.stringify({ ...JSON.parse(request.details || '{}'), reject_reason: encryptedRejectReason }),
-      })
-      .eq('id', requestId);
-    if (requestUpdateError) throw new Error(`Request update error: ${requestUpdateError.message}`);
-
-    const { data: patientRaw, error: patientError } = await supabase
-      .from('patients')
-      .select('first_name, last_name, email')
-      .eq('id', request.appointments.user_id)
-      .single();
-    if (patientError) throw new Error(`Patient fetch error: ${patientError.message}`);
-
-    const patient = {
-      first_name: decrypt(patientRaw.first_name),
-      last_name: decrypt(patientRaw.last_name),
-      email: patientRaw.email ? decrypt(patientRaw.email) : null,
-    };
-    const patientName = `${patient.first_name} ${patient.last_name}`;
-    const patientEmail = patient.email;
-
-    if (patientEmail) {
-      const parsedDate = new Date(request.appointments.appointment_date);
-      const userMailOptions = {
-        from: process.env.EMAIL_USER,
-        to: patientEmail,
-        subject: 'Appointment Request Rejected - Balane-Saspa Dental Clinic',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-            <h2 style="color: #4154f1; text-align: center;">Balane-Saspa Dental Clinic</h2>
-            <p>Dear ${patientName},</p>
-            <p>Your ${request.action} request has been rejected by the admin:</p>
-            <ul>
-              <li><strong>Date:</strong> ${new Intl.DateTimeFormat('en-PH', {
-                timeZone: 'Asia/Manila',
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              }).format(parsedDate)}</li>
-              <li><strong>Service:</strong> ${request.appointments.services.name}</li>
-              <li><strong>Reason for Rejection:</strong> ${reject_reason}</li>
-            </ul>
-            <p>If you have any questions or need further assistance, please contact us.</p>
-            <p>Best regards,<br>Balane-Saspa Dental Clinic Team</p>
-          </div>
-        `,
-      };
-
-      await transporter.sendMail(userMailOptions);
-      logger.info(`Rejection notification sent to ${patientEmail} for requestId: ${requestId}`);
-    }
-
-    res.status(200).json({ success: true, message: `${request.action} request rejected successfully` });
-  } catch (error) {
-    logger.error('Error rejecting request:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to reject request' });
+    res.json({ success: true, message: `${req_.action} request rejected` });
+  } catch (err) {
+    logger.error('Reject error:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to reject' });
   }
 });
 
-// POST /api/appointments/bulk-update
-router.post('/bulk-update', isAuthenticated, isAdmin, async (req, res) => {
-  const { updates } = req.body;
-
-  try {
-    if (!Array.isArray(updates) || updates.length === 0) {
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid or empty updates array' });
-    }
-
-    const validUpdates = updates.every(
-      (update) =>
-        validator.isInt(update.id) &&
-        ['pending', 'confirmed', 'cancelled', 'rejected', 'expired', 'completed'].includes(update.status)
-    );
-    if (!validUpdates) {
-      return res.status(400).json({ error: 'bad_request', message: 'Invalid update format' });
-    }
-
-    const { error } = await supabase
-      .from('appointments')
-      .upsert(
-        updates.map((update) => ({
-          id: update.id,
-          status: update.status,
-          updated_at: new Date().toISOString(),
-        })),
-        { onConflict: 'id' }
-      );
-    if (error) throw new Error(`Supabase error: ${error.message}`);
-
-    logger.info(`Bulk updated ${updates.length} appointments by admin`);
-    res.status(200).json({ success: true, message: `Successfully updated ${updates.length} appointments` });
-  } catch (error) {
-    logger.error('Error in bulk update:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to update appointments' });
-  }
-});
-
-// GET /api/appointments/all
+// ---------------------------------------------------------------------------
+// GET /api/appointments/all  (admin)
+// ---------------------------------------------------------------------------
 router.get('/all', isAuthenticated, isAdmin, async (req, res) => {
   try {
     const now = new Date().toISOString();
-    const { error: updateError } = await supabase
-      .from('appointments')
-      .update({ status: 'expired', updated_at: now })
-      .eq('status', 'pending')
-      .lt('appointment_date', now);
-    if (updateError) logger.error('Error updating expired appointments:', updateError);
+    await pool.query("UPDATE appointments SET status='expired', updated_at=NOW() WHERE status='pending' AND appointment_date < $1", [now]).catch(() => {});
 
-    const { data: appointments, error } = await supabase
-      .from('appointments')
-      .select(`
-        id,
-        user_id,
-        appointment_date,
-        status,
-        notes,
-        cancel_reason,
-        reject_reason,
-        pending_action,
-        services (name)
-      `)
-      .order('appointment_date', { ascending: true });
-    if (error) throw new Error(`Supabase error: ${error.message}`);
-
-    const patientIds = [...new Set(appointments.map((app) => app.user_id))];
-    const { data: patients, error: patientError } = await supabase
-      .from('patients')
-      .select('id, first_name, last_name')
-      .in('id', patientIds);
-    if (patientError) throw new Error(`Patient fetch error: ${patientError.message}`);
-
-    const patientMap = new Map(
-      patients.map((p) => [
-        p.id,
-        {
-          first_name: decrypt(p.first_name),
-          last_name: decrypt(p.last_name),
-        },
-      ])
-    );
-
-    const enrichedAppointments = appointments.map((app) => ({
-      ...app,
-      notes: app.notes ? decrypt(app.notes) : null,
-      cancel_reason: app.cancel_reason ? decrypt(app.cancel_reason) : null,
-      reject_reason: app.reject_reason ? decrypt(app.reject_reason) : null,
-      patients: patientMap.get(app.user_id) || { first_name: null, last_name: null },
-    }));
-
-    res.status(200).json({ success: true, appointments: enrichedAppointments });
-  } catch (error) {
-    logger.error('Error fetching all appointments:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to fetch appointments' });
+    const r = await pool.query('SELECT a.*, s.name AS service_name FROM appointments a LEFT JOIN services s ON s.id = a.service_id ORDER BY a.appointment_date ASC');
+    const patientIds = [...new Set(r.rows.map((row) => row.user_id))];
+    const patientMap = new Map();
+    if (patientIds.length) {
+      const pRows = await pool.query('SELECT id, first_name, last_name FROM patients WHERE id = ANY($1)', [patientIds]);
+      pRows.rows.forEach((p) => patientMap.set(p.id, { first_name: decrypt(p.first_name), last_name: decrypt(p.last_name) }));
+    }
+    res.json({ success: true, appointments: r.rows.map((a) => ({
+      ...a,
+      notes:         a.notes         ? decrypt(a.notes)         : null,
+      cancel_reason: a.cancel_reason ? decrypt(a.cancel_reason) : null,
+      reject_reason: a.reject_reason ? decrypt(a.reject_reason) : null,
+      services:  { name: a.service_name },
+      patients:  patientMap.get(a.user_id) || { first_name: null, last_name: null },
+    }))});
+  } catch (err) {
+    logger.error('All appointments error:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to fetch' });
   }
 });
 
-// POST /api/appointments/update-past-appointments
+// ---------------------------------------------------------------------------
+// POST /api/appointments/bulk-update  (admin)
+// ---------------------------------------------------------------------------
+router.post('/bulk-update', isAuthenticated, isAdmin, async (req, res) => {
+  const { updates } = req.body;
+  const valid = ['pending','confirmed','cancelled','rejected','expired','completed'];
+  if (!Array.isArray(updates) || !updates.length) return res.status(400).json({ error: 'bad_request', message: 'Invalid updates' });
+  if (!updates.every((u) => validator.isInt(String(u.id)) && valid.includes(u.status)))
+    return res.status(400).json({ error: 'bad_request', message: 'Invalid update format' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const u of updates) await client.query('UPDATE appointments SET status=$1, updated_at=NOW() WHERE id=$2', [u.status, u.id]);
+    await client.query('COMMIT');
+    res.json({ success: true, message: `Updated ${updates.length} appointments` });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    logger.error('Bulk update error:', err);
+    res.status(500).json({ error: 'server_error', message: 'Bulk update failed' });
+  } finally { client.release(); }
+});
+
+// ---------------------------------------------------------------------------
+// Manual maintenance triggers (admin)
+// ---------------------------------------------------------------------------
 router.post('/update-past-appointments', isAuthenticated, isAdmin, async (req, res) => {
   try {
-    await updateAllPastAppointmentsToCompleted();
-    res.status(200).json({ success: true, message: 'All past appointments updated to completed' });
-  } catch (error) {
-    logger.error('Error updating past appointments:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to update past appointments' });
-  }
+    const r = await pool.query("UPDATE appointments SET status='completed', updated_at=NOW() WHERE appointment_date < NOW() AND status NOT IN ('completed','cancelled','rejected') RETURNING id");
+    res.json({ success: true, message: `Marked ${r.rowCount} appointments as completed` });
+  } catch (err) { res.status(500).json({ error: 'server_error', message: 'Failed' }); }
 });
 
-// POST /api/appointments/expire-pending-requests
 router.post('/expire-pending-requests', isAuthenticated, isAdmin, async (req, res) => {
   try {
-    await expirePendingRequests();
-    res.status(200).json({ success: true, message: 'All past pending appointment requests expired' });
-  } catch (error) {
-    logger.error('Error expiring pending requests:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to expire pending requests' });
-  }
+    const r = await pool.query(
+      "UPDATE appointment_requests SET status='expired', updated_at=NOW() WHERE status='pending' AND appointment_id IN (SELECT id FROM appointments WHERE appointment_date < NOW()) RETURNING id"
+    );
+    res.json({ success: true, message: `Expired ${r.rowCount} requests` });
+  } catch (err) { res.status(500).json({ error: 'server_error', message: 'Failed' }); }
 });
 
-// Test encryption/decryption route (restricted to development)
-router.get('/test-encryption', async (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({ error: 'forbidden', message: 'Test route disabled in production' });
-  }
-  try {
-    const originalText = 'John Smith';
-    const encrypted = encrypt(originalText);
-    const decrypted = decrypt(encrypted);
-    res.status(200).json({
-      original: originalText,
-      encrypted,
-      decrypted,
-      success: originalText === decrypted,
-    });
-  } catch (error) {
-    logger.error('Test encryption error:', error);
-    res.status(500).json({ error: 'server_error', message: 'Test encryption failed' });
-  }
+// ---------------------------------------------------------------------------
+// GET /api/appointments/test-encryption  (dev only)
+// ---------------------------------------------------------------------------
+router.get('/test-encryption', (req, res) => {
+  if (process.env.NODE_ENV === 'production') return res.status(403).json({ error: 'forbidden' });
+  const original  = 'Test Patient Name';
+  const encrypted = encrypt(original);
+  const decrypted = decrypt(encrypted);
+  res.json({ original, encrypted, decrypted, success: original === decrypted });
 });
 
-// Test completed appointments and expired requests update route (restricted to development)
-router.get('/test-completed-appointments', async (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(403).json({ error: 'forbidden', message: 'Test route disabled in production' });
-  }
-  try {
-    await expirePendingRequests();
-    await updateAllPastAppointmentsToCompleted();
-    res.status(200).json({ success: true, message: 'Past appointments and pending requests update triggered' });
-  } catch (error) {
-    logger.error('Test past appointments and requests update error:', error);
-    res.status(500).json({ error: 'server_error', message: 'Test past appointments and requests update failed' });
-  }
+// Error handler
+router.use((err, _req, res, _next) => {
+  logger.error('appointments route error:', err);
+  res.status(500).json({ error: 'server_error', message: 'Something went wrong' });
 });
 
-// Admin schedule reminder function
-async function sendAdminScheduleReminder(targetDay = 'today') {
-  try {
-    const today = new Date();
-    const targetDate = new Date(today);
-    if (targetDay === 'tomorrow') {
-      targetDate.setDate(today.getDate() + 1);
-    }
-
-    const dateString = targetDate.toISOString().split('T')[0];
-    const appointmentTimes = Array.from({ length: 24 }, (_, h) => `${dateString}T${h.toString().padStart(2, '0')}:00:00+00`);
-
-    const { data: appointments, error } = await supabase
-      .from('appointments')
-      .select(`
-        id,
-        user_id,
-        appointment_date,
-        status,
-        notes,
-        services (name)
-      `)
-      .in('status', ['pending', 'confirmed'])
-      .in('appointment_date', appointmentTimes)
-      .order('appointment_date', { ascending: true });
-    if (error) throw new Error(`Supabase error: ${error.message}`);
-
-    if (!appointments.length) {
-      logger.info(`No appointments found for admin ${targetDay} schedule reminder`);
-      return;
-    }
-
-    const patientIds = [...new Set(appointments.map((app) => app.user_id))];
-    const { data: patientsRaw, error: patientError } = await supabase
-      .from('patients')
-      .select('id, first_name, last_name')
-      .in('id', patientIds);
-    if (patientError) throw new Error(`Patient fetch error: ${patientError.message}`);
-
-    const patientMap = new Map(patientsRaw.map((p) => [p.id, `${decrypt(p.first_name)} ${decrypt(p.last_name)}`]));
-
-    const scheduleList = appointments
-      .map(
-        (app) => `
-      <li>
-        <strong>Time:</strong> ${new Date(app.appointment_date).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila' })}<br>
-        <strong>Patient:</strong> ${patientMap.get(app.user_id) || 'Unknown'}<br>
-        <strong>Service:</strong> ${app.services.name}<br>
-        <strong>Status:</strong> ${app.status}<br>
-        <strong>Notes:</strong> ${app.notes ? decrypt(app.notes) : 'None'}
-      </li>
-    `
-      )
-      .join('');
-
-    const adminScheduleMail = {
-      from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER,
-      subject: `Appointment Schedule for ${targetDay === 'today' ? 'Today' : 'Tomorrow'} - Balane-Saspa Dental Clinic`,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-          <h2 style="color: #4154f1; text-align: center;">Balane-Saspa Dental Clinic</h2>
-          <p>Dear Admin,</p>
-          <p>Here is the appointment schedule for ${targetDay === 'today' ? 'today' : 'tomorrow'} (${targetDate.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila' })}):</p>
-          <ul style="list-style-type: none; padding-left: 0;">
-            ${scheduleList}
-          </ul>
-          <p>Please prepare accordingly for these appointments.</p>
-          <p>Best regards,<br>Balane-Saspa Dental Clinic System</p>
-        </div>
-      `,
-    };
-
-    await transporter.sendMail(adminScheduleMail);
-    logger.info(`Admin schedule reminder for ${targetDay} sent to: ${process.env.EMAIL_USER}`);
-  } catch (error) {
-    logger.error(`Error in admin ${targetDay} schedule reminder:`, error);
-  }
-}
-
-// User appointment reminder function
-async function sendAppointmentReminders(targetDay = 'today') {
-  try {
-    const today = new Date();
-    const targetDate = new Date(today);
-    if (targetDay === 'tomorrow') {
-      targetDate.setDate(today.getDate() + 1);
-    }
-
-    const dateString = targetDate.toISOString().split('T')[0];
-    const appointmentDates = Array.from({ length: 24 }, (_, h) => `${dateString}T${h.toString().padStart(2, '0')}:00:00+00`);
-
-    const { data: appointments, error } = await supabase
-      .from('appointments')
-      .select(`
-        id,
-        user_id,
-        appointment_date,
-        notes,
-        services (name)
-      `)
-      .eq('status', 'confirmed')
-      .in('appointment_date', appointmentDates);
-    if (error) throw new Error(`Supabase error: ${error.message}`);
-
-    if (!appointments.length) {
-      logger.info(`No upcoming appointments found for ${targetDay} reminder`);
-      return;
-    }
-
-    const patientIds = [...new Set(appointments.map((app) => app.user_id))];
-    const { data: patientsRaw, error: patientError } = await supabase
-      .from('patients')
-      .select('id, first_name, last_name, email')
-      .in('id', patientIds);
-    if (patientError) throw new Error(`Patient fetch error: ${patientError.message}`);
-
-    const patients = patientsRaw.map((p) => ({
-      id: p.id,
-      first_name: decrypt(p.first_name),
-      last_name: decrypt(p.last_name),
-      email: p.email ? decrypt(p.email) : null,
-    }));
-
-    const patientMap = new Map(patients.map((p) => [p.id, { name: `${p.first_name} ${p.last_name}`, email: p.email }]));
-
-    for (const appointment of appointments) {
-      const patient = patientMap.get(appointment.user_id);
-      if (!patient || !patient.email) {
-        logger.warn(`No valid email for patient (user_id: ${appointment.user_id}), skipping reminder`);
-        continue;
-      }
-
-      const timingText = targetDay === 'today' ? 'Today' : 'Tomorrow';
-      logger.info(`Sending ${timingText} reminder for appointment ${appointment.id} to ${patient.email}`);
-
-      const reminderMailOptions = {
-        from: process.env.EMAIL_USER,
-        to: patient.email,
-        subject: `Upcoming Appointment Reminder (${timingText}) - Balane-Saspa Dental Clinic`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-            <h2 style="color: #4154f1; text-align: center;">Balane-Saspa Dental Clinic</h2>
-            <p>Dear ${patient.name},</p>
-            <p>This is a reminder for your upcoming appointment scheduled for ${timingText.toLowerCase()}:</p>
-            <ul>
-              <li><strong>Date:</strong> ${new Date(appointment.appointment_date).toLocaleString('en-PH', { timeZone: 'Asia/Manila' })}</li>
-              <li><strong>Service:</strong> ${appointment.services.name}</li>
-              <li><strong>Notes:</strong> ${appointment.notes ? decrypt(appointment.notes) : 'None'}</li>
-            </ul>
-            <p>We look forward to seeing you! If you need to reschedule or cancel, please contact us.</p>
-            <p>Best regards,<br>Balane-Saspa Dental Clinic Team</p>
-          </div>
-        `,
-      };
-
-      await transporter.sendMail(reminderMailOptions);
-      logger.info(`Upcoming appointment reminder (${timingText}) sent to: ${patient.email}`);
-    }
-  } catch (error) {
-    logger.error(`Error in ${targetDay} appointment reminder cron job:`, error);
-  }
-}
-
-// Update all past appointments to completed
-async function updateAllPastAppointmentsToCompleted() {
-  try {
-    const now = new Date().toISOString();
-    const { data: appointments, error: selectError } = await supabase
-      .from('appointments')
-      .select('id, appointment_date, status')
-      .lt('appointment_date', now)
-      .not('status', 'in', ['completed', 'cancelled', 'rejected']);
-
-    if (selectError) throw new Error(`Supabase select error: ${selectError.message}`);
-    if (!appointments.length) {
-      logger.info('No past appointments found to update to completed');
-      return;
-    }
-
-    const appointmentIds = appointments.map((app) => app.id);
-    const batchSize = 1000;
-    let updatedCount = 0;
-
-    for (let i = 0; i < appointmentIds.length; i += batchSize) {
-      const batch = appointmentIds.slice(i, i + batchSize);
-      const { error: updateError } = await supabase
-        .from('appointments')
-        .update({ status: 'completed', updated_at: now })
-        .in('id', batch);
-
-      if (updateError) throw new Error(`Supabase update error in batch ${i / batchSize + 1}: ${updateError.message}`);
-      
-      updatedCount += batch.length;
-      logger.info(`Updated batch ${i / batchSize + 1} with ${batch.length} appointments to completed status`);
-    }
-
-    logger.info(`Updated ${updatedCount} past appointments to completed status`, {
-      appointmentIds,
-    });
-  } catch (error) {
-    logger.error('Error in updateAllPastAppointmentsToCompleted:', error);
-    throw error;
-  }
-}
-
-// Expire pending appointment requests for past appointments
-async function expirePendingRequests() {
-  try {
-    const now = new Date().toISOString();
-    const { data: requests, error: selectError } = await supabase
-      .from('appointment_requests')
-      .select('id, appointment_id, appointments (appointment_date)')
-      .eq('status', 'pending')
-      .lt('appointments.appointment_date', now);
-
-    if (selectError) throw new Error(`Supabase select error: ${selectError.message}`);
-    if (!requests.length) {
-      logger.info('No pending appointment requests with past dates found to expire');
-      return;
-    }
-
-    const requestIds = requests.map((req) => req.id);
-    const appointmentIds = [...new Set(requests.map((req) => req.appointment_id))];
-    const batchSize = 1000;
-    let expiredRequestCount = 0;
-    let expiredAppointmentCount = 0;
-
-    // Update appointment_requests in batches
-    for (let i = 0; i < requestIds.length; i += batchSize) {
-      const batch = requestIds.slice(i, i + batchSize);
-      const { error: updateError } = await supabase
-        .from('appointment_requests')
-        .update({ status: 'expired', updated_at: now })
-        .in('id', batch);
-
-      if (updateError) throw new Error(`Supabase request update error in batch ${i / batchSize + 1}: ${updateError.message}`);
-      
-      expiredRequestCount += batch.length;
-      logger.info(`Expired batch ${i / batchSize + 1} with ${batch.length} pending requests`);
-    }
-
-    // Update corresponding appointments in batches
-    for (let i = 0; i < appointmentIds.length; i += batchSize) {
-      const batch = appointmentIds.slice(i, i + batchSize);
-      const { error: updateError } = await supabase
-        .from('appointments')
-        .update({ status: 'expired', pending_action: null, updated_at: now })
-        .in('id', batch);
-
-      if (updateError) throw new Error(`Supabase appointment update error in batch ${i / batchSize + 1}: ${updateError.message}`);
-      
-      expiredAppointmentCount += batch.length;
-      logger.info(`Updated batch ${i / batchSize + 1} with ${batch.length} appointments to expired status`);
-    }
-
-    logger.info(`Expired ${expiredRequestCount} pending appointment requests and updated ${expiredAppointmentCount} appointments`, {
-      requestIds,
-      appointmentIds,
-    });
-  } catch (error) {
-    logger.error('Error in expirePendingRequests:', error);
-    throw error;
-  }
-}
-
-// Cron scheduling with error handling
-const cronJobs = cron.schedule(
-  '0 23 * * *',
-  async () => {
-    logger.info('Running daily tasks at 11 PM Asia/Manila');
-    try {
-      await Promise.all([
-        sendAdminScheduleReminder('today'),
-        sendAdminScheduleReminder('tomorrow'),
-        sendAppointmentReminders('today'),
-        sendAppointmentReminders('tomorrow'),
-        expirePendingRequests(),
-        updateAllPastAppointmentsToCompleted(),
-      ]);
-      logger.info('Daily tasks completed successfully');
-    } catch (error) {
-      logger.error('Error in daily tasks cron job:', error);
-    }
-  },
-  {
-    timezone: 'Asia/Manila',
-    runOnInit: false,
-  }
-);
-
-// Graceful shutdown for cron
-process.on('SIGTERM', () => {
-  logger.info('Shutting down cron jobs');
-  cronJobs.stop();
-  redis.quit(() => {
-    logger.info('Redis connection closed');
-    process.exit(0);
-  });
-});
-
-// Error handling middleware
-router.use((err, req, res, next) => {
-  logger.error('Route error:', { error: err.message, stack: err.stack, path: req.path });
-  res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
-});
-
-module.exports = {
-  router,
-  handleSocketIOEvents,
-};
+module.exports = { router };

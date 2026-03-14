@@ -1,985 +1,405 @@
-const express = require('express');
-const router = express.Router();
-const { createClient } = require('@supabase/supabase-js');
-const bcrypt = require('bcrypt');
-const crypto = require('crypto');
-const Redis = require('ioredis');
-const { RateLimiterRedis } = require('rate-limiter-flexible');
+const express   = require('express');
+const router    = express.Router();
+const bcrypt    = require('bcrypt');
+const crypto    = require('crypto');
 const validator = require('validator');
-const helmet = require('helmet');
-const winston = require('winston');
+const winston   = require('winston');
+const pool      = require('../db');
 
 require('dotenv').config();
-
-// Initialize router
 router.use(express.json({ limit: '10kb' }));
 
-// Validate critical environment variables
-const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_KEY', 'ENCRYPTION_KEY', 'REDIS_URL', 'NODE_ENV'];
-requiredEnvVars.forEach((varName) => {
-  if (!process.env[varName]) {
-    console.error(`Missing required environment variable: ${varName}`);
-    process.exit(1);
-  }
-});
-
-// Initialize Winston logger
 const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console(),
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
+  level: 'debug',
+  format: winston.format.combine(winston.format.timestamp(), winston.format.json()),
+  transports: [new winston.transports.Console()],
 });
 
-// Initialize Redis
-const redis = new Redis(process.env.REDIS_URL, {
-  retryStrategy: (times) => Math.min(times * 50, 2000),
-  maxRetriesPerRequest: 10,
-});
-
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// Encryption setup
-const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 12;
+// ---------------------------------------------------------------------------
+// Encryption
+// ---------------------------------------------------------------------------
+const ALGORITHM       = 'aes-256-gcm';
+const IV_LENGTH       = 12;
 const AUTH_TAG_LENGTH = 16;
-
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
-const encryptionKey = Buffer.from(ENCRYPTION_KEY, 'hex');
-if (encryptionKey.length !== 32) {
-  logger.error(`Invalid ENCRYPTION_KEY length: expected 32 bytes, got ${encryptionKey.length}`);
-  process.exit(1);
-}
-logger.info('Encryption key initialized successfully');
+const ENCRYPTION_KEY  = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+if (ENCRYPTION_KEY.length !== 32) { logger.error('Invalid ENCRYPTION_KEY'); process.exit(1); }
 
 function encrypt(text) {
   if (!text) return null;
-  try {
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, encryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    const authTag = cipher.getAuthTag().toString('hex');
-    return `${iv.toString('hex')}:${encrypted}:${authTag}`;
-  } catch (error) {
-    logger.error('Encryption error:', { error: error.message, input: text });
-    throw new Error('Encryption failed');
-  }
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const c  = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv, { authTagLength: AUTH_TAG_LENGTH });
+  let enc  = c.update(text, 'utf8', 'hex');
+  enc     += c.final('hex');
+  return `${iv.toString('hex')}:${enc}:${c.getAuthTag().toString('hex')}`;
 }
 
 function decrypt(text) {
-  if (!text || typeof text !== 'string') {
-    logger.warn(`Decrypt called with invalid input: ${text}`);
-    return null;
-  }
+  if (!text || typeof text !== 'string') return null;
   const parts = text.split(':');
-  if (parts.length !== 3) {
-    logger.warn(`Invalid encrypted format: "${text}" (expected iv:encrypted:authTag)`);
-    return null;
-  }
-  const [ivText, encryptedText, authTagText] = parts;
+  if (parts.length !== 3) return null;
   try {
-    const iv = Buffer.from(ivText, 'hex');
-    const authTag = Buffer.from(authTagText, 'hex');
-    const encrypted = Buffer.from(encryptedText, 'hex');
-    if (iv.length !== IV_LENGTH || authTag.length !== AUTH_TAG_LENGTH) {
-      logger.warn(`Invalid IV or auth tag length: iv=${iv.length}, authTag=${authTag.length}`);
-      return null;
-    }
-    const decipher = crypto.createDecipheriv(ALGORITHM, encryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
-    decipher.setAuthTag(authTag);
-    let decrypted = decipher.update(encrypted);
-    decrypted = Buffer.concat([decrypted, decipher.final()]);
-    const decryptedString = decrypted.toString('utf8');
-    if (!decryptedString || /[^ -~]/.test(decryptedString)) {
-      logger.warn(`Invalid decryption result: "${decryptedString}"`);
-      return null;
-    }
-    return decryptedString;
-  } catch (error) {
-    logger.error('Decryption failed:', { error: error.message, input: text });
-    return null;
-  }
+    const iv  = Buffer.from(parts[0], 'hex');
+    const tag = Buffer.from(parts[2], 'hex');
+    if (iv.length !== IV_LENGTH || tag.length !== AUTH_TAG_LENGTH) return null;
+    const d = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv, { authTagLength: AUTH_TAG_LENGTH });
+    d.setAuthTag(tag);
+    let dec = d.update(Buffer.from(parts[1], 'hex'));
+    dec = Buffer.concat([dec, d.final()]);
+    const result = dec.toString('utf8');
+    return /[^ -~]/.test(result) ? null : result;
+  } catch { return null; }
 }
 
-// Rate limiters
-const checkUsernameLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:username',
-  points: 50,
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-});
-
-const registrationLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:register',
-  points: 5,
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-});
-
-const profileGetLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:profile:get',
-  points: 100,
-  duration: 15 * 60,
-  blockDuration: 15 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
-
-const profileUpdateLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:profile:update',
-  points: 10,
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
-
-const allPatientsLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:allpatients',
-  points: 50,
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
-
-const changePasswordLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:password',
-  points: 5,
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
-
-const adminProfileLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:adminprofile',
-  points: 100,
-  duration: 15 * 60,
-  blockDuration: 15 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
-
-const adminUpdateLimiter = new RateLimiterRedis({
-  storeClient: redis,
-  keyPrefix: 'rl:adminupdate',
-  points: 5,
-  duration: 60 * 60,
-  blockDuration: 60 * 60,
-  keyGenerator: (req) => `user:${req.session?.userId || 'unknown'}`,
-});
-
-// Rate limiter middleware
-const applyRateLimiter = (limiter) => async (req, res, next) => {
-  try {
-    const key = limiter.keyGenerator ? limiter.keyGenerator(req) : req.ip;
-    await limiter.consume(key);
-    next();
-  } catch (error) {
-    logger.warn(`Rate limit exceeded for ${key} on ${req.path}`);
-    res.status(429).json({
-      error: 'too_many_requests',
-      message: error.message || 'Too many requests, please try again later',
-    });
-  }
-};
-
-// Authentication middleware
+// ---------------------------------------------------------------------------
+// Middleware
+// ---------------------------------------------------------------------------
 const isAuthenticated = (req, res, next) => {
-  if (!req.session || !req.session.isLoggedIn || !req.session.userId) {
-    logger.warn(`Unauthorized access attempt: ${req.method} ${req.path}`);
-    return res.status(401).json({ error: 'unauthorized', message: 'You must be logged in to perform this action' });
-  }
+  if (!req.session?.isLoggedIn || !req.session?.userId)
+    return res.status(401).json({ error: 'unauthorized', message: 'You must be logged in' });
   next();
 };
 
-// Check if user is admin
 const isAdmin = async (userId) => {
-  const { data, error } = await supabase
-    .from('admin')
-    .select('id')
-    .eq('id', userId)
-    .single();
-  return !error && data;
+  const r = await pool.query('SELECT id FROM admin WHERE id = $1', [userId]);
+  return r.rows.length > 0;
 };
 
-// Socket.IO handlers
-const handlePatientRegistration = (io, data) => {
-  try {
-    logger.info('Emitting patient registration via Socket.IO:', data);
-    io.emit('patient_registration', {
-      patient: {
-        id: data.patient_id,
-        first_name: data.first_name,
-        last_name: data.last_name,
-        email: data.email,
-        timestamp: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    logger.error('Error in patient registration handler:', error);
-  }
-};
+// Simple in-memory rate limiter
+function makeRL(maxPoints, windowSec) {
+  const hits = new Map();
+  return async (req, res, next) => {
+    const key = `user:${req.session?.userId || req.ip}`;
+    const now = Date.now(), win = windowSec * 1000;
+    const rec = hits.get(key) || { count: 0, start: now };
+    if (now - rec.start > win) { rec.count = 0; rec.start = now; }
+    rec.count++;
+    hits.set(key, rec);
+    if (rec.count > maxPoints)
+      return res.status(429).json({ error: 'too_many_requests', message: 'Too many requests' });
+    next();
+  };
+}
 
-const handleProfileUpdate = (io, data) => {
-  try {
-    logger.info('Emitting profile update via Socket.IO:', data);
-    io.emit('profile_update', {
-      patient: {
-        id: data.userId,
-        full_name: data.fullName,
-        email: data.email,
-        timestamp: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    logger.error('Error in profile update handler:', error);
-  }
-};
+const registrationRL  = makeRL(10,  60 * 60);
+const profileGetRL    = makeRL(200, 15 * 60);
+const profileUpdateRL = makeRL(20,  60 * 60);
+const changePassRL    = makeRL(10,  60 * 60);
+const allPatientsRL   = makeRL(100, 60 * 60);
+const adminProfileRL  = makeRL(200, 15 * 60);
+const adminUpdateRL   = makeRL(10,  60 * 60);
+const checkUsernameRL = makeRL(100, 60 * 60);
 
-const handlePasswordChange = (io, data) => {
+function calculateAge(birthdate) {
   try {
-    logger.info('Emitting password change via Socket.IO:', data);
-    io.emit('password_change', {
-      userId: data.userId,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error('Error in password change handler:', error);
-  }
-};
+    const birth = new Date(birthdate);
+    return Math.max(0, Math.floor((Date.now() - birth) / (365.25 * 24 * 60 * 60 * 1000)));
+  } catch { return 0; }
+}
 
-const handleAdminUpdate = (io, data) => {
+// ---------------------------------------------------------------------------
+// GET /patients/check-username
+// ---------------------------------------------------------------------------
+router.get('/check-username', checkUsernameRL, async (req, res) => {
+  const { username } = req.query;
+  if (!username || !validator.isLength(username, { min: 3, max: 50 }))
+    return res.status(400).json({ error: 'invalid_request', message: 'Username must be 3-50 characters' });
   try {
-    logger.info('Emitting admin account update via Socket.IO:', data);
-    io.emit('admin_update', {
-      userId: data.userId,
-      username: data.username,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error('Error in admin account update handler:', error);
-  }
-};
-
-// Username availability check endpoint
-router.get('/check-username', applyRateLimiter(checkUsernameLimiter), async (req, res) => {
-  try {
-    const { username } = req.query;
-    if (!username || !validator.isAlphanumeric(username, 'en-US', { ignore: '_-' }) || !validator.isLength(username, { min: 3, max: 50 })) {
-      logger.warn(`Invalid username parameter: ${username}`);
-      return res.status(400).json({ error: 'invalid_request', message: 'Username must be 3-50 alphanumeric characters' });
-    }
-    logger.info(`Checking username availability: ${username}`);
-    const { data, error } = await supabase
-      .from('users')
-      .select('username')
-      .eq('username', username);
-    if (error) throw error;
-    const exists = data && data.length > 0;
-    logger.info(`Username exists: ${exists}`);
-    res.status(200).json({ exists });
-  } catch (error) {
-    logger.error('Error in check-username:', error);
+    const r = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+    res.json({ exists: r.rows.length > 0 });
+  } catch (err) {
+    logger.error('check-username error:', err);
     res.status(500).json({ error: 'server_error', message: 'Internal server error' });
   }
 });
 
-// Full patient registration endpoint
-router.post('/', applyRateLimiter(registrationLimiter), async (req, res) => {
+// ---------------------------------------------------------------------------
+// POST /patients  — register
+// ---------------------------------------------------------------------------
+router.post('/', registrationRL, async (req, res) => {
+  const {
+    username, password, last_name, first_name, middle_name, birthdate, sex,
+    nickname, religion, nationality, home_address, home_no, occupation,
+    office_no, dental_insurance, fax_no, mobile_no, email,
+  } = req.body;
+
+  // Validate required
+  for (const [k, v] of Object.entries({ username, password, last_name, first_name, birthdate, sex, home_address, mobile_no, email })) {
+    if (!v) return res.status(400).json({ error: 'missing_fields', message: `${k} is required` });
+  }
+  if (!validator.isLength(username, { min: 3, max: 50 }))
+    return res.status(400).json({ error: 'invalid_data', message: 'Username must be 3-50 characters' });
+  if (!validator.isLength(password, { min: 8, max: 100 }))
+    return res.status(400).json({ error: 'invalid_data', message: 'Password must be 8-100 characters' });
+  if (!validator.isEmail(email))
+    return res.status(400).json({ error: 'invalid_data', message: 'Invalid email' });
+  if (!['M', 'F'].includes(sex))
+    return res.status(400).json({ error: 'invalid_data', message: 'Sex must be M or F' });
+  if (!validator.isISO8601(birthdate))
+    return res.status(400).json({ error: 'invalid_data', message: 'Invalid birthdate' });
+
+  const client = await pool.connect();
   try {
-    const {
-      username,
-      password,
-      last_name,
-      first_name,
-      middle_name,
-      birthdate,
-      sex,
-      nickname,
-      religion,
-      nationality,
-      home_address,
-      home_no,
-      occupation,
-      office_no,
-      dental_insurance,
-      fax_no,
-      mobile_no,
-      email,
-    } = req.body;
+    // Check duplicate username
+    const usernameCheck = await client.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (usernameCheck.rows.length)
+      return res.status(400).json({ error: 'username_exists', message: 'Username already taken' });
 
-    // Validate required fields
-    const requiredFields = { username, password, last_name, first_name, birthdate, sex, home_address, mobile_no, email };
-    for (const [key, value] of Object.entries(requiredFields)) {
-      if (!value) {
-        logger.warn(`Missing required field: ${key}`);
-        return res.status(400).json({ error: 'missing_fields', message: `${key} is required` });
-      }
+    // Check duplicate email
+    const emailLC  = email.toLowerCase();
+    const allPats  = await client.query('SELECT email FROM patients');
+    for (const p of allPats.rows) {
+      if (decrypt(p.email) === emailLC)
+        return res.status(400).json({ error: 'email_exists', message: 'Email already registered' });
     }
 
-    // Validate data types and formats
-    if (!validator.isAlphanumeric(username, 'en-US', { ignore: '_-' }) || !validator.isLength(username, { min: 3, max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Username must be 3-50 alphanumeric characters' });
-    }
-    if (!validator.isLength(password, { min: 8, max: 100 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Password must be 8-100 characters' });
-    }
-    if (!validator.isEmail(email)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid email format' });
-    }
-    if (!['M', 'F'].includes(sex)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Sex must be M or F' });
-    }
-    if (!validator.isISO8601(birthdate)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid birthdate format' });
-    }
-    if (!validator.isMobilePhone(mobile_no, 'en-PH')) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid Philippine mobile number. Use +639xxxxxxxxx or 09xxxxxxxxx format.' });
-    }
-    if (middle_name && !validator.isLength(middle_name, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Middle name too long' });
-    }
-    if (nickname && !validator.isLength(nickname, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Nickname too long' });
-    }
-    if (religion && !validator.isLength(religion, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Religion too long' });
-    }
-    if (nationality && !validator.isLength(nationality, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Nationality too long' });
-    }
-    if (!validator.isLength(home_address, { max: 200 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Home address too long' });
-    }
-    if (home_no && !validator.isLength(home_no, { max: 20 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Home number too long' });
-    }
-    if (occupation && !validator.isLength(occupation, { max: 100 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Occupation too long' });
-    }
-    if (office_no && !validator.isLength(office_no, { max: 20 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Office number too long' });
-    }
-    if (dental_insurance && !validator.isLength(dental_insurance, { max: 100 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Dental insurance too long' });
-    }
-    if (fax_no && !validator.isLength(fax_no, { max: 20 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Fax number too long' });
-    }
+    await client.query('BEGIN');
 
-    // Check for existing username
-    const { data: usernameCheck, error: usernameCheckError } = await supabase
-      .from('users')
-      .select('username')
-      .eq('username', username);
-    if (usernameCheckError) throw usernameCheckError;
-    if (usernameCheck && usernameCheck.length > 0) {
-      logger.warn(`Username already exists: ${username}`);
-      return res.status(400).json({ error: 'username_exists', message: 'Username already exists' });
-    }
+    const hashedPwd = await bcrypt.hash(password, 10);
+    const userResult = await client.query(
+      'INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id',
+      [username, hashedPwd]
+    );
+    const userId = userResult.rows[0].id;
 
-    // Check for existing email
-    const emailToCheck = email.toLowerCase();
-    const { data: emailCheck, error: emailCheckError } = await supabase
-      .from('patients')
-      .select('email');
-    if (emailCheckError) throw emailCheckError;
-    for (const patient of emailCheck) {
-      if (patient.email) {
-        const decryptedEmail = decrypt(patient.email);
-        if (decryptedEmail === emailToCheck) {
-          logger.warn(`Email already exists: ${emailToCheck}`);
-          return res.status(400).json({ error: 'email_exists', message: 'Email already exists' });
-        }
-      }
-    }
+    await client.query(
+      `INSERT INTO patients
+        (id, first_name, last_name, middle_name, birthdate, sex, nickname, religion, nationality,
+         home_address, home_no, occupation, office_no, dental_insurance, fax_no, mobile_no, email)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+      [
+        userId,
+        encrypt(first_name), encrypt(last_name),
+        middle_name ? encrypt(middle_name) : null,
+        encrypt(birthdate), sex,
+        nickname         ? encrypt(nickname)         : null,
+        religion         ? encrypt(religion)         : null,
+        nationality      ? encrypt(nationality)      : null,
+        encrypt(home_address),
+        home_no          ? encrypt(home_no)          : null,
+        occupation       ? encrypt(occupation)       : null,
+        office_no        ? encrypt(office_no)        : null,
+        dental_insurance ? encrypt(dental_insurance) : null,
+        fax_no           ? encrypt(fax_no)           : null,
+        encrypt(mobile_no),
+        encrypt(emailLC),
+      ]
+    );
 
-    // Hash password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Encrypt patient data
-    const encryptedData = {
-      last_name: encrypt(last_name),
-      first_name: encrypt(first_name),
-      middle_name: middle_name ? encrypt(middle_name) : null,
-      birthdate: encrypt(birthdate),
-      sex,
-      nickname: nickname ? encrypt(nickname) : null,
-      religion: religion ? encrypt(religion) : null,
-      nationality: nationality ? encrypt(nationality) : null,
-      home_address: encrypt(home_address),
-      home_no: home_no ? encrypt(home_no) : null,
-      occupation: occupation ? encrypt(occupation) : null,
-      office_no: office_no ? encrypt(office_no) : null,
-      dental_insurance: dental_insurance ? encrypt(dental_insurance) : null,
-      fax_no: fax_no ? encrypt(fax_no) : null,
-      mobile_no: encrypt(mobile_no),
-      email: encrypt(emailToCheck),
-    };
-
-    // Insert user into users table
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .insert([{ username, password: hashedPassword, created_at: new Date().toISOString() }])
-      .select('id')
-      .single();
-    if (userError) {
-      logger.error('User insertion error:', userError);
-      if (userError.code === '23505') {
-        return res.status(400).json({ error: 'username_exists', message: 'Username already exists' });
-      }
-      throw userError;
-    }
-
-    // Insert patient into patients table
-    const { data: patientData, error: patientError } = await supabase
-      .from('patients')
-      .insert([
-        {
-          id: userData.id,
-          ...encryptedData,
-          effective_date: new Date().toISOString(),
-        },
-      ])
-      .select('id')
-      .single();
-    if (patientError) {
-      logger.error('Patient insertion error:', patientError);
-      await supabase.from('users').delete().eq('id', userData.id);
-      if (patientError.code === '23505') {
-        return res.status(400).json({ error: 'email_exists', message: 'Email already exists' });
-      }
-      throw patientError;
-    }
-
-    // Emit Socket.IO event
-    const io = req.app.get('socketio');
-    handlePatientRegistration(io, {
-      patient_id: patientData.id,
-      first_name,
-      last_name,
-      email: emailToCheck,
-    });
-
-    logger.info(`Patient registered successfully: userId ${userData.id}`);
-    res.status(201).json({ success: true, message: 'Patient registered successfully', patient_id: patientData.id });
-  } catch (error) {
-    logger.error('Error registering patient:', error);
+    await client.query('COMMIT');
+    logger.info(`Patient registered: userId=${userId}`);
+    res.status(201).json({ success: true, message: 'Patient registered successfully', patient_id: userId });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    logger.error('register error:', err);
     res.status(500).json({ error: 'server_error', message: 'Failed to register patient' });
+  } finally {
+    client.release();
   }
 });
 
-// Fetch profile data (protected)
-router.get('/profile', isAuthenticated, applyRateLimiter(profileGetLimiter), async (req, res) => {
+// ---------------------------------------------------------------------------
+// GET /patients/profile
+// ---------------------------------------------------------------------------
+router.get('/profile', isAuthenticated, profileGetRL, async (req, res) => {
   try {
-    const userId = req.session.userId;
-    logger.info(`Fetching profile for userId: ${userId}`);
-
-    const { data, error } = await supabase
-      .from('patients')
-      .select('id, first_name, last_name, email, mobile_no, birthdate, sex, home_address, religion, nationality, home_no')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      logger.error('Database query error:', { error: error.message, userId });
-      throw error;
-    }
-    if (!data) {
-      logger.warn(`No patient found for userId: ${userId}`);
-      return res.status(404).json({ error: 'not_found', message: 'Patient profile not found' });
-    }
-
-    // Validate data before decryption
-    const requiredFields = ['first_name', 'last_name', 'email', 'mobile_no', 'birthdate', 'home_address'];
-    const missingFields = requiredFields.filter(field => !data[field]);
-    if (missingFields.length > 0) {
-      logger.warn(`Missing required fields for userId ${userId}: ${missingFields.join(', ')}`);
-    }
-
-    // Decrypt and validate fields
-    const safeDecrypt = (value, fieldName) => {
-      const decrypted = decrypt(value);
-      if (decrypted === null) {
-        logger.warn(`Failed to decrypt ${fieldName} for userId ${userId}: "${value}"`);
-        return 'Not provided';
-      }
-      return decrypted;
+    const r = await pool.query(
+      'SELECT first_name, last_name, email, mobile_no, birthdate, sex, home_address, religion, nationality, home_no FROM patients WHERE id = $1',
+      [req.session.userId]
+    );
+    if (!r.rows.length)
+      return res.status(404).json({ error: 'not_found', message: 'Profile not found' });
+    const d = r.rows[0];
+    const profile = {
+      full_name:    `${decrypt(d.first_name) || ''} ${decrypt(d.last_name) || ''}`.trim(),
+      email:        decrypt(d.email)        || 'Not provided',
+      phone:        decrypt(d.mobile_no)    || 'Not provided',
+      dob:          decrypt(d.birthdate)    || 'Not provided',
+      gender:       d.sex === 'M' ? 'male' : d.sex === 'F' ? 'female' : 'other',
+      address:      decrypt(d.home_address) || 'Not provided',
+      religion:     decrypt(d.religion)     || 'N/A',
+      nationality:  decrypt(d.nationality)  || 'N/A',
+      home_number:  decrypt(d.home_no)      || 'N/A',
     };
-
-    const profileData = {
-      full_name: `${safeDecrypt(data.first_name, 'first_name')} ${safeDecrypt(data.last_name, 'last_name')}`.trim(),
-      email: safeDecrypt(data.email, 'email'),
-      phone: safeDecrypt(data.mobile_no, 'mobile_no'),
-      dob: safeDecrypt(data.birthdate, 'birthdate'),
-      gender: data.sex === 'M' ? 'male' : data.sex === 'F' ? 'female' : 'other',
-      address: safeDecrypt(data.home_address, 'home_address'),
-      religion: safeDecrypt(data.religion, 'religion') || 'N/A',
-      nationality: safeDecrypt(data.nationality, 'nationality') || 'N/A',
-      home_number: safeDecrypt(data.home_no, 'home_no') || 'N/A',
-      blood_type: 'N/A',
-      allergies: 'None',
-      medical_conditions: 'None',
-      emergency_contact: 'N/A',
-    };
-
-    // Validate decrypted data
-    if (!profileData.full_name || profileData.full_name === 'Not provided Not provided') {
-      logger.warn(`Invalid full_name after decryption for userId ${userId}`);
-      profileData.full_name = 'Not provided';
-    }
-    if (!validator.isEmail(profileData.email)) {
-      logger.warn(`Invalid email after decryption for userId ${userId}: ${profileData.email}`);
-      profileData.email = 'Not provided';
-    }
-    if (!validator.isISO8601(profileData.dob, { strict: true })) {
-      logger.warn(`Invalid dob after decryption for userId ${userId}: ${profileData.dob}`);
-      profileData.dob = 'Not provided';
-    }
-
-    logger.info(`Profile data retrieved for userId: ${userId}`);
-    res.status(200).json(profileData);
-  } catch (error) {
-    logger.error('Error fetching profile:', { error: error.message, userId: req.session.userId });
+    res.json(profile);
+  } catch (err) {
+    logger.error('profile GET error:', err);
     res.status(500).json({ error: 'server_error', message: 'Failed to fetch profile' });
   }
 });
 
-// Fetch all patients (protected, admin-only)
-router.get('/allPatients', isAuthenticated, applyRateLimiter(allPatientsLimiter), async (req, res) => {
+// ---------------------------------------------------------------------------
+// PUT /patients/profile
+// ---------------------------------------------------------------------------
+router.put('/profile', isAuthenticated, profileUpdateRL, async (req, res) => {
+  const { fullName, dob, gender, address, religion, nationality, homeNumber, phone, email } = req.body;
+  if (!fullName || !dob || !gender || !address || !phone || !email)
+    return res.status(400).json({ error: 'missing_fields', message: 'All required fields must be provided' });
+  if (!validator.isEmail(email))
+    return res.status(400).json({ error: 'invalid_data', message: 'Invalid email' });
+  if (!validator.isISO8601(dob))
+    return res.status(400).json({ error: 'invalid_data', message: 'Invalid date of birth' });
+  if (!['male', 'female', 'other'].includes(gender))
+    return res.status(400).json({ error: 'invalid_data', message: 'Invalid gender' });
+
   try {
-    const userId = req.session.userId;
-    logger.info(`Fetching all patients for userId: ${userId}`);
-
-    if (!(await isAdmin(userId))) {
-      logger.warn(`Non-admin attempted to fetch all patients: userId ${userId}`);
-      return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
-    }
-
-    const { data, error } = await supabase
-      .from('patients')
-      .select('*')
-      .order('id', { ascending: true });
-
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      logger.info('No patients found');
-      return res.status(200).json([]);
-    }
-
-    const decryptedPatients = data.map((patient) => ({
-      id: patient.id,
-      first_name: decrypt(patient.first_name) || '',
-      last_name: decrypt(patient.last_name) || '',
-      middle_name: decrypt(patient.middle_name) || '',
-      birthdate: decrypt(patient.birthdate) || '',
-      sex: patient.sex === 'M' ? 'Male' : patient.sex === 'F' ? 'Female' : '',
-      age: calculateAge(decrypt(patient.birthdate)),
-      nickname: decrypt(patient.nickname) || '',
-      religion: decrypt(patient.religion) || '',
-      nationality: decrypt(patient.nationality) || '',
-      home_address: decrypt(patient.home_address) || '',
-      home_no: decrypt(patient.home_no) || '',
-      occupation: decrypt(patient.occupation) || '',
-      office_no: decrypt(patient.office_no) || '',
-      dental_insurance: decrypt(patient.dental_insurance) || '',
-      fax_no: decrypt(patient.fax_no) || '',
-      mobile_no: decrypt(patient.mobile_no) || '',
-      email: decrypt(patient.email) || '',
-      effective_date: patient.effective_date,
-    }));
-
-    logger.info(`Fetched ${decryptedPatients.length} patients`);
-    res.status(200).json(decryptedPatients);
-  } catch (error) {
-    logger.error('Error fetching all patients:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to fetch patients' });
-  }
-});
-
-// Helper function to calculate age
-function calculateAge(birthdate) {
-  try {
-    const today = new Date();
-    const birth = new Date(birthdate);
-    const age = Math.floor((today - birth) / (365.25 * 24 * 60 * 60 * 1000));
-    return age >= 0 ? age : 0;
-  } catch (error) {
-    logger.warn(`Invalid birthdate for age calculation: ${birthdate}`);
-    return 0;
-  }
-}
-
-// Update profile (protected)
-router.put('/profile', isAuthenticated, applyRateLimiter(profileUpdateLimiter), async (req, res) => {
-  try {
-    const userId = req.session.userId;
-    const { fullName, dob, gender, address, religion, nationality, homeNumber, phone, email } = req.body;
-
-    // Validate inputs
-    if (!fullName || !dob || !gender || !address || !phone || !email) {
-      logger.warn(`Missing required fields for profile update: userId ${userId}`);
-      return res.status(400).json({ error: 'missing_fields', message: 'All required fields must be provided' });
-    }
-    if (!validator.isEmail(email)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid email format' });
-    }
-    if (!validator.isISO8601(dob)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid date of birth format' });
-    }
-    if (!['male', 'female', 'other'].includes(gender)) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid gender' });
-    }
-    if (!validator.isMobilePhone(phone, 'en-PH')) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Invalid Philippine mobile number. Use +639xxxxxxxxx or 09xxxxxxxxx format.' });
-    }
-    if (!validator.isLength(fullName, { min: 2, max: 100 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Full name must be 2-100 characters' });
-    }
-    if (!validator.isLength(address, { max: 200 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Address too long' });
-    }
-    if (religion && !validator.isLength(religion, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Religion too long' });
-    }
-    if (nationality && !validator.isLength(nationality, { max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Nationality too long' });
-    }
-    if (homeNumber && !validator.isLength(homeNumber, { max: 20 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Home number too long' });
-    }
-
-    const [first_name, ...lastNameParts] = fullName.trim().split(/\s+/);
-    const last_name = lastNameParts.join(' ');
-
-    const encryptedData = {
-      first_name: encrypt(first_name),
-      last_name: encrypt(last_name),
-      birthdate: encrypt(dob),
-      sex: gender === 'male' ? 'M' : gender === 'female' ? 'F' : 'O',
-      home_address: encrypt(address),
-      religion: religion && religion !== 'N/A' ? encrypt(religion) : null,
-      nationality: nationality && nationality !== 'N/A' ? encrypt(nationality) : null,
-      home_no: homeNumber && homeNumber !== 'N/A' ? encrypt(homeNumber) : null,
-      mobile_no: encrypt(phone),
-      email: encrypt(email.toLowerCase()),
-    };
-
-    const { data, error } = await supabase
-      .from('patients')
-      .update(encryptedData)
-      .eq('id', userId)
-      .select('id')
-      .single();
-
-    if (error) throw error;
-
-    // Emit Socket.IO event
-    const io = req.app.get('socketio');
-    handleProfileUpdate(io, { userId, fullName, email });
-
-    logger.info(`Profile updated for userId: ${userId}`);
-    res.status(200).json({ success: true, message: 'Profile updated successfully' });
-  } catch (error) {
-    logger.error('Error updating profile:', error);
+    const parts     = fullName.trim().split(/\s+/);
+    const firstName = parts[0];
+    const lastName  = parts.slice(1).join(' ') || parts[0];
+    await pool.query(
+      `UPDATE patients SET
+        first_name=$1, last_name=$2, birthdate=$3, sex=$4, home_address=$5,
+        religion=$6, nationality=$7, home_no=$8, mobile_no=$9, email=$10
+       WHERE id=$11`,
+      [
+        encrypt(firstName), encrypt(lastName), encrypt(dob),
+        gender === 'male' ? 'M' : gender === 'female' ? 'F' : 'O',
+        encrypt(address),
+        religion && religion !== 'N/A'    ? encrypt(religion)    : null,
+        nationality && nationality !== 'N/A' ? encrypt(nationality) : null,
+        homeNumber && homeNumber !== 'N/A' ? encrypt(homeNumber)  : null,
+        encrypt(phone),
+        encrypt(email.toLowerCase()),
+        req.session.userId,
+      ]
+    );
+    res.json({ success: true, message: 'Profile updated successfully' });
+  } catch (err) {
+    logger.error('profile PUT error:', err);
     res.status(500).json({ error: 'server_error', message: 'Failed to update profile' });
   }
 });
 
-// Update settings (protected, placeholder)
-router.put('/settings', isAuthenticated, async (req, res) => {
+// ---------------------------------------------------------------------------
+// GET /patients/allPatients  (admin only)
+// ---------------------------------------------------------------------------
+router.get('/allPatients', isAuthenticated, allPatientsRL, async (req, res) => {
   try {
-    logger.info(`Settings update received for userId: ${req.session.userId}`);
-    res.status(200).json({ success: true, message: 'Settings saved successfully' });
-  } catch (error) {
-    logger.error('Error saving settings:', error);
-    res.status(500).json({ error: 'server_error', message: 'Failed to save settings' });
+    if (!await isAdmin(req.session.userId))
+      return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
+    const r = await pool.query('SELECT * FROM patients ORDER BY id');
+    const patients = r.rows.map((p) => ({
+      id:               p.id,
+      first_name:       decrypt(p.first_name)       || '',
+      last_name:        decrypt(p.last_name)         || '',
+      middle_name:      decrypt(p.middle_name)       || '',
+      birthdate:        decrypt(p.birthdate)         || '',
+      sex:              p.sex === 'M' ? 'Male' : p.sex === 'F' ? 'Female' : '',
+      age:              calculateAge(decrypt(p.birthdate)),
+      nickname:         decrypt(p.nickname)          || '',
+      religion:         decrypt(p.religion)          || '',
+      nationality:      decrypt(p.nationality)       || '',
+      home_address:     decrypt(p.home_address)      || '',
+      home_no:          decrypt(p.home_no)           || '',
+      occupation:       decrypt(p.occupation)        || '',
+      office_no:        decrypt(p.office_no)         || '',
+      dental_insurance: decrypt(p.dental_insurance)  || '',
+      fax_no:           decrypt(p.fax_no)            || '',
+      mobile_no:        decrypt(p.mobile_no)         || '',
+      email:            decrypt(p.email)             || '',
+      effective_date:   p.effective_date,
+    }));
+    res.json(patients);
+  } catch (err) {
+    logger.error('allPatients error:', err);
+    res.status(500).json({ error: 'server_error', message: 'Failed to fetch patients' });
   }
 });
 
-// Change password (protected)
-router.put('/change-password', isAuthenticated, applyRateLimiter(changePasswordLimiter), async (req, res) => {
+// ---------------------------------------------------------------------------
+// PUT /patients/change-password
+// ---------------------------------------------------------------------------
+router.put('/change-password', isAuthenticated, changePassRL, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword)
+    return res.status(400).json({ error: 'missing_fields', message: 'Current and new passwords are required' });
+  if (!validator.isLength(newPassword, { min: 8, max: 100 }))
+    return res.status(400).json({ error: 'invalid_password', message: 'Password must be 8-100 characters' });
+
   try {
-    const userId = req.session.userId;
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      logger.warn(`Missing password fields for userId: ${userId}`);
-      return res.status(400).json({ error: 'missing_fields', message: 'Current and new passwords are required' });
-    }
-
-    // Validate new password
-    const passwordErrors = [];
-    if (!validator.isLength(newPassword, { min: 8, max: 100 })) {
-      passwordErrors.push('Password must be 8-100 characters long');
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one number');
-    }
-    if (!/[!@#$%^&*]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one special character');
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one uppercase letter');
-    }
-    if (!/[a-z]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one lowercase letter');
-    }
-    if (passwordErrors.length > 0) {
-      logger.warn(`Invalid new password for userId: ${userId}`);
-      return res.status(400).json({ error: 'invalid_password', message: 'Password does not meet security requirements', details: passwordErrors });
-    }
-
-    const { data: userData, error: fetchError } = await supabase
-      .from('users')
-      .select('password')
-      .eq('id', userId)
-      .single();
-
-    if (fetchError) throw fetchError;
-    if (!userData) {
-      logger.warn(`User not found for userId: ${userId}`);
-      return res.status(404).json({ error: 'not_found', message: 'User not found' });
-    }
-
-    const passwordMatch = await bcrypt.compare(currentPassword, userData.password);
-    if (!passwordMatch) {
-      logger.warn(`Incorrect current password for userId: ${userId}`);
+    const r = await pool.query('SELECT password FROM users WHERE id = $1', [req.session.userId]);
+    if (!r.rows.length) return res.status(404).json({ error: 'not_found', message: 'User not found' });
+    if (!await bcrypt.compare(currentPassword, r.rows[0].password))
       return res.status(401).json({ error: 'invalid_password', message: 'Current password is incorrect' });
-    }
+    if (await bcrypt.compare(newPassword, r.rows[0].password))
+      return res.status(400).json({ error: 'invalid_password', message: 'New password must differ from current' });
 
-    if (await bcrypt.compare(newPassword, userData.password)) {
-      logger.warn(`New password same as current for userId: ${userId}`);
-      return res.status(400).json({ error: 'invalid_password', message: 'New password must not be the same as the current password' });
-    }
-
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ password: hashedPassword })
-      .eq('id', userId);
-
-    if (updateError) throw updateError;
-
-    // Emit Socket.IO event
-    const io = req.app.get('socketio');
-    handlePasswordChange(io, { userId });
-
-    // Destroy session
-    await new Promise((resolve, reject) => {
-      req.session.destroy((err) => {
-        if (err) {
-          logger.error('Error destroying session:', err);
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
-
-    logger.info(`Password changed for userId: ${userId}`);
-    res.status(200).json({ success: true, message: 'Password changed successfully. Please log in again.' });
-  } catch (error) {
-    logger.error('Error changing password:', error);
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE users SET password = $1 WHERE id = $2', [hash, req.session.userId]);
+    await new Promise((ok, fail) => req.session.destroy((err) => err ? fail(err) : ok()));
+    res.json({ success: true, message: 'Password changed. Please log in again.' });
+  } catch (err) {
+    logger.error('change-password error:', err);
     res.status(500).json({ error: 'server_error', message: 'Failed to change password' });
   }
 });
 
-router.get('/admin-profile', isAuthenticated, applyRateLimiter(adminProfileLimiter), async (req, res) => {
+// PUT /patients/settings  — placeholder
+router.put('/settings', isAuthenticated, (_req, res) => {
+  res.json({ success: true, message: 'Settings saved' });
+});
+
+// ---------------------------------------------------------------------------
+// GET /patients/admin-profile
+// ---------------------------------------------------------------------------
+router.get('/admin-profile', isAuthenticated, adminProfileRL, async (req, res) => {
   try {
-    const userId = req.session.userId;
-    if (!(await isAdmin(userId))) {
-      logger.warn(`Non-admin attempted to fetch admin profile: userId ${userId}`);
+    if (!await isAdmin(req.session.userId))
       return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
-    }
-
-    const { data, error } = await supabase
-      .from('admin')
-      .select('username')
-      .eq('id', userId)
-      .single();
-
-    if (error) throw error;
-    if (!data) {
-      logger.warn(`Admin profile not found for userId: ${userId}`);
-      return res.status(404).json({ error: 'not_found', message: 'Admin profile not found' });
-    }
-
-    logger.info(`Admin profile fetched for userId: ${userId}`);
-    res.status(200).json({ username: data.username });
-  } catch (error) {
-    logger.error('Error fetching admin profile:', error);
+    const r = await pool.query('SELECT username FROM admin WHERE id = $1', [req.session.userId]);
+    if (!r.rows.length) return res.status(404).json({ error: 'not_found', message: 'Admin not found' });
+    res.json({ username: r.rows[0].username });
+  } catch (err) {
+    logger.error('admin-profile error:', err);
     res.status(500).json({ error: 'server_error', message: 'Failed to fetch admin profile' });
   }
 });
 
-// Update admin account (protected, admin-specific)
-router.put('/admin-update', isAuthenticated, applyRateLimiter(adminUpdateLimiter), async (req, res) => {
+// ---------------------------------------------------------------------------
+// PUT /patients/admin-update
+// ---------------------------------------------------------------------------
+router.put('/admin-update', isAuthenticated, adminUpdateRL, async (req, res) => {
+  const { username, currentPassword, newPassword } = req.body;
+  if (!username || !currentPassword || !newPassword)
+    return res.status(400).json({ error: 'missing_fields', message: 'All fields are required' });
+  if (!validator.isLength(username, { min: 3, max: 50 }))
+    return res.status(400).json({ error: 'invalid_data', message: 'Username must be 3-50 characters' });
+  if (!validator.isLength(newPassword, { min: 8, max: 100 }))
+    return res.status(400).json({ error: 'invalid_password', message: 'Password must be 8-100 characters' });
+
   try {
-    const userId = req.session.userId;
-    if (!(await isAdmin(userId))) {
-      logger.warn(`Non-admin attempted to update admin account: userId ${userId}`);
+    if (!await isAdmin(req.session.userId))
       return res.status(403).json({ error: 'forbidden', message: 'Admin access required' });
-    }
 
-    const { username, currentPassword, newPassword } = req.body;
+    const r = await pool.query('SELECT username, password FROM admin WHERE id = $1', [req.session.userId]);
+    if (!r.rows.length) return res.status(404).json({ error: 'not_found', message: 'Admin not found' });
+    const adm = r.rows[0];
 
-    if (!username || !currentPassword || !newPassword) {
-      logger.warn(`Missing fields for admin update: userId ${userId}`);
-      return res.status(400).json({ error: 'missing_fields', message: 'All fields are required' });
-    }
-
-    if (!validator.isAlphanumeric(username, 'en-US', { ignore: '_-' }) || !validator.isLength(username, { min: 3, max: 50 })) {
-      return res.status(400).json({ error: 'invalid_data', message: 'Username must be 3-50 alphanumeric characters' });
-    }
-
-    // Validate new password
-    const passwordErrors = [];
-    if (!validator.isLength(newPassword, { min: 8, max: 100 })) {
-      passwordErrors.push('Password must be 8-100 characters long');
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one number');
-    }
-    if (!/[!@#$%^&*]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one special character');
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one uppercase letter');
-    }
-    if (!/[a-z]/.test(newPassword)) {
-      passwordErrors.push('Password must include at least one lowercase letter');
-    }
-    if (passwordErrors.length > 0) {
-      logger.warn(`Invalid new password for admin userId: ${userId}`);
-      return res.status(400).json({ error: 'invalid_password', message: 'Password does not meet security requirements', details: passwordErrors });
-    }
-
-    // Fetch current admin data
-    const { data: adminData, error: fetchError } = await supabase
-      .from('admin')
-      .select('username, password')
-      .eq('id', userId)
-      .single();
-
-    if (fetchError) throw fetchError;
-    if (!adminData) {
-      logger.warn(`Admin not found for userId: ${userId}`);
-      return res.status(404).json({ error: 'not_found', message: 'Admin not found' });
-    }
-
-    // Verify current password
-    const passwordMatch = await bcrypt.compare(currentPassword, adminData.password);
-    if (!passwordMatch) {
-      logger.warn(`Incorrect current password for admin userId: ${userId}`);
+    if (!await bcrypt.compare(currentPassword, adm.password))
       return res.status(401).json({ error: 'invalid_password', message: 'Current password is incorrect' });
+    if (await bcrypt.compare(newPassword, adm.password))
+      return res.status(400).json({ error: 'invalid_password', message: 'New password must differ' });
+
+    if (username !== adm.username) {
+      const conflict = await pool.query(
+        'SELECT id FROM users WHERE username = $1 UNION SELECT id FROM admin WHERE username = $1', [username]
+      );
+      if (conflict.rows.length)
+        return res.status(400).json({ error: 'username_exists', message: 'Username already taken' });
     }
 
-    if (await bcrypt.compare(newPassword, adminData.password)) {
-      logger.warn(`New password same as current for admin userId: ${userId}`);
-      return res.status(400).json({ error: 'invalid_password', message: 'New password must not be the same as the current password' });
-    }
-
-    // Check if username is taken
-    if (username !== adminData.username) {
-      const { data: adminCheck, error: adminError } = await supabase
-        .from('admin')
-        .select('id')
-        .eq('username', username);
-      const { data: userCheck, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('username', username);
-      if (adminError || userError) throw adminError || userError;
-      if ((adminCheck && adminCheck.length > 0) || (userCheck && userCheck.length > 0)) {
-        logger.warn(`Username already taken: ${username}`);
-        return res.status(400).json({ error: 'username_exists', message: 'Username is already taken' });
-      }
-    }
-
-    // Hash new password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
-    // Update admin data
-    const { error: updateError } = await supabase
-      .from('admin')
-      .update({ username, password: hashedPassword })
-      .eq('id', userId);
-
-    if (updateError) throw updateError;
-
-    // Emit Socket.IO event
-    const io = req.app.get('socketio');
-    handleAdminUpdate(io, { userId, username });
-
-    // Destroy session
-    await new Promise((resolve, reject) => {
-      req.session.destroy((err) => {
-        if (err) {
-          logger.error('Error destroying session:', err);
-          reject(err);
-          return;
-        }
-        resolve();
-      });
-    });
-
-    logger.info(`Admin account updated for userId: ${userId}`);
-    res.status(200).json({ success: true, message: 'Account updated successfully. Please log in again.' });
-  } catch (error) {
-    logger.error('Error updating admin account:', error);
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE admin SET username = $1, password = $2 WHERE id = $3', [username, hash, req.session.userId]);
+    await new Promise((ok, fail) => req.session.destroy((err) => err ? fail(err) : ok()));
+    res.json({ success: true, message: 'Account updated. Please log in again.' });
+  } catch (err) {
+    logger.error('admin-update error:', err);
     res.status(500).json({ error: 'server_error', message: 'Failed to update account' });
   }
 });
 
-// Apply helmet for security headers
-router.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-    },
-  },
-}));
-
-// Error handling middleware
-router.use((err, req, res, next) => {
-  logger.error('Route error:', { error: err.message, stack: err.stack, path: req.path });
-  res.status(500).json({ error: 'server_error', message: 'Something went wrong on the server' });
+router.use((err, _req, res, _next) => {
+  logger.error('patients route error:', err.message);
+  res.status(500).json({ error: 'server_error', message: 'Something went wrong' });
 });
 
-// Graceful shutdown for Redis
-process.on('SIGTERM', () => {
-  logger.info('Shutting down Redis connection');
-  redis.quit(() => {
-    logger.info('Redis connection closed');
-    process.exit(0);
-  });
-});
-
-module.exports = {
-  router,
-  handlePatientRegistration,
-  handleProfileUpdate,
-  handlePasswordChange,
-  handleAdminUpdate,
-};
+module.exports = { router };
